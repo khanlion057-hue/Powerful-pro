@@ -6527,19 +6527,36 @@ function openRateModal(forced) {
       ${forced?'<button class="modal-close" onclick="closeModal()">×</button>':''}
     </div>
     <div class="modal-body">
-      <p style="color:var(--text-secondary);font-size:13px;margin-bottom:14px">Har kuni savdo/kirim uchun kursni tasdiqlang. Yuan kursi — faqat Kirim oynasida.</p>
-      <div class="form-group"><label class="form-label">1 $ = ? UZS</label>
-        <input class="form-control" id="rm-usduzs" type="number" value="${CUR.usdUzs}"></div>
+      <p style="color:var(--text-secondary);font-size:13px;margin-bottom:14px">Har kuni savdo va kirim uchun kurslarni tasdiqlang.</p>
+      <div class="form-group"><label class="form-label" for="rm-usduzs">1 $ = ? soʻm</label>
+        <input class="form-control" id="rm-usduzs" type="number" inputmode="decimal" min="1" step="any" value="${CUR.usdUzs}" oninput="rateModalHint()"></div>
+      <div class="form-group"><label class="form-label" for="rm-usdcny">1 $ = ? yuan (¥)</label>
+        <input class="form-control" id="rm-usdcny" type="number" inputmode="decimal" min="0.01" step="any" value="${CUR.usdCny}" oninput="rateModalHint()"></div>
+      <div id="rm-hint" style="font-size:12.5px;color:var(--text-secondary);margin-top:-4px"></div>
+      <div id="rm-err" style="font-size:12.5px;color:var(--red);min-height:16px;margin-top:6px"></div>
     </div>
     <div class="modal-footer">
       ${forced?'':'<button class="btn btn-ghost" onclick="skipRateModal()">Bugun eskisi bilan davom etish</button>'}
       <button class="btn btn-primary" onclick="saveRateModal()">✅ Saqlash</button>
     </div>`);
+  rateModalHint();
+}
+
+// Kurs oynasi: «1 yuan = … soʻm» — kiritilgan ikki kursdan kelib chiqadigan qiymat (tekshirish uchun)
+function rateModalHint() {
+  const u = parseFloat(document.getElementById('rm-usduzs')?.value), c = parseFloat(document.getElementById('rm-usdcny')?.value);
+  const el = document.getElementById('rm-hint'); if (!el) return;
+  el.textContent = u > 0 && c > 0 ? `1 yuan ≈ ${Math.round(u / c).toLocaleString('en-US').replace(/,/g, ' ')} soʻm` : '';
 }
 
 function saveRateModal() {
-  CUR.usdUzs = parseFloat(document.getElementById('rm-usduzs')?.value||CUR.usdUzs);
-  CUR.usdCny = parseFloat(document.getElementById('rm-usdcny')?.value||CUR.usdCny);
+  // v25 (egasi talabi): kirishda yuan kursi ham so'raladi; noto'g'ri qiymat — saqlanmaydi (avval bo'sh/0 kurs ham yozilib ketishi mumkin edi)
+  const u = parseFloat(document.getElementById('rm-usduzs')?.value ?? CUR.usdUzs);
+  const c = parseFloat(document.getElementById('rm-usdcny')?.value ?? CUR.usdCny);
+  const err = document.getElementById('rm-err');
+  if (!(u >= 1000 && u <= 1000000)) { if (err) err.textContent = "Dollar kursi notoʻgʻri (masalan 12 650)"; return; }
+  if (!(c >= 1 && c <= 100)) { if (err) err.textContent = "Yuan kursi notoʻgʻri (masalan 7.1)"; return; }
+  CUR.usdUzs = u; CUR.usdCny = c;
   CUR.lastRateDate = td();
   CUR.save();
   syncRateToSettings(); save(); fwAccReprice();

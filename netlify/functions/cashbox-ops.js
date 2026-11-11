@@ -15,6 +15,7 @@
 // record (v23) — to'lov amallari uchun (cust_debt_pay, supp_pay, dealer_pay, home_withdrawal): kassa
 // harakati va to'lov yozuvi (+ diller qarzi) bitta tranzaksiyada; qarzdan ortiq to'lov serverda rad etiladi.
 // 24-migratsiya hali qo'llanmagan bo'lsa: { ok:true, authority:false } — brauzer avvalgidek ishlaydi.
+const { notifyCustomerPayment, notifyDealerPayment } = require('./_lib/tgEvents');
 const { getAdminClient, json, methodGuard, parseBody, requireStaffAuth, resolveFilial, serverError, logSecurityEvent } = require('./_lib/supabaseAdmin');
 const { cashAuthorityOn, isMissingFunction, loadBranchBoxes } = require('./_lib/cashAuthority');
 const { ledgerAuthorityOn } = require('./_lib/ledgerAuthority');
@@ -239,6 +240,12 @@ exports.handler = async (event) => {
       out.supplierDebt = Number(data.supplierDebt); out.supplierPaid = Number(data.supplierPaid);
       const sid = body.record && Number(body.record.supplierId);
       if (Number.isSafeInteger(sid) && sid > 0) Object.assign(out, await suppCurOf(admin, filial, sid));
+    }
+    // v25.1: mijoz/diller to'lovi — Telegram guruhiga (yozuv bazada; takroriy so'rovda yuborilmaydi; xato amalni bekor qilmaydi)
+    if (!out.replay && !out.recordSkipped && (body.kind === 'cust_debt_pay' || body.kind === 'dealer_pay')) {
+      const op0 = ops[0] || {};
+      if (body.kind === 'cust_debt_pay') await notifyCustomerPayment(admin, { filial, customerId: body.record.customerId, amount: op0.amount, currency: op0.currency, debtAfterUzs: out.customerDebt, staffName });
+      else await notifyDealerPayment(admin, { filial, dealerId: body.record.dealerId, amountUsd: op0.currency === 'USD' ? op0.amount : (serverRate ? op0.amount / serverRate : 0), debtAfterUsd: out.dealerDebtUsd, via: op0.box_name || null, staffName });
     }
     return json(out, 200);
   } catch (e) {

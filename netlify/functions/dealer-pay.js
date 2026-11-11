@@ -13,6 +13,7 @@
 //     accept    { id, boxId, filial? }                       [kassalar.transact | firma_kassa.transact]
 //     reject    { id, reason, filial? }                      [kassalar.transact | firma_kassa.transact]
 // 30-migratsiyasiz — 409 { migration30Pending:true }.
+const { notifyDealerPayment } = require('./_lib/tgEvents');
 const { getAdminClient, json, methodGuard, parseBody, requireStaffAuth, resolveFilial, serverError, logSecurityEvent } = require('./_lib/supabaseAdmin');
 const { _isMissingRelation, isMissingFunction, loadBranchBoxes } = require('./_lib/cashAuthority');
 const { dealerAuth } = require('./_lib/dealerAuth');
@@ -95,6 +96,12 @@ exports.handler = async (event) => {
         p_note: body.note ? String(body.note).trim().slice(0, 300) : null, p_idem: 'd' + a.dealer.id + '-' + body.idemKey,
       });
       if (error) { if (isMissingFunction(error)) return pending(); return serverError(error, 'dealer-pay', "To'lov yuborilmadi", 400); }
+      // v25.1: diller portaldan pul yubordi — dillerlar guruhiga (kassir tasdig'i kutilmoqda)
+      if (!data.replay) {
+        const PT = { cash_uzs: "naqd so'm", card: 'karta', cash_usd: 'naqd $' };
+        await notifyDealerPayment(admin, { dealerId: a.dealer.id, amountUsd: Number(data.notice && data.notice.amount_usd) || 0, debtAfterUsd: Number(data.dealerDebtUsd),
+          via: (PT[body.payType] || body.payType) + ' · tasdiq kutilmoqda', filial: data.notice && data.notice.filial || a.dealer.filial || 'baza' });
+      }
       return json({ ok: true, replay: !!data.replay, notice: noticeToClient(data.notice), rate, dealerDebtUsd: Number(data.dealerDebtUsd), dealerTotalPaidUsd: Number(data.dealerTotalPaidUsd) }, 200);
     }
 

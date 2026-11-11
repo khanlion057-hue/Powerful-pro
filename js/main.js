@@ -3202,7 +3202,7 @@ async function _savdoCommitInner(ctx) {
       // tasdiq so'rasa (LOSS_ACK_REQUIRED) — bir marta so'raladi va o'sha kalit bilan qayta yuboriladi
       const _body = (ack) => ({ items: srvItems, discPct: ctx.discPct, paidUsd: ctx.paidUsd, custId, boxPayments, inv, idemKey, filial: S.branch,
           saleLocalId: saleId, payType: ctx.payType, boxId: ctx.boxId || null, custName: (S.customers.find(c => c.id === custId) || {}).name || 'Anonim', saleDate: td(),
-          lossAck: !!ack, overpay, creditUseUzs, discountReason: ctx.discountReason || null, priceMode: ctx.mode === 'wholesale' ? 'wholesale' : 'retail' });
+          lossAck: !!ack, overpay, creditUseUzs, discountReason: ctx.discountReason || null, priceMode: ctx.mode === 'wholesale' ? 'wholesale' : 'retail', dueDate: ctx.dueDate || null, dueDays: ctx.dueDays || null });
       // v25: oflayn bo'lsa — savdo navbatga (internet qaytganda shu kalit bilan yuboriladi)
       offlineQ = { id: idemKey, kind: 'sale', url: '/.netlify/functions/sale-checkout-atomic', body: _body(!!ctx.lossAck || netUsd < -0.005), branch: S.branch };
       if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new TypeError('Failed to fetch (oflayn)');
@@ -12982,6 +12982,15 @@ function stEditTelegram() {
       <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn btn-ghost btn-sm" onclick="stTgDaily('preview')">Hisobotni koʻrish</button>
         <button type="button" class="btn btn-ghost btn-sm" onclick="stTgDaily('send_now')">Hozir guruhga yuborish</button></div>
       <div id="st-tg-daily-out" style="font-size:12px;margin-top:8px;color:var(--text-muted)"></div>
+      ${meSec('Avtomatik xabarlar')}
+      ${(() => { const ev = st.tgEvt || {}, on = (k) => ev[k] !== false; return `
+      ${meSw('st-tg-ev-credit', 'Nasiya savdo — darhol guruhga', 'Mijoz ismi, telefoni, olgan mahsulotlari, summa va qarzni qaytarish sanasi', on('credit'))}
+      ${meSw('st-tg-ev-remind', 'Qaytarish kuni eslatmasi', 'Har kuni belgilangan soatda: bugun toʻlashi kerak boʻlganlar va muddati oʻtganlar roʻyxati', on('remind'))}
+      ${meField('Eslatma vaqti (Toshkent)', `<select class="form-control" id="st-tg-remind-hour">${[8,9,10,11,12,14,16,18].map(h=>`<option value="${h}" ${(+st.tgRemindHour||9)===h?'selected':''}>${String(h).padStart(2,'0')}:00</option>`).join('')}</select>`, '')}
+      ${meSw('st-tg-ev-pay', 'Mijoz qarz toʻlovi', 'Har toʻlovda: kim, qancha toʻladi va qancha qoldi; toʻliq yopilsa — alohida belgi', on('pay'))}
+      ${meSw('st-tg-ev-dealer', 'Diller oldi-berdisi va toʻlovlari', 'Joʻnatma (sotish uchun yoki qarzga), qaytarish, diller savdosi, toʻlov — mahsulotlar roʻyxati va qarz qoldigʻi bilan', on('dealer'))}
+      ${meSw('st-tg-ev-month', 'Oy yakuni — dillerlar hisoboti', 'Har oyning 1-kuni: oʻtgan oy boʻyicha har diller olgani, toʻlagani va qarzi', on('month'))}
+      ${meField('Dillerlar guruhi/kanali (ixtiyoriy)', `<input class="form-control" id="st-tg-dealer-chats" placeholder="@kanal_nomi, -1001234567890" value="${esc((Array.isArray(st.tgDealerChats)?st.tgDealerChats:[]).join(', '))}">`, "Boʻsh qolsa — diller xabarlari asosiy guruhga. Vergul bilan, koʻpi bilan 5 ta.")}`; })()}
       ${meSec("Yangi mahsulot eʼloni (onlayn-doʻkon)")}
       ${meSw('st-tg-ann', "Yangi mahsulot qoʻshilganda kanal/guruhlarga eʼlon qilinsin", "Rasm, nom, narx va havola bilan. Bir mahsulot bir chatga faqat bir marta yuboriladi; xato boʻlsa — qayta yuborish mumkin.", !!st.tgAnnounceOn)}
       <div class="tgw-row" style="margin-bottom:8px"><a class="btn btn-ghost btn-sm" id="tgw-add-channel" href="${fwTgBotName() ? 'https://t.me/' + esc(fwTgBotName()) + '?startchannel=powerful&admin=post_messages' : '#'}" target="_blank" rel="noopener">Botni kanalga admin qilish ↗</a>
@@ -13073,6 +13082,13 @@ function stSaveTelegram() {
   if (_badChat) { toast(`Kanal/guruh notoʻgʻri: ${_badChat} (@nom yoki -100… raqam)`, 'error'); return; }
   const _annLink = String(document.getElementById('st-tg-ann-link')?.value || '').trim();
   if (_annLink && !/^https:\/\/[^\s<>"']{3,300}$/.test(_annLink)) { toast('Havola shabloni https:// bilan boshlanishi kerak', 'error'); return; }
+  // v25.1: avtomatik xabarlar
+  const _dlChats = String(document.getElementById('st-tg-dealer-chats')?.value || '').split(/[\s,;]+/).map(x => x.trim()).filter(Boolean);
+  const _badDl = _dlChats.find(x => !/^-?\d{3,20}$|^@[A-Za-z0-9_]{4,64}$/.test(x));
+  if (_badDl) { toast(`Dillerlar guruhi notoʻgʻri: ${_badDl} (@nom yoki -100… raqam)`, 'error'); return; }
+  S.settings.tgDealerChats = [...new Set(_dlChats)].slice(0, 5);
+  S.settings.tgEvt = Object.fromEntries(['credit', 'pay', 'remind', 'dealer', 'month'].map(k => [k, !!document.getElementById('st-tg-ev-' + k)?.checked]));
+  S.settings.tgRemindHour = Math.min(22, Math.max(6, parseInt(document.getElementById('st-tg-remind-hour')?.value || '9', 10) || 9));
   S.settings.tgAnnounceOn = !!document.getElementById('st-tg-ann')?.checked;
   S.settings.tgAnnounceChats = [...new Set(_annChats)].slice(0, 10);
   S.settings.tgAnnounceLink = _annLink;

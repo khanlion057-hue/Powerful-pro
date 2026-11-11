@@ -316,6 +316,16 @@ function normalizeIncomingSettings(ex, nv) {
     out.tgAnnounceChats = [...new Set(arr.map((x) => String(x || '').trim()).filter((x) => /^-?\d{3,20}$|^@[A-Za-z0-9_]{4,64}$/.test(x)))].slice(0, 10);
   }
   if (out.tgAnnounceOn != null) out.tgAnnounceOn = !!out.tgAnnounceOn;
+  // v25.1: hodisa xabarlari — dillerlar guruhi/kanali (≤5, format tekshiriladi), turlar (faqat true/false), eslatma soati (6–22)
+  if (Object.prototype.hasOwnProperty.call(out, 'tgDealerChats')) {
+    const arr = Array.isArray(out.tgDealerChats) ? out.tgDealerChats : [];
+    out.tgDealerChats = [...new Set(arr.map((x) => String(x || '').trim()).filter((x) => /^-?\d{3,20}$|^@[A-Za-z0-9_]{4,64}$/.test(x)))].slice(0, 5);
+  }
+  if (Object.prototype.hasOwnProperty.call(out, 'tgEvt')) {
+    const e = out.tgEvt && typeof out.tgEvt === 'object' ? out.tgEvt : {};
+    out.tgEvt = {}; ['credit', 'pay', 'remind', 'dealer', 'month'].forEach((k) => { if (k in e) out.tgEvt[k] = !!e[k]; });
+  }
+  if (out.tgRemindHour != null) { const h = parseInt(out.tgRemindHour, 10); out.tgRemindHour = h >= 6 && h <= 22 ? h : 9; }
   return out;
 }
 

@@ -734,7 +734,7 @@ async function svCommitSale(ctx) {
     const _body = (ack) => ({
       items, discPct: ctx.discPct, paidUsd: ctx.paidUsd, custId, boxPayments, inv, idemKey: S._svCk.key, filial: SV_BRANCH,
       saleLocalId: S._svCk.saleId, payType: ctx.payType, boxId: ctx.boxId || null, custName: cust?.name || 'Anonim', saleDate: td(),
-      lossAck: !!ack, overpay, creditUseUzs, discountReason: ctx.discountReason || null, priceMode: ctx.mode === 'wholesale' ? 'wholesale' : 'retail' });
+      lossAck: !!ack, overpay, creditUseUzs, discountReason: ctx.discountReason || null, priceMode: ctx.mode === 'wholesale' ? 'wholesale' : 'retail', dueDate: ctx.dueDate || null, dueDays: ctx.dueDays || null });
     const _send = (ack) => authFetch('/.netlify/functions/sale-checkout-atomic', { method: 'POST', body: JSON.stringify(_body(ack)) });
     let result;
     try {

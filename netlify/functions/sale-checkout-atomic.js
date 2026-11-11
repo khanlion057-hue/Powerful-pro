@@ -2,6 +2,7 @@
 // `sale_checkout_atomic()` Postgres RPC funksiyasini chaqiradi — ombor (FIFO),
 // savdo, mijoz qarzi, kassa balansi, ta'minotchi qarzi BITTA tranzaksiyada.
 // RBAC + filial-server-tomonidan aniqlash + idempotency — barchasi bor.
+const { notifyCreditSale } = require('./_lib/tgEvents');
 const { getAdminClient, json, methodGuard, parseBody, requireStaffAuth, resolveFilial, serverError } = require('./_lib/supabaseAdmin');
 const { claimIdempotent, completeIdempotent, releaseIdempotent, claimResponse } = require('./_lib/idempotency');
 const { cashAuthorityOn, loadBranchBoxes } = require('./_lib/cashAuthority');
@@ -45,6 +46,17 @@ function validateCheckout(b) {
     if (b.custId == null) return "Haqdan foydalanish uchun mijoz tanlanishi shart";
   }
   return null;
+}
+
+// v25.1: nasiya savdo — Telegram guruhiga (mijoz, telefon, mahsulotlar, qaytarish sanasi). Savdo yozilgandan keyin;
+// xabar ketmasa ham savdo bekor qilinmaydi. Takroriy (replay) javobda yuborilmaydi.
+function creditNotice(admin, body, auth, filial, data) {
+  if (!body.custId || (data && data.replay)) return Promise.resolve();
+  const due = typeof body.dueDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.dueDate) ? body.dueDate : null;
+  const days = Number.isSafeInteger(body.dueDays) && body.dueDays > 0 && body.dueDays <= 365 ? body.dueDays : null;
+  return notifyCreditSale(admin, { filial, custId: body.custId, custName: body.custName, items: body.items, discPct: body.discPct,
+    paidUsd: body.paidUsd, creditUseUzs: body.creditUseUzs, dueDate: due, dueDays: days, inv: body.inv,
+    staffName: auth.staff?.name || (auth.isAdmin ? 'Admin' : null) });
 }
 
 exports.handler = async (event) => {
@@ -190,6 +202,7 @@ exports.handler = async (event) => {
       // v24.8 (K2): tannarx va foyda — faqat ruxsat egasiga (zarar summasi — 32-migratsiya qaroridek, alohida 409 javobda)
       const out = redactLedgerResponse({ ...data, ledger: true }, auth);
       await completeIdempotent(admin, claim, out);
+      await creditNotice(admin, body, auth, filial, data);
       return json(out, 200);
     }
     const { data, error } = await admin.rpc('sale_checkout_atomic_v2', {
@@ -211,6 +224,7 @@ exports.handler = async (event) => {
       return serverError(error, 'sale-checkout-atomic', 'Checkout amalga oshmadi', 400);
     }
     await completeIdempotent(admin, claim, data);
+    await creditNotice(admin, body, auth, filial, data);
     return json(data, 200);
   } catch (e) {
     await releaseIdempotent(admin, claim);

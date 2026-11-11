@@ -9,6 +9,35 @@ const { _isMissingRelation } = require('./_lib/cashAuthority');
 const { claimIdempotent, completeIdempotent, releaseIdempotent } = require('./_lib/idempotency');
 const { buildDailyReport, tashkentNow } = require('./_lib/dailyReport');
 const { TOKEN_RE, CHAT_RE, hourOf, loadAll, dealerPayToday, tgSend } = require('./_lib/dailyReportRun');
+const { evtOn, chatsFor, dueList, remindText, monthDealerText } = require('./_lib/tgEvents');
+
+// v25.1: nasiya eslatmasi (har kuni, Toshkent soati tgRemindHour — standart 9) va oy yakuni dillerlar hisoboti (oyning 1-kuni,
+// o'tgan oy uchun). Har biri kalit bilan BIR MARTA; Telegram xatosida kalit bo'shatiladi — keyingi soatda qayta urinadi.
+const remindHourOf = (st) => { const h = parseInt(st.tgRemindHour, 10); return h >= 6 && h <= 22 ? h : 9; };
+async function onceSend(admin, scope, key, st, kind, build) {
+  const claim = await claimIdempotent(admin, key, scope);
+  if (!claim.claimed) return 'skip';
+  try {
+    const text = await build();
+    if (text) for (const c of chatsFor(st, kind)) { const r = await tgSend(st.tgBotToken, c, text); if (!r.ok) throw Object.assign(new Error('Telegram: ' + (r.description || 'xato')), { tg: true }); }
+    await completeIdempotent(admin, claim, { sent: !!text, at: new Date().toISOString() });
+    return text ? 'sent' : 'empty';
+  } catch (e) { await releaseIdempotent(admin, claim); console.error('[' + scope + ']', e.message); return 'error'; }
+}
+async function runEvents(admin, st, now) {
+  const out = {};
+  if (!TOKEN_RE.test(String(st.tgBotToken || '')) || now.hour < remindHourOf(st)) return out;
+  if (evtOn(st, 'remind') && chatsFor(st, 'remind').length) {
+    out.remind = await onceSend(admin, 'tg-remind', now.date, st, 'remind', async () => {
+      const { data } = await loadAll(admin); const list = dueList(data, now.date);
+      return list.length ? remindText(st, list, now.date) : null; });
+  }
+  if (now.date.slice(8, 10) === '01' && evtOn(st, 'month') && evtOn(st, 'dealer') && chatsFor(st, 'month').length) {
+    const d = new Date(Date.parse(now.date) - 864e5); const ym = d.toISOString().slice(0, 7);
+    out.month = await onceSend(admin, 'tg-month-dealer', ym, st, 'month', () => monthDealerText(admin, st, ym));
+  }
+  return out;
+}
 
 exports.handler = async (event) => {
   // HARDENING: faqat jadval chaqiruvi (aks holda 404 — bazaga va Telegram'ga murojaat yo'q)
@@ -20,6 +49,7 @@ exports.handler = async (event) => {
     // ── Jadval: vaqti kelgan bo'lsa — kuniga bir marta ──
     const { data: row } = await admin.from('app_data').select('data').eq('id', 'main').maybeSingle();
     const st = (row && row.data && row.data.settings) || {};
+    try { await runEvents(admin, st, now); } catch (e) { if (!_isMissingRelation(e)) console.error('[telegram-events]', e && e.message); }
     if (!st.tgDaily) return json({ ok: true, skipped: 'off' }, 200);
     if (now.hour < hourOf(st)) return json({ ok: true, skipped: 'early' }, 200);
     if (!TOKEN_RE.test(String(st.tgBotToken || '')) || !CHAT_RE.test(String(st.tgChatId || ''))) return json({ ok: true, skipped: 'no-bot' }, 200);

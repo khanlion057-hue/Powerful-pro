@@ -7,6 +7,7 @@
 //   sale    { dealerId, items:[{pid, qty, priceUsd, sku, name}], pct }      — admin diller savdosini yozadi
 // Hammasi bitta tranzaksiyada, `key` bilan idempotent. Javobda diller ombori, qarzi va firma partiyalari (bazadan).
 // 35-migratsiyasiz — 409 { migrationPending:true } (brauzer avvalgi yo'lni ishlatadi).
+const { notifyDealerOp } = require('./_lib/tgEvents');
 const { getAdminClient, json, methodGuard, parseBody, requireStaffAuth, resolveFilial, serverError, logSecurityEvent } = require('./_lib/supabaseAdmin');
 const { dealerAtomicOn } = require('./_lib/dealerAtomic');
 
@@ -96,6 +97,8 @@ exports.handler = async (event) => {
       ({ data, error } = await admin.rpc(rpc, args));
     }
     if (error) return serverError(error, 'dealer-ops', 'Amal bajarilmadi', 400);
+    // v25.1: diller oldi-berdisi — Telegram (dillerlar guruhi); takroriy kalitda (replay) yuborilmaydi
+    if (!(data && data.replay)) await notifyDealerOp(admin, { kind: body.kind, mode, dealerId: body.dealerId, items: body.items, filial, staffName: staff.p_staff_name, pct: body.pct });
     return json({ ...data, filial, ledger: true }, 200);
   } catch (e) {
     return serverError(e, 'dealer-ops', 'Server xatosi');

@@ -3055,7 +3055,7 @@ const POS_ADMIN = {
   rounding: () => S.settings?.roundingEnabled !== false,
   commit: (ctx) => _savdoCommit(ctx),
   afterCommit: (sale) => {
-    if (sale && typeof sale === 'object') { showReceipt(sale); if (S.settings?.autoPrint) printReceipt(sale.id, { auto: true }); }
+    if (sale && typeof sale === 'object') { showReceipt(sale); if (fwPrintCfg('autoPrint')) printReceipt(sale.id, { auto: true }); }
     pgSavdoToday();
   },
 };
@@ -3922,7 +3922,7 @@ async function saveEditSale(sid) {
 function printReceipt(saleId, opts) {
   const sale = typeof saleId==='object' ? saleId : S.sales.find(s=>s.id===saleId); if(!sale) return;
   const st = S.settings||{}, bs = S.branchSettings || {};
-  const mm = [58,72,80].includes(+st.receiptWidth) ? +st.receiptWidth : 72;
+  const mm = [58,72,80].includes(+fwPrintCfg('receiptWidth')) ? +fwPrintCfg('receiptWidth') : 72;
   // v24.5: chek — ilova ichidagi oynada (PDF, yuborish, chop etish); filial chek matni/telefon/manzili — ustun
   fwDoc({ title: 'Chek ' + (sale.inv || ''), kind: 'receipt', widthMm: mm,
     html: fwReceiptHtml(sale, { brand: fwBrand().name, phone: bs.phone || st.shopPhone, address: bs.address || st.shopAddress, footer: bs.receipt || st.receipt, widthMm: mm, rate: CUR.usdUzs }) });
@@ -12610,44 +12610,53 @@ function pgSozlamalar() {
   const group = (title, rows) => { rows = rows.filter(Boolean); return rows.length ? `<section class="st-blk"><div class="st-eyebrow">${title}</div><div class="st-group">${rows.join('')}</div></section>` : ''; };
   // v24.7: rolga mos — tahrirlash faqat «sozlamalar.edit», filial/Telegram/zaxira faqat egasi (server ham shunday tekshiradi)
   const ed = hasPerm('sozlamalar.edit'), own = _fwIsOwner();
-  const ro = (o) => ed ? row(o) : `<div class="st-row static"><span class="st-ic" style="--c:var(--${o.c})">${ICONF[o.ic]}</span><span class="st-tx"><b>${o.t}</b>${o.sub?`<small>${o.sub}</small>`:''}</span>${o.val!==undefined?`<span class="st-val">${o.val}</span>`:o.toggle?`<span class="st-val">${o.checked?'Yoqilgan':'Oʻchiq'}</span>`:''}</div>`;
+  // v25.1 (egasi talabi): umumiy (butun firma) sozlamalari — FAQAT egasi; filial xodimi faqat o'z filiali sozlamalarini
+  // ko'radi va o'zgartiradi (chop etish, filial cheki) — bir filial boshqasining sozlamalarini buza olmaydi (server ham shunday).
+  const static_ = (o) => `<div class="st-row static"><span class="st-ic" style="--c:var(--${o.c})">${ICONF[o.ic]}</span><span class="st-tx"><b>${o.t}</b>${o.sub?`<small>${o.sub}</small>`:''}</span>${o.val!==undefined?`<span class="st-val">${o.val}</span>`:o.toggle?`<span class="st-val">${o.checked?'Yoqilgan':'Oʻchiq'}</span>`:''}</div>`;
+  const ro = (o) => own ? row(o) : static_(o);          // umumiy — faqat egasi o'zgartiradi
+  const rb = (o) => (own || ed) ? row(o) : static_(o);   // o'z filiali — «sozlamalar.edit» bilan
+  const brNm = esc(branchName(S.branch)), brL = /filial/i.test(branchName(S.branch)) ? brNm : brNm + ' filiali';
+  const pw = +fwPrintCfg('receiptWidth');
 
   el.innerHTML = `
   <div class="st-page">
-    <div class="st-head"><p>${own ? 'Koʻrinish, kassa, Telegram va maʼlumotlar' : ed ? 'Koʻrinish, kassa va chek sozlamalari' : 'Koʻrinish sozlamalari · qolganlari faqat koʻrish uchun'}</p></div>
+    <div class="st-head"><p>${own ? 'Butun firma va filiallar sozlamalari' : `<b>${brL}</b> sozlamalari · umumiy sozlamalarni faqat egasi oʻzgartiradi`}</p></div>
 
     <div class="st-profile">
-      <button type="button" class="st-av st-av-logo" ${ed ? 'onclick="stEditProfile()"' : 'disabled'} aria-label="Logotipni almashtirish">${fwBrandMark('st')}</button>
+      <button type="button" class="st-av st-av-logo" ${own ? 'onclick="stEditProfile()"' : 'disabled'} aria-label="Logotipni almashtirish">${fwBrandMark('st')}</button>
       <div class="st-pinfo">
         <b>${esc(fwBrand().name)}</b>
-        ${nm !== (st.ownerRole||'Egasi') ? `<span>${esc(nm)}</span>` : ''}
-        ${st.shopPhone?`<span>${esc(st.shopPhone)}</span>`:''}
-        <em>${ICONF.star}${esc(st.ownerRole||'Egasi')}</em>
+        ${own ? (nm !== (st.ownerRole||'Egasi') ? `<span>${esc(nm)}</span>` : '') : `<span>${brL}</span>`}
+        ${own && st.shopPhone?`<span>${esc(st.shopPhone)}</span>`:''}
+        <em>${ICONF.star}${own ? esc(st.ownerRole||'Egasi') : esc(CURRENT_USER?.name || 'Xodim')}</em>
       </div>
-      ${ed ? `<button class="st-edit" onclick="stEditProfile()" aria-label="Tahrirlash">${ICONF.edit}</button>` : ''}
+      ${own ? `<button class="st-edit" onclick="stEditProfile()" aria-label="Tahrirlash">${ICONF.edit}</button>` : ''}
     </div>
 
-    ${group('Koʻrinish', [
+    ${group('Koʻrinish · shu qurilma', [
       row({ic:'palette', c:'blue', t:'Dizayn mavzusi', val: (THEME_META[getThemeMode()]||THEME_META.dark).name, on:"stThemeSheet()"}),
       row({ic:'textSize', c:'emerald', t:'Matn o\u02bblchami', val: getTextScale()+'%', on:"stTextSheet()"}),
       row({ic:'qr', c:'sky', t:'Skaner', sub:'Shtrix-kod va QR', val: fwScanMode()==='usb' ? 'USB / Bluetooth' : 'Telefon kamerasi', on:"stScanSheet()"}),
     ])}
 
-    ${group('Doʻkon va kassa', [
+    ${group(`${brL} · chek va printer`, [
+      rb({ic:'print', c:'blue', t:'Chek o\u02bblchami', sub:'Faqat shu filial', val:`${[58,72,80].includes(pw)?pw:72} mm`, on:"stPrinterSheet()"}),
+      rb({ic:'bluetooth', c:'sky', t:'Chek printeri', sub:'Faqat shu filial', val: fwPrintCfg('printerName') ? esc(fwPrintCfg('printerName')) : 'Tizim printeri', on:"stPrinterSheet()"}),
+      rb({ic:'receipt', c:'emerald', t:'Sotuvdan keyin chekni darhol chop etish', sub:'Faqat shu filial', toggle:true, id:'st-autoprint', checked: !!fwPrintCfg('autoPrint'), on:"stSetBranch('autoPrint',this.checked)"}),
+      rb({ic:'building', c:'gold', t:'Filial cheki: matn, telefon, manzil', sub: brNm + ' — shu filial cheklarida', on:"shellMySettings()"}),
+    ])}
+
+    ${own ? group('Butun firma · doʻkon va kassa', [
       ro({ic:'swap', c:'emerald', t:'Valyuta kursi', val:`1$ = ${n(CUR.usdUzs)} soʻm`, on:"openRateModal(true)"}),
       ro({ic:'inbox', c:'sky', t:'Kirim va hisob valyutasi', sub: FW_ACC[fwAccMode()][1] + ' · savdo — soʻmda' + (fwAccLock().state === 'locked' ? ' · 🔒 qulflangan' : fwAccLock().state === 'pass' ? ` · 🔒 ${fwAccLock().left} kun parol bilan` : ''), val: FW_ACC[fwAccMode()][0], on:"fwAccSheet()"}),
       ro({ic:'percent', c:'amber', t:'Xitoy bank komissiyasi', sub:'CNY kirim uchun', val:`${(CUR.BANK_FEE*100).toFixed(2)}%`, on:"stEditBankFee()"}),
       ro({ic:'percent', c:'red', t:'Maksimal chegirma', sub:'Admin boʻlmagan xodim narxni shundan koʻp tushira olmaydi (chakana / optom narxdan)', val:`${stMaxDiscPct()}%`, on:"stEditMaxDisc()"}),
       ro({ic:'calc', c:'indigo', t:'Savdoda soʻm yaxlitlash', sub:'Narx — eng yaqin 1 000 soʻm; jami — pastga 100 soʻm (17 975 → 17 900)', toggle:true, id:'st-rounding', checked: st.roundingEnabled!==false, on:"stSetRounding(this.checked)"}),
       ro({ic:'warning', c:'amber', t:'\u00abOmborda kam\u00bb chegarasi', sub:'Yangi mahsulotlar uchun', val:`${n(st.lowStockDefault??5)} dona`, on:"stLowStockSheet()"}),
-    ])}
-
-    ${group('Chop etish', [
-      row({ic:'print', c:'blue', t:'Chek o\u02bblchami', val:`${[58,72,80].includes(+st.receiptWidth)?+st.receiptWidth:72} mm`, on:"stPrinterSheet()"}),
-      row({ic:'bluetooth', c:'sky', t:'Chek printeri', val: st.printerName ? esc(st.printerName) : 'Tizim printeri', on:"stPrinterSheet()"}),
-      ro({ic:'receipt', c:'emerald', t:'Sotuvdan keyin chekni darhol chop etish', sub:'Sotuv o\u02bbtkazilishi bilan chek printerga jo\u02bbnaydi', toggle:true, id:'st-autoprint', checked: !!st.autoPrint, on:"stSet('autoPrint',this.checked)"}),
-      ro({ic:'edit', c:'indigo', t:'Chek yozuvi', sub: esc(st.receipt||'Xaridingiz uchun rahmat!'), on:"stEditReceipt()"}),
-      row({ic:'building', c:'gold', t:'Filial cheki: matn, telefon, manzil', sub: esc(branchName(S.branch)) + ' — shu filial cheklarida', on:"shellMySettings()"}),
+      ro({ic:'edit', c:'indigo', t:'Chek yozuvi (standart)', sub: esc(st.receipt||'Xaridingiz uchun rahmat!') + ' · filial oʻz matnini bersa — oʻshanisi', on:"stEditReceipt()"}),
+    ]) : group('Butun firma', [
+      static_({ic:'swap', c:'emerald', t:'Valyuta kursi', sub:'Kunlik kurs oynasi orqali tasdiqlanadi', val:`1$ = ${n(CUR.usdUzs)} soʻm`}),
+      static_({ic:'percent', c:'red', t:'Maksimal chegirma', sub:'Egasi belgilaydi', val:`${stMaxDiscPct()}%`}),
     ])}
 
     ${own ? group('Filiallar', [
@@ -12705,6 +12714,11 @@ function segCtl(opts, cur, on) {
   return `<div class="bs-seg" role="radiogroup">${opts.map(([v,l])=>`<button type="button" role="radio" aria-checked="${String(v)===String(cur)}" class="${String(v)===String(cur)?'on':''}" onclick="${on}(${v});this.parentNode.querySelectorAll('button').forEach(b=>{b.classList.remove('on');b.setAttribute('aria-checked','false')});this.classList.add('on');this.setAttribute('aria-checked','true')">${l}</button>`).join('')}</div>`;
 }
 function stSet(k, v){ S.settings[k]=v; save(); auditLog('Sozlama: '+k); }
+// v25.1 (egasi talabi): chop etish — FILIAL sozlamasi (har filialning o'z printeri/chek o'lchami); bir filial boshqasini buzmaydi.
+// O'qish: filial qiymati, bo'lmasa — avvalgi umumiy qiymat (eski o'rnatishlar uchun).
+const FW_BRANCH_PRINT_KEYS = ['receiptWidth', 'printerName', 'autoPrint'];
+function fwPrintCfg(k) { const bs = S.branchSettings || {}; return bs[k] !== undefined ? bs[k] : (S.settings || {})[k]; }
+function stSetBranch(k, v) { S.branchSettings = { ...(S.branchSettings || {}), [k]: v, updatedAt: new Date().toISOString() }; save(); auditLog(`Filial sozlamasi (${branchName(S.branch)}): ${k}`); }
 
 // ── Dizayn mavzusi — 6 ta ──
 const THEME_META = {
@@ -12756,15 +12770,15 @@ function stSaveLowStock() {
 
 // ── Chek printeri ──
 function stPrinterSheet() {
-  const st=S.settings; const mm=[58,72,80].includes(+st.receiptWidth)?+st.receiptWidth:72;
+  const st={ autoPrint: fwPrintCfg('autoPrint'), printerName: fwPrintCfg('printerName') }; const mm=[58,72,80].includes(+fwPrintCfg('receiptWidth'))?+fwPrintCfg('receiptWidth'):72;
   openSheet({ic:'print', c:'blue', title:'Chek printeri', sub:'Lenta kengligi, avtomatik chop etish va printerni ulash',
     body:`
     <div class="bs-card"><b class="bs-t">Lenta kengligi</b><p class="bs-note">Printerdagi qogʻoz kengligi. Notoʻgʻri qoʻysangiz — chek qogʻozdan tor yoki keng chiqadi.</p>
       ${segCtl([[58,'58 mm'],[72,'72 mm'],[80,'80 mm']], mm, 'stSetWidth')}</div>
     <label class="bs-card bs-rowc"><span><b class="bs-t">Sotuvdan keyin chekni darhol chop etish</b><small class="bs-note">Sotuv oʻtkazilishi bilan chek printerga joʻnaydi</small></span>
-      <span class="st-sw"><input type="checkbox" ${st.autoPrint?'checked':''} onchange="stSet('autoPrint',this.checked);if(S.page==='sozlamalar')pgSozlamalar()"><i></i></span></label>
+      <span class="st-sw"><input type="checkbox" ${st.autoPrint?'checked':''} onchange="stSetBranch('autoPrint',this.checked);if(S.page==='sozlamalar')pgSozlamalar()"><i></i></span></label>
     <div class="bs-card"><label class="bs-lbl" for="st-pname">Printer nomi</label>
-      <input class="bs-in" id="st-pname" placeholder="Masalan: Xprinter XP-58" value="${esc(st.printerName||'')}" onchange="stSet('printerName',this.value.trim());if(S.page==='sozlamalar')pgSozlamalar()"></div>
+      <input class="bs-in" id="st-pname" placeholder="Masalan: Xprinter XP-58" value="${esc(st.printerName||'')}" onchange="stSetBranch('printerName',this.value.trim());if(S.page==='sozlamalar')pgSozlamalar()"></div>
     <button class="bs-btn" onclick="stTestPrint()">Sinov chop etish</button>
     <div class="bs-card bs-how">${ICONF.print}<div><b class="bs-t">Printerni qanday ulash</b>
       <ol><li>Printerni yoqing va telefon yoki kompyuterga Bluetooth yoki USB orqali ulang (kod odatda 0000 yoki 1234).</li>
@@ -12772,7 +12786,7 @@ function stPrinterSheet() {
       <li>Bu yerda «Sinov chop etish»ni bosing va chop etish oynasida printeringizni tanlang.</li></ol>
       <p class="bs-note">Chek tizimning chop etish oynasi orqali yuboriladi, shuning uchun telefon yoki kompyuterga ulangan istalgan printer ishlaydi.</p></div></div>`});
 }
-function stSetWidth(v){ stSet('receiptWidth', v); if(S.page==='sozlamalar') pgSozlamalar(); }
+function stSetWidth(v){ stSetBranch('receiptWidth', v); if(S.page==='sozlamalar') pgSozlamalar(); }
 function stTestPrint() {
   printReceipt({ date: td(), inv:'SINOV-0001', custName:'Sinov', disc:0, discUsd:0, debtUsd:0, totalUsd:12.5,
     items:[{sku:'PG-0001', name:'Sinov mahsulot', qty:1, lineUsd:12.5}] });

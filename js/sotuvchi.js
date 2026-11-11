@@ -1208,7 +1208,8 @@ function svToggleSaleView(saleId) {
 function svPrintSale(saleId) {
   const s = S.sales.find(x=>String(x.id)===String(saleId)); if (!s) return;
   const st = S.settings || {}, bs = S.branchSettings || {};
-  const mm = [58,72,80].includes(+st.receiptWidth) ? +st.receiptWidth : 72;
+  const _w = bs.receiptWidth !== undefined ? +bs.receiptWidth : +st.receiptWidth;   // v25.1: filial chek o'lchami ustun
+  const mm = [58,72,80].includes(_w) ? _w : 72;
   // v24.5: chek — PDF, yuborish (Telegram va h.k.), chop etish
   fwDoc({ title: 'Chek ' + (s.inv || ''), kind: 'receipt', widthMm: mm,
     html: fwReceiptHtml(s, { brand: fwBrand().name, phone: bs.phone || st.shopPhone, address: bs.address || st.shopAddress, footer: bs.receipt || st.receipt, widthMm: mm, rate: CUR.usdUzs }) });

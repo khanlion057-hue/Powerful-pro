@@ -181,7 +181,8 @@ async function testBackupSecurity() {
   const g = L('appDataGuard.js'), { buildBackup, backupFile } = L('backupBuild.js');
   const ex = { settings: { company: 'A', tgBackupChat: '111', tgBackupDaily: false } };
   const staff = g.filterTopLevelChanges({ existing: ex, incoming: { settings: { company: 'B', tgBackupChat: '999', tgBackupDaily: true, tgBackupHour: 3 } }, permKeys: new Set(['sozlamalar.edit']), isAdmin: false, filial: 'baza' });
-  assert.deepEqual(staff.allowed.settings, { company: 'B', tgBackupChat: '111', tgBackupDaily: false }, "xodim (sozlamalar.edit bilan ham) zaxira manzilini o'zgartira olmaydi");
+  // v25.1 (egasi talabi): filial xodimi umumiy sozlamalarni («company» ham) o'zgartira olmaydi — faqat egasi
+  assert.equal(staff.allowed.settings, undefined, "xodim (sozlamalar.edit bilan ham) umumiy sozlamani va zaxira manzilini o'zgartira olmaydi");
   const adm = g.filterTopLevelChanges({ existing: ex, incoming: { settings: { company: 'B', tgBackupChat: '999', tgBackupDaily: true } }, permKeys: new Set(), isAdmin: true, filial: 'baza' });
   assert.equal(adm.allowed.settings.tgBackupChat, '999', 'administrator — oʻzgartiradi');
   // buildBackup: tokenlar/PIN'lar va diller parol xeshlari faylga tushmaydi

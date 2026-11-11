@@ -460,11 +460,17 @@ function filterTopLevelChanges({ existing, incoming, permKeys, isAdmin, filial }
     }
   }
   const own = filial || 'baza';
+  // v25.1 (egasi talabi): UMUMIY (butun firma) sozlamalari — faqat egasi/administrator (rollar.manage). Filial xodimi
+  // («sozlamalar.edit» bilan ham) faqat o'z filiali sozlamalarini (branchSettings — filial darajasida, o'z filiali) va
+  // kunlik kursni o'zgartira oladi: bir filial boshqasining sozlamalarini (chek, chegirma, brend, bot…) buza olmaydi.
+  const ownerLike = !!isAdmin || hasPerm(permKeys, 'rollar.manage');
+  const settingsFilter = ownerLike ? filterSettings
+    : (ex, nv, pk) => filterSettings(ex, nv, new Set([...(pk || [])].filter((k) => k !== 'sozlamalar.edit')));
   return filterChanges({
     existing, incoming, permKeys, isAdmin,
     map: TOP_LEVEL_PERMISSION_MAP, massGuarded: MASS_DELETE_GUARDED_TOP,
     unknownAllowed: false,
-    subFilters: { settings: filterSettings, deletedIds: filterDeletedIds, auditLogs: filterAuditLogs,
+    subFilters: { settings: settingsFilter, deletedIds: filterDeletedIds, auditLogs: filterAuditLogs,
       partners: makePartnerFilter(own),
       partnerPeriods: makeBranchScopedFilter(own, TOP_LEVEL_PERMISSION_MAP.partnerPeriods) },
   });

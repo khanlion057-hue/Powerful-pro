@@ -16,6 +16,8 @@
 //   tgRemindHour        — eslatma soati (Toshkent, 6–22; standart 9)
 'use strict';
 const { TOKEN_RE, CHAT_RE, tgSend } = require('./dailyReportRun');
+const tc = require('./tgCustomers');
+const brandOf = (st) => String(st.company || process.env.FW_BRAND_NAME || 'POWERFUL GROUP').slice(0, 60);
 
 const num = (v) => { const x = Number(v); return Number.isFinite(x) ? x : 0; };
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
@@ -119,6 +121,9 @@ async function notifyCreditSale(admin, args) {
     const { text, debt } = creditSaleText({ ...args, st, cust, rate: num(st.usdUzs), custDebtUzs });
     if (!(debt >= 0.005)) return;   // qarz yo'q — nasiya emas
     await send(st, 'credit', text, { filial: args.filial });
+    // Mijozning o'ziga (botga ulangan bo'lsa) — faqat o'z xaridi
+    if (evtOn(st, 'customer')) await tc.sendToCustomer(admin, st.tgBotToken, args.filial, args.custId,
+      tc.custCreditText({ brand: brandOf(st), custName: cust.name, items: args.items, discPct: args.discPct, debtUsd: debt, rate: num(st.usdUzs), dueDate: args.dueDate }));
   } catch (e) { console.warn('[tgEvents] credit', e && e.message); }
 }
 
@@ -137,6 +142,8 @@ async function notifyCustomerPayment(admin, { filial, customerId, amount, curren
       pre([row('Toʻlandi', currency === 'USD' ? usd(amount) : uzs(amount)), row('Qolgan qarz', debtAfterUzs != null ? uzs(Math.max(0, debtAfterUzs)) : '—')]),
     ].join('\n');
     await send(st, 'pay', text, { filial });
+    if (evtOn(st, 'customer')) await tc.sendToCustomer(admin, st.tgBotToken, filial, customerId,
+      tc.custPayText({ brand: brandOf(st), amountText: currency === 'USD' ? usd(amount) : uzs(amount), debtAfterUzs }));
   } catch (e) { console.warn('[tgEvents] pay', e && e.message); }
 }
 
@@ -193,7 +200,7 @@ function dueList(data, date) {
       const due = String(s.dueDate).slice(0, 10); if (due > date) continue;
       const prev = firstDue.get(c.id); if (!prev || due < prev) firstDue.set(c.id, due);
     }
-    for (const [id, due] of firstDue) { const c = debtors.get(id); out.push({ filial: k, name: c.name, phone: c.phone, debt: num(c.debt), due }); }
+    for (const [id, due] of firstDue) { const c = debtors.get(id); out.push({ filial: k, custId: Number(id), name: c.name, phone: c.phone, debt: num(c.debt), due }); }
   }
   return out.sort((a, z) => a.due.localeCompare(z.due) || z.debt - a.debt);
 }
@@ -244,5 +251,5 @@ async function monthDealerReports(admin, st, ym) {
 // Eslatmani filiallarga bo'lish: { filial: [...] } — filial guruhiga faqat o'z mijozlari
 function dueByBranch(list) { const m = {}; for (const x of list) (m[x.filial] = m[x.filial] || []).push(x); return m; }
 
-module.exports = { notifyCreditSale, notifyCustomerPayment, notifyDealerOp, notifyDealerPayment, dueList, remindText, monthDealerReports, dueByBranch, mapChat,
+module.exports = { brandOf, notifyCreditSale, notifyCustomerPayment, notifyDealerOp, notifyDealerPayment, dueList, remindText, monthDealerReports, dueByBranch, mapChat,
   creditSaleText, evtOn, chatsFor, send, loadSettings };

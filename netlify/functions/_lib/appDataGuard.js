@@ -323,7 +323,7 @@ function normalizeIncomingSettings(ex, nv) {
   }
   if (Object.prototype.hasOwnProperty.call(out, 'tgEvt')) {
     const e = out.tgEvt && typeof out.tgEvt === 'object' ? out.tgEvt : {};
-    out.tgEvt = {}; ['credit', 'pay', 'remind', 'dealer', 'month', 'copyMain'].forEach((k) => { if (k in e) out.tgEvt[k] = !!e[k]; });
+    out.tgEvt = {}; ['credit', 'pay', 'remind', 'dealer', 'month', 'copyMain', 'customer'].forEach((k) => { if (k in e) out.tgEvt[k] = !!e[k]; });
   }
   // v25.1: har filialning va har dillerning O'Z guruhi — { kalit: chat }; kalit/chat formati tekshiriladi, ≤200 ta
   const chatMap = (v, keyRe) => {

@@ -63,5 +63,6 @@ module.exports = {
   'telegram-file': () => require('../netlify/functions/telegram-file.js'),
   'telegram-report': () => require('../netlify/functions/telegram-report.js'),
   'telegram-test': () => require('../netlify/functions/telegram-test.js'),
+  'tg-customer': () => require('../netlify/functions/tg-customer.js'),
   'update-staff': () => require('../netlify/functions/update-staff.js'),
 };

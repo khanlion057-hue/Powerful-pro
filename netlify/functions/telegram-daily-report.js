@@ -9,7 +9,8 @@ const { _isMissingRelation } = require('./_lib/cashAuthority');
 const { claimIdempotent, completeIdempotent, releaseIdempotent } = require('./_lib/idempotency');
 const { buildDailyReport, tashkentNow } = require('./_lib/dailyReport');
 const { TOKEN_RE, CHAT_RE, hourOf, loadAll, dealerPayToday, tgSend } = require('./_lib/dailyReportRun');
-const { evtOn, chatsFor, dueList, dueByBranch, remindText, monthDealerReports, mapChat } = require('./_lib/tgEvents');
+const { evtOn, chatsFor, dueList, dueByBranch, remindText, monthDealerReports, mapChat, brandOf } = require('./_lib/tgEvents');
+const tc = require('./_lib/tgCustomers');
 
 // v25.1: nasiya eslatmasi (har kuni, Toshkent soati tgRemindHour — standart 9), oy yakuni dillerlar hisoboti (oyning 1-kuni,
 // o'tgan oy uchun) va filial guruhlariga kunlik hisobot (faqat o'z filiali). Har qabul qiluvchiga alohida kalit bilan
@@ -30,6 +31,11 @@ async function runEvents(admin, st, now) {
   const tok = st.tgBotToken;
   let all = null; const data = async () => (all = all || (await loadAll(admin)).data);
   const ownBranch = (k) => mapChat(st.tgBranchChats, k);
+  // Botda «Start» bosgan mijozlarni bog'lash (har soatda)
+  if (evtOn(st, 'customer')) {
+    try { await tc.sweep(admin, tok, brandOf(st), async (f, id) => ((((await data()).branchStore || {})[f] || {}).customers || []).find((c) => c && Number(c.id) === Number(id))?.name); }
+    catch (e) { console.warn('[tg-customer-sweep]', e && e.message); }
+  }
   if (now.hour >= remindHourOf(st) && evtOn(st, 'remind')) {
     const list = dueList(await data(), now.date);
     if (list.length) {
@@ -38,6 +44,15 @@ async function runEvents(admin, st, now) {
       for (const [k, part] of Object.entries(dueByBranch(list))) {
         const c = ownBranch(k); if (!c || sentTo.has(c)) continue;
         await onceSend(admin, 'tg-remind', now.date, tok, c, [remindText(st, part, now.date)]);
+      }
+      // Mijozning o'ziga — faqat o'z qarzi (botga ulangan bo'lsa), kuniga bir marta
+      if (evtOn(st, 'customer')) {
+        const { links } = await tc.loadLinks(admin);
+        for (const x of list) {
+          const l = links[tc.key(x.filial, x.custId)]; if (!l) continue;
+          await onceSend(admin, 'tg-cust-remind', now.date + ':' + x.filial + ':' + x.custId, tok, String(l.chatId),
+            [tc.custRemindText({ brand: brandOf(st), custName: x.name, debtUzs: x.debt, due: x.due, today: now.date })]);
+        }
       }
     }
   }

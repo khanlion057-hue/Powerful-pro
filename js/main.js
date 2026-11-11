@@ -6916,6 +6916,7 @@ function fwEmpty(ic, title, text) { return `<div class="dk-empty"><span>${ICONF[
 // MIJOZLAR
 // ════════════════════════════════════════════
 function pgMijozlar() {
+  if (_cloudEnabled && !_tgCustLinks) tgCustLoad();
   const el = document.getElementById('pg-mijozlar');
   const debtUzs = S.customers.reduce((s,c)=>s+(c.debt||0),0);
   const debtors = S.customers.filter(c=>(c.debt||0)>0);
@@ -6940,6 +6941,60 @@ function pgMijozlar() {
     ${fwSearch('mj-q', 'Ism yoki telefon boʻyicha qidiring', 'mjFilter()', S.mjQ||'')}
     <div class="pm-chips">${chip('','Hammasi','gold',S.customers.length)}${chip('debt','Qarzdorlar','red',debtors.length)}${chip('due',"Muddati oʻtgan",'red',nDue)}</div>
     <div id="mj-table">${mjRows(mjList())}</div>`;
+}
+// v25.1: MIJOZNI TELEGRAM BOTGA ULASH — mijoz shaxsiy havolani ochib «Start» bosadi; keyin unga faqat o'zining nasiya,
+// to'lov va qaytarish kuni eslatmalari keladi (server: tg-customer). Havola mijoz RAQAMIGA SMS yoki Telegram orqali yuboriladi.
+let _tgCustLinks = null;
+async function tgCustLoad(force) {
+  if (!_cloudEnabled || (_tgCustLinks && !force)) return;
+  _tgCustLinks = _tgCustLinks || {};
+  try { const j = await _tgCust('status'); _tgCustLinks = j.links || {}; if (S.page === 'mijozlar') pgMijozlar(); } catch (e) { /* bot ulanmagan — tugma baribir ishlaydi */ }
+}
+async function _tgCust(action, custId) {
+  const r = await authFetch('/.netlify/functions/tg-customer', { method: 'POST', body: JSON.stringify({ action, custId, filial: S.branch }) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || j.ok === false) throw new Error(j.error || 'Bajarilmadi');
+  return j;
+}
+function openCustTg(cid) {
+  const c = (S.customers || []).find(x => String(x.id) === String(cid)); if (!c) return;
+  openSheet({ ic: 'send', c: 'sky', title: `${esc(c.name)} — Telegram bot`, sub: 'Avtomatik eslatmalar mijozning oʻziga', body: `<div id="ctg-body" class="fr-empty">Tayyorlanmoqda…</div>`, foot: '' });
+  _tgCust('link', c.id).then(j => ctgRender(c, j)).catch(e => { const b = document.getElementById('ctg-body'); if (b) b.innerHTML = `<p class="bs-note tgw-warn">${esc(e.message)}</p>`; });
+}
+function ctgRender(c, j) {
+  const b = document.getElementById('ctg-body'); if (!b) return;
+  const ph = typeof fwPhoneIntl === 'function' ? fwPhoneIntl(c.phone) : String(c.phone || '').replace(/\D/g, '');
+  const l = j.linked;
+  if (l) { _tgCustLinks = { ...(_tgCustLinks || {}), [c.id]: l }; }
+  b.className = '';
+  b.innerHTML = l
+    ? `<div class="bs-card"><div class="dk-kv"><span>Ulangan</span><b>✅ ${esc(l.name || '')} ${esc(l.username || '')}</b></div></div>
+       <p class="bs-note">Mijozga avtomatik keladi: nasiya xaridi (nima oldi, qancha qarz, qachon qaytaradi), toʻlov qabul qilingani va qolgan qarz, qaytarish kuni va muddati oʻtganda eslatma. Faqat oʻzining maʼlumoti.</p>
+       <div class="fr-acts"><button class="fr-act" style="--c:var(--red)" onclick="ctgUnlink(${c.id},this)">Uzish</button></div>`
+    : `<p class="bs-note">1) Havolani mijozga yuboring — <b>raqamiga SMS</b> yoki Telegram orqali. 2) Mijoz havolani ochib botda <b>«Start»</b> ni bossin. 3) «Tekshirish» ni bosing (aks holda bir soat ichida avtomatik ulanadi).</p>
+       <div class="bs-card"><code style="word-break:break-all">${esc(j.url)}</code></div>
+       ${ph ? `<p class="bs-note" style="margin:8px 0 0">Mijoz raqami: <b>+${esc(ph)}</b></p>` : `<p class="bs-note tgw-warn" style="margin:8px 0 0">Telefon raqami yoʻq — SMS uchun kartaga qoʻshing</p>`}
+       <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+         ${ph ? `<a class="fr-act" style="--c:var(--emerald);text-decoration:none;justify-content:center" href="sms:+${ph}?body=${encodeURIComponent(j.text)}">SMS yuborish</a>` : ''}
+         <a class="fr-act" style="--c:var(--sky);text-decoration:none;justify-content:center" target="_blank" rel="noopener" href="https://t.me/share/url?url=${encodeURIComponent(j.url)}&text=${encodeURIComponent(j.text.replace(j.url, '').trim())}">Telegram orqali</a>
+         <button class="fr-act" style="--c:var(--gold);justify-content:center" onclick="navigator.clipboard&&navigator.clipboard.writeText(${esc(JSON.stringify(j.text))}).then(()=>toast('Nusxalandi'))">Nusxalash</button>
+         <button class="fr-act" style="--c:var(--indigo);justify-content:center" onclick="ctgCheck(${c.id},this)">Tekshirish</button>
+       </div>`;
+}
+async function ctgCheck(cid, btn) {
+  const c = (S.customers || []).find(x => String(x.id) === String(cid)); if (!c) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'Tekshirilmoqda…'; }
+  try {
+    const j = await _tgCust('check', c.id);
+    if (j.linked) { toast('✅ Mijoz botga ulandi'); const l = await _tgCust('link', c.id); ctgRender(c, l); if (S.page === 'mijozlar') pgMijozlar(); }
+    else toast('Hali ulanmagan — mijoz havolani ochib «Start» ni bosishi kerak', 'warning');
+  } catch (e) { toast(e.message, 'error'); }
+  finally { if (btn && btn.isConnected) { btn.disabled = false; btn.textContent = 'Tekshirish'; } }
+}
+async function ctgUnlink(cid, btn) {
+  if (!confirm('Mijozni botdan uzasizmi? Unga eslatmalar kelmay qoladi.')) return;
+  try { await _tgCust('unlink', cid); if (_tgCustLinks) delete _tgCustLinks[cid]; closeSheet(); toast('Uzildi'); if (S.page === 'mijozlar') pgMijozlar(); }
+  catch (e) { toast(e.message, 'error'); }
 }
 // Mijozning jami xaridi — savdolar ro'yxatidan (c.total eski/yo'q bo'lishi mumkin)
 // v24.9: muddati o'tgan yoki bugun tugaydigan nasiyasi bor mijozlar
@@ -6966,6 +7021,7 @@ function mjRows(list) {
       ${debt?`<button class="fw-btn" onclick="fwDueSend(${c.id})" title="Eslatma yuborish">${ICONF.send||ICONF.bell||''}<span>Xabar</span></button>`:''}
       ${debt&&hasPerm('mijozlar.edit')?`<button class="fw-btn" onclick="openDebtDiscount('cust',${c.id})">${ICONF.percent}<span>Chegirma</span></button>`:''}
       <button class="fw-btn" onclick="openMijozTarixi(${c.id})" title="Tarix">${ICONF.history}<span>Tarix</span></button>
+      ${_cloudEnabled ? `<button class="fw-btn${_tgCustLinks && _tgCustLinks[c.id] ? ' ok' : ''}" onclick="openCustTg(${c.id})" title="${_tgCustLinks && _tgCustLinks[c.id] ? 'Telegram botga ulangan' : 'Telegram botga ulash — avtomatik eslatmalar'}">${ICONF.send}<span>Bot</span></button>` : ''}
       <button class="fw-btn" onclick="editCustomer(${c.id})" title="Tahrirlash">${ICONF.edit}<span>Tahrir</span></button>
       <button class="fw-btn icon" onclick="printCustStatement(${c.id})" title="Hisob-varaqni chop etish" aria-label="Chop etish">${ICONF.print}</button>
     </div></article>`; }).join('')}</div>`;
@@ -13001,6 +13057,7 @@ function stEditTelegram() {
       ${meSw('st-tg-ev-credit', 'Nasiya savdo — darhol guruhga', 'Mijoz ismi, telefoni, olgan mahsulotlari, summa va qarzni qaytarish sanasi', on('credit'))}
       ${meSw('st-tg-ev-remind', 'Qaytarish kuni eslatmasi', 'Har kuni belgilangan soatda: bugun toʻlashi kerak boʻlganlar va muddati oʻtganlar roʻyxati', on('remind'))}
       ${meField('Eslatma vaqti (Toshkent)', `<select class="form-control" id="st-tg-remind-hour">${[8,9,10,11,12,14,16,18].map(h=>`<option value="${h}" ${(+st.tgRemindHour||9)===h?'selected':''}>${String(h).padStart(2,'0')}:00</option>`).join('')}</select>`, '')}
+      ${meSw('st-tg-ev-customer', 'Mijozning oʻziga ham (botga ulanganlarga)', 'Nasiya xaridi, toʻlov va qaytarish kuni eslatmasi — mijozning shaxsiy Telegramiga, faqat oʻz maʼlumoti. Ulash: Mijozlar → kartada «Bot»', on('customer'))}
       ${meSw('st-tg-ev-pay', 'Mijoz qarz toʻlovi', 'Har toʻlovda: kim, qancha toʻladi va qancha qoldi; toʻliq yopilsa — alohida belgi', on('pay'))}
       ${meSw('st-tg-ev-dealer', 'Diller oldi-berdisi va toʻlovlari', 'Joʻnatma (sotish uchun yoki qarzga), qaytarish, diller savdosi, toʻlov — mahsulotlar roʻyxati va qarz qoldigʻi bilan', on('dealer'))}
       ${meSw('st-tg-ev-month', 'Oy yakuni — dillerlar hisoboti', 'Har oyning 1-kuni: oʻtgan oy boʻyicha har diller olgani, toʻlagani va qarzi', on('month'))}
@@ -13108,7 +13165,7 @@ function stSaveTelegram() {
   const _badDl = _dlChats.find(x => !/^-?\d{3,20}$|^@[A-Za-z0-9_]{4,64}$/.test(x));
   if (_badDl) { toast(`Dillerlar guruhi notoʻgʻri: ${_badDl} (@nom yoki -100… raqam)`, 'error'); return; }
   S.settings.tgDealerChats = [...new Set(_dlChats)].slice(0, 5);
-  S.settings.tgEvt = Object.fromEntries(['credit', 'pay', 'remind', 'dealer', 'month', 'copyMain'].map(k => [k, !!document.getElementById('st-tg-ev-' + k)?.checked]));
+  S.settings.tgEvt = Object.fromEntries(['credit', 'pay', 'remind', 'dealer', 'month', 'copyMain', 'customer'].map(k => [k, !!document.getElementById('st-tg-ev-' + k)?.checked]));
   // v25.1: filial va diller guruhlari — MAXFIYLIK: bitta guruh ikki filial/dillerga yoki egasining guruhiga berilmaydi
   const _CHAT_OK = (x) => /^-?\d{3,20}$|^@[A-Za-z0-9_]{4,64}$/.test(x);
   const _own = [];

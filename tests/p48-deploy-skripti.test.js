@@ -13,7 +13,7 @@ const path = require('path');
 const { spawnSync, execFileSync } = require('child_process');
 const { ROOT } = require('./helpers/load-app');
 
-const N_FUNCS = 63;   // v24.6: + branch-transfer; v24.9: + pw-reset, staff-login; v25: − b2b, b2b-inbound
+const N_FUNCS = 64;   // v24.6: + branch-transfer; v24.9: + pw-reset, staff-login; v25: − b2b, b2b-inbound; v25.1: + tg-customer
 const TOML = '[build]\n  command = "node scripts/build.js"\n  publish = "dist"\n[build.environment]\n  NODE_VERSION = "22"\n';
 const git = (d, ...a) => execFileSync('git', ['-c', 'user.email=t@t', '-c', 'user.name=t', ...a], { cwd: d, stdio: 'pipe' });
 
@@ -186,7 +186,7 @@ function testDocsAndCi() {
 module.exports = {
   name: 'P48 — v24.5 (v23.10.2 P34 dan): Netlify deploy faqat Git/CLI, himoyalangan skriptlar (deploy, zaxira, migratsiya, rollback)',
   cases: [
-    { name: "deploy-netlify.sh --dry-run: toza daraxt, NODE_VERSION 22, 404.html, 63 funksiya, preview/--prod tasdig'i, zaxira + sha256 + yangiligi", run: testGuards },
+    { name: "deploy-netlify.sh --dry-run: toza daraxt, NODE_VERSION 22, 404.html, 64 funksiya, preview/--prod tasdig'i, zaxira + sha256 + yangiligi", run: testGuards },
     { name: "backup/migrate/rollback: DATABASE_URL majburiy, zanjir massivi (35 — ixtiyoriy, logda), BEGIN/COMMIT rad, maqsad nomi + tasdiq + sha256", run: testDbScriptGuards },
     { name: "DEPLOY.md: drag-and-drop yo'q, PRECHECK→…→RELEASE; CI production — faqat workflow_dispatch + HA-PRODUCTION; npm run deploy — preview", run: testDocsAndCi },
   ],

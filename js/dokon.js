@@ -1024,6 +1024,11 @@ const SF_TONES = ['#2563eb', '#e11d48', '#059669', '#d97706', '#7c3aed', '#0891b
 // Kategoriya ikonkasi — nomidagi kalit so'z bo'yicha (chiziqli, zamonaviy); mos kelmasa — umumiy «quti»
 const _ci = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 const SF_CAT_IC = [
+  // POWERFUL GROUP sohasi: arra tig'lari, frezalar, pichoqlar, o'lchov asboblari (umumiy qoidalardan oldin tekshiriladi)
+  [/arra|tig.?|saw|blade|pila/i, _ci('<path d="M20.0 12.0 L21.7 14.4 L19.4 15.1 L20.0 17.9 L17.7 17.7 L17.2 20.6 L15.1 19.4 L13.5 21.9 L12.0 20.0 L9.6 21.7 L8.9 19.4 L6.1 20.0 L6.3 17.7 L3.4 17.2 L4.6 15.1 L2.1 13.5 L4.0 12.0 L2.3 9.6 L4.6 8.9 L4.0 6.1 L6.3 6.3 L6.8 3.4 L8.9 4.6 L10.5 2.1 L12.0 4.0 L14.4 2.3 L15.1 4.6 L17.9 4.0 L17.7 6.3 L20.6 6.8 L19.4 8.9 L21.9 10.5Z"/><circle cx="12" cy="12" r="2.5"/>')],
+  [/freza|frez|router|endmill|fasonli/i, _ci('<rect x="9" y="2" width="6" height="8" rx="1"/><path d="M9 10h6M9.5 10c3 2 5 3 5 6M14.5 10c-3 2-5 3-5 6M9.5 16c3 1.5 5 2.5 5 5M14.5 16c-3 1.5-5 2.5-5 5"/>')],
+  [/pichoq|нож|nozh|knife|rubanok|strogal/i, _ci('<path d="M3 15h18l-3 4H6z"/><path d="M5 15V9h14v6"/><path d="M8 12h2M14 12h2"/>')],
+  [/shtangen|kalibr|mikrometr|caliper/i, _ci('<rect x="2" y="5" width="20" height="4" rx="1"/><path d="M4 9v8l2 3 2-3V9M14 4h5v6h-5zM15.5 10v7l1.5 3 1.5-3v-7"/>')],
   [/kesgich|kesish|cutter|rez/i, _ci('<rect x="2" y="13" width="20" height="5" rx="1.5"/><path d="M4 13V9h16v4"/><rect x="9" y="5" width="6" height="4" rx="1"/><path d="M12 5V2l5-1"/><circle cx="12" cy="11" r="1"/>')],
   [/disk|diska|krug|disc/i, _ci('<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/>')],
   [/shpatel|kelma|terka|mastersok|trowel/i, _ci('<path d="M3 15h14v-5H3z"/><path d="M3 15l1.5 2 1.5-2 1.5 2 1.5-2 1.5 2 1.5-2 1.5 2 1.5-2 1.5 2"/><path d="M9 10V7h5v3"/><path d="M11.5 7V3"/><rect x="9.5" y="1" width="4" height="3" rx="1"/>')],

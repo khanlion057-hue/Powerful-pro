@@ -1791,8 +1791,8 @@ function fwReceiptFitPage(doc, widthMm) {
   } catch (_) {}
 }
 
-// v24.7: CHIQISH — xayrlashuv ekrani (kafel naqshli brend foni, navbatma-navbat yonadigan plitkalar), sessiya to'liq yopilgach bitta kirish oynasiga qaytadi.
-// signOut kutiladi (oldin reload undan oldin bo'lib, sessiya ba'zan qolib ketardi); 2.5 soniyadan oshsa — baribir davom etadi.
+// v24.7: CHIQISH — xayrlashuv ekrani (brend naqshli fon, aylanuvchi arra tig'i belgisi), sessiya to'liq yopilgach bitta kirish oynasiga qaytadi.
+// signOut kutiladi (oldin reload undan oldin bo'lib, sessiya ba'zan qolib ketardi); 1.2 soniyadan oshsa — baribir davom etadi (chiqish uzoq cho'zilmasin).
 async function fwLogoutFlow(client, name) {
   try { ['bp_auth_ok','bp_pin_ok','bp_branch_ok','bp_staff_id','fw_fast_staff'].forEach(k => sessionStorage.removeItem(k)); } catch (e) {}
   try { localStorage.removeItem('fw_off_auth_v1'); localStorage.removeItem('fw_quick_v1'); } catch (e) {}   // v25: chiqqanda oflayn va tez kirish ham o'chadi
@@ -1800,11 +1800,11 @@ async function fwLogoutFlow(client, name) {
   const el = document.createElement('div');
   el.className = 'fw-bye fw-brand-bg';
   el.innerHTML = '<svg class="fw-bye-ic" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round" aria-hidden="true">'
-    + '<rect x="6" y="6" width="24" height="24" rx="3"/><rect x="34" y="6" width="24" height="24" rx="3"/><rect x="6" y="34" width="24" height="24" rx="3"/><rect x="34" y="34" width="24" height="24" rx="3"/></svg>'
+    + '<path d="M55.0 32.0 L59.5 37.4 L53.9 39.1 L56.5 45.6 L50.6 45.5 L51.0 52.5 L45.5 50.6 L43.8 57.4 L39.1 53.9 L35.3 59.8 L32.0 55.0 L26.6 59.5 L24.9 53.9 L18.4 56.5 L18.5 50.6 L11.5 51.0 L13.4 45.5 L6.6 43.8 L10.1 39.1 L4.2 35.3 L9.0 32.0 L4.5 26.6 L10.1 24.9 L7.5 18.4 L13.4 18.5 L13.0 11.5 L18.5 13.4 L20.2 6.6 L24.9 10.1 L28.7 4.2 L32.0 9.0 L37.4 4.5 L39.1 10.1 L45.6 7.5 L45.5 13.4 L52.5 13.0 L50.6 18.5 L57.4 20.2 L53.9 24.9 L59.8 28.7Z"/><circle cx="32" cy="32" r="7"/><path d="M32 14v6M50 32h-6M32 50v-6M14 32h6"/></svg>'
     + '<b>' + bye + (name ? ', ' + String(name).replace(/[<>&"]/g, '') : '') + '</b><small>Sessiya yopilmoqda…</small>';
   document.body.appendChild(el);
-  try { if (client && client.auth && client.auth.signOut) await Promise.race([client.auth.signOut(), new Promise(r => setTimeout(r, 2500))]); } catch (e) {}
-  setTimeout(() => location.replace('index.html'), 450);
+  try { if (client && client.auth && client.auth.signOut) await Promise.race([client.auth.signOut(), new Promise(r => setTimeout(r, 1200))]); } catch (e) {}
+  setTimeout(() => location.replace('index.html'), 150);
 }
 
 // ═══ v24.7: PORTAL QOBIG'I — admin panel joylashuvi va uslubida (sotuvchi, diller) ═══

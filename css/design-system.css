@@ -3669,3 +3669,54 @@ img[data-brand-logo], img[data-brand-mark], #st-logo-prev img{ border:0 !importa
 .sf-br>span svg{width:15px;height:15px}
 .sf-br button{border:1.5px solid var(--border);background:var(--bg-card);color:inherit;border-radius:999px;padding:5px 12px;font:inherit;font-weight:700;cursor:pointer}
 .sf-br button.on{border-color:var(--emerald,#16a34a);background:color-mix(in srgb,var(--emerald,#16a34a) 10%,var(--bg-card))}
+
+/* ═══ POWERFUL GROUP brendi (2026-11): asosiy amallar logo rangida — oltin (#B8700C → #8A5208).
+   Avval «+ Yangi …» tugmalari, faol tablar va bosh sahifa banneri ko'k/havorang edi — logodagi oltin-qora
+   uslubdan ajralib turardi. Ko'k rang endi faqat ma'lumot belgilarida (sky) qoladi. ═══ */
+.kr-add, .kr-add.fw-cta, .kf-addrow{ color:#fff; background:linear-gradient(135deg,#C98512 0%,#8A5208 100%);
+  box-shadow:0 8px 20px rgba(138,82,8,.24); }
+.kr-add:hover, .kf-addrow:hover{ filter:brightness(1.06); }
+.kr-add:active, .kf-addrow:active{ transform:translateY(1px); }
+.kr-add svg, .kf-addrow svg{ color:#fff; }
+.kr-tab.on, .kst-m.on, .dk-seg button.on{ background:#B8700C; border-color:#B8700C; color:#fff; }
+.kr-st-bar i{ background:linear-gradient(90deg,#E0A23A,#8A5208); }
+.ox-banner{ background:linear-gradient(110deg,#26272B 0%,#3a2f1f 45%,#8A5208 100%); box-shadow:0 8px 20px rgba(38,39,43,.28); }
+.m-bn-fab .m-bn-ic{ background:linear-gradient(145deg,#E0A23A,#8A5208); box-shadow:0 8px 22px rgba(138,82,8,.42); }
+
+/* Telefonda karta amallari (To'lash, Xabar, Chegirma, Tarix, Tahrir…) — bir qatorga 5 tasi sig'masdan
+   «To…», «Xa…» bo'lib kesilardi. Endi 3 tadan qatorga o'tadi, yozuv to'liq ko'rinadi. */
+@media (max-width:520px){
+  .fw-pc-a > .fw-btn:not(.icon), .ks-acts > .fw-btn:not(.icon){ flex:1 1 calc(33.333% - 6px); min-width:92px; }
+}
+/* Chiqish ekrani: arra tig'i belgisi sekin aylanadi (oldingi kafel plitkalari animatsiyasi o'rniga) */
+.fw-bye .fw-bye-ic{ color:#E0A23A; animation:fwBladeSpin 1.4s linear infinite; transform-origin:50% 50%; }
+@keyframes fwBladeSpin{ to{ transform:rotate(360deg); } }
+@media (prefers-reduced-motion:reduce){ .fw-bye .fw-bye-ic{ animation:none; } }
+
+/* ═══ POWERFUL GROUP: kirish/yuklanish/chiqish fonlari — logo uslubida (ko'mir-qora + oltin nur) ═══
+   1) Fon butun ekranni qoplaydi: ilova standart 90% masshtabda (html zoom) ishlaydi, shuning uchun
+      «min-height:100vh» ekranning faqat 90% ini to'ldirib, pastda oq/ko'k chiziq qolardi → position:fixed.
+   2) Avvalgi ko'k-navy fon va to'q sariq-qizil uchinchi chiziq o'rniga — oltin / to'q oltin / ko'mir. */
+:root{ --fw-b1:#E0A23A; --fw-b2:#B8700C; --fw-b3:#26272B; --fw-pat:#5a4a2e; --fw-pat-o:.05; }
+html[data-theme="dark"]{ --fw-pat:#e6c58f; --fw-pat-o:.045; }
+.fw-brand-bg, .dl-login-screen, .fw-splash{
+  background:radial-gradient(110% 80% at 88% 6%, rgba(224,162,58,.38) 0%, transparent 55%),
+             radial-gradient(90% 70% at 0% 100%, rgba(138,82,8,.32) 0%, transparent 60%),
+             linear-gradient(160deg,#1b1c1f 0%,#26272b 50%,#151517 100%) !important; }
+.fw-brand-bg::before, .dl-login-screen::before, .fw-splash::before{ background-color:#f3dfb8; opacity:.07; }
+.fw-brand-bg::after, .dl-login-screen::after, .fw-splash::after{ opacity:.28; }
+.fw-brand-bg[style*="min-height:100vh"], .dl-login-screen{ position:fixed !important; inset:0; min-height:0 !important; overflow-y:auto; z-index:50; }
+.fw-login-card, .dl-login-box{ box-shadow:0 30px 70px rgba(0,0,0,.55), 0 0 0 1px rgba(224,162,58,.25) !important; }
+.fw-splash{ color:#f5ead6; }
+.fw-load-bar i{ background:linear-gradient(90deg,#8A5208 0%,#B8700C 40%,#E0A23A 75%,#F6C67A 100%); }
+.fw-load-t{ color:inherit; }
+/* Yuklanish oynasi foni har doim qorong'i — standart logotipning oq yozuvli nusxasi har ikkala mavzuda */
+.fw-splash .fw-lock.on-light img[data-brand-logo][src$="assets/brand-logo.png"]{ content:url('../assets/brand-logo-dark.png'); }
+.fw-splash.fw-load, .fw-splash .fw-load-t{ color:#f5ead6; } .fw-splash .fw-load-s{ color:#c9b89a; }
+.fw-splash .fw-lock.on-light .fw-lock-fb{ color:#f5ead6; }
+.fw-splash .fw-load-bar{ background:rgba(255,255,255,.07); box-shadow:inset 0 1px 3px rgba(0,0,0,.5), 0 0 0 1px rgba(224,162,58,.18); }
+/* Yuklanish: uzun to'ladigan satr o'rniga — aylanuvchi arra tig'i (POWERFUL GROUP sohasi) */
+.fw-splash .fw-load-bar{ width:64px; height:64px; padding:0; border-radius:50%; overflow:visible; background:url('../assets/saw-blade.svg') center/contain no-repeat !important;
+  box-shadow:none !important; animation:fwBladeSpin .9s linear infinite; filter:drop-shadow(0 6px 14px rgba(224,162,58,.35)); margin:4px auto 2px; }
+.fw-splash .fw-load-bar i{ display:none; }
+@media (prefers-reduced-motion:reduce){ .fw-splash .fw-load-bar{ animation-duration:3s; } }

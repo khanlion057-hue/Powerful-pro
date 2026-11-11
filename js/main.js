@@ -2672,7 +2672,7 @@ function pgDashboard() {
   <h2 class="ox-sec">Tezkor amallar</h2>
   <div class="ox-acts ox-acts-all">${typeof shellMenuHtml === 'function' ? shellMenuHtml() : ''}</div>
 
-  ${hasPerm('savdo.view') ? `<div class="ox-charts">${dashBarsCard('Kategoriyalar', perL[per], dashCatRows(pS), 'sky', m0, "Bu davrda sotuv yoʻq")}</div>` : ''}
+  ${hasPerm('savdo.view') ? `<div class="ox-charts">${dashBarsCard('Kategoriyalar', perL[per], dashCatRows(pS), 'gold', m0, "Bu davrda sotuv yoʻq")}</div>` : ''}
 
   ${kpis ? `<h2 class="ox-sec">Asosiy koʻrsatkichlar</h2>
   <div class="ox-kpis">${kpis}</div>` : ''}
@@ -12467,13 +12467,13 @@ function sxDebtsHtml() {
 }
 // ── Kategoriyalar (davrdagi sotuv) ──
 function sxCatsHtml(D) {
-  const m = {}; D.sales.forEach(s=>(s.items||[]).forEach(i=>{ const c = S.products.find(p=>p.id===i.pid)?.cat || 'Boshqa'; m[c]=(m[c]||0)+(i.lineUsd||0); }));
+  const m = {}; D.sales.forEach(s=>(s.items||[]).forEach(i=>{ const c = S.products.find(p=>p.id===i.pid)?.cat || 'Boshqa'; m[c]=(m[c]||0)+(Number.isFinite(+i.lineUsd) ? +i.lineUsd : (+i.qty||0)*(+i.sellUsd||0)); }));
   const list = Object.entries(m).sort((x,y)=>y[1]-x[1]); const tot = list.reduce((s,x)=>s+x[1],0);
   const pal = ['#22c55e','#38bdf8','#a855f7','#E8A33A','#ec4899','#818cf8','#eab308','#14b8a6','#f43f5e','#94a3b8'];
   return `<section class="sx-card">
     <div class="sx-sec"><b>Kategoriyalar</b><i></i></div>
-    ${list.length ? `<div class="sx-stack">${list.map(([c,v],i)=>`<i style="flex:${v};background:${pal[i%pal.length]}" title="${esc(c)}"></i>`).join('')}</div>
-      ${list.map(([c,v],i)=>`<div class="sx-cat"><span class="sx-dot" style="background:${pal[i%pal.length]}"></span><span class="sx-cat-n">${esc(c)}</span><em>${Math.round(v/tot*100)}%</em><b>${_sxUsd(v)}</b></div>`).join('')}`
+    ${list.length ? `<div class="sx-stack">${list.map(([c,v],i)=>`<i style="flex:${tot>0?v:1};background:${pal[i%pal.length]}" title="${esc(c)}"></i>`).join('')}</div>
+      ${list.map(([c,v],i)=>`<div class="sx-cat"><span class="sx-dot" style="background:${pal[i%pal.length]}"></span><span class="sx-cat-n">${esc(c)}</span><em>${tot>0?Math.round(v/tot*100):0}%</em><b>${_sxUsd(v)}</b></div>`).join('')}`
       : `<div class="sx-empty">Kategoriya maʼlumotlari yoʻq.</div>`}
   </section>`;
 }

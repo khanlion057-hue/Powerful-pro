@@ -66,23 +66,27 @@ const pre = (rows) => '<pre>' + rows.join('\n') + '</pre>';
 const cut = (s, n) => { s = String(s || ''); return s.length > n ? s.slice(0, n - 1) + '…' : s; };
 
 // Hisobot matni (Telegram HTML). Natija — xabarlar ro'yxati (har biri ≤ 3900 belgi).
+// v25.1 (egasi talabi «tartibli emas»): bo'limlar sarlavhali va chiziq bilan ajratilgan — «Bosh kassa», har filialda
+// «BUGUN» (savdo/foyda), «KASSALAR», «QARZLAR» (kim kimga qarzdorligi aniq); nom bo'lmasa — «ERP» o'rniga brend nomi.
+const WEEKDAYS = ['yakshanba', 'dushanba', 'seshanba', 'chorshanba', 'payshanba', 'juma', 'shanba'];
+const BRAND_DEFAULT = String(process.env.FW_BRAND_NAME || 'POWERFUL GROUP');
+const LINE = '─'.repeat(COL_W);
 function buildDailyReport(data, date, extra = {}) {
   const st = (data && data.settings) || {};
   const rate = num(st.usdUzs);
-  const company = String(extra.brand || st.company || 'ERP').slice(0, 60);
+  const company = String(extra.brand || st.company || BRAND_DEFAULT).slice(0, 60);
   const keys = Object.keys((data && data.branchStore) || {}).filter((k) => /^[A-Za-z0-9_-]{1,40}$/.test(k));
   const order = ['baza', ...keys.filter((k) => k !== 'baza').sort()].filter((k) => keys.includes(k));
-  const head = [`📊 <b>${esc(company)} — kunlik hisobot</b>`, `📅 ${fmtDate(date)}${rate > 0 ? ` · kurs 1$ = ${sp(rate)} so'm${st.rateDate === date ? '' : ' (bugun tasdiqlanmagan)'}` : ''}`];
-  const headRows = [];
-  if (extra.firma) { headRows.push(row('Bosh kassa $', usd(extra.firma.USD))); headRows.push(row("Bosh kassa so'm", uzs(extra.firma.UZS))); }
+  const wd = WEEKDAYS[new Date(String(date).slice(0, 10) + 'T12:00:00Z').getUTCDay()] || '';
+  const head = [`📊 <b>${esc(company)} — kunlik hisobot</b>`, `📅 ${fmtDate(date)}${wd ? ', ' + wd : ''}`];
+  if (rate > 0) head.push(`💱 Kurs: 1$ = ${sp(rate)} so'm${st.rateDate === date ? '' : ' (bugun tasdiqlanmagan)'}`);
   const total = { count: 0, revenue: 0, profit: 0, expense: 0 };
   const parts = [];
   for (const k of order) {
     const d = branchDay(data.branchStore[k] || {}, date, rate);
     total.count += d.count; total.revenue += d.revenue; total.profit += d.profit; total.expense += d.expense;
-    const L = [`🏢 <b>${esc(branchNameOf(data, k))}</b>`];
-    const R = [];
-    if (!d.count && !d.expense && !d.debtIn && !d.handed) L.push('— bugun harakat yoʻq');
+    const R = [esc('BUGUN')];
+    if (!d.count && !d.expense && !d.debtIn && !d.handed) R.push(esc('Savdo va xarajat yoʻq'));
     else {
       R.push(row(`Savdo (${d.count} chek)`, usd(d.revenue)));
       if (d.pay.cash_uzs > 0) R.push(row('  naqd', usd(d.pay.cash_uzs)));
@@ -96,22 +100,26 @@ function buildDailyReport(data, date, extra = {}) {
       if (d.debtIn > 0) R.push(row('Undirilgan qarz', usd(d.debtIn)));
       R.push(d.handed > 0 ? row('Bosh kassaga', usd(d.handed)) : row('Kassa', 'yopilmagan'));
     }
-    const gap = () => { if (R.length) R.push(''); };
-    if (d.boxes.length) { gap(); R.push(esc('Kassalar')); d.boxes.forEach((x) => R.push(row('  ' + cut(x.name, 16), money(x.cur, x.bal)))); }
-    gap(); R.push(row('Mijozlar qarzi', usd(d.custDebtUsd))); R.push(row('Taʼminotchilarga', usd(d.suppDebtUsd)));
-    if (d.topStaff.length) { gap(); R.push(esc('Eng koʻp sotgan')); d.topStaff.forEach(([n, v]) => R.push(row('  ' + cut(n, 16), usd(v)))); }
-    if (d.topProducts.length) { gap(); R.push(esc('Top mahsulot')); d.topProducts.forEach(([n, q]) => R.push(row('  ' + cut(n, 20), '×' + sp(q, 2)))); }
-    L.push(pre(R));
-    parts.push(L.join('\n'));
+    const sec = (title) => { R.push(LINE); R.push(esc(title)); };
+    if (d.boxes.length) { sec('KASSALAR'); d.boxes.forEach((x) => R.push(row(cut(x.name, 18), money(x.cur, x.bal)))); }
+    sec('QARZLAR'); R.push(row('Mijozlar bizga', usd(d.custDebtUsd))); R.push(row('Biz taʼminotchilarga', usd(d.suppDebtUsd)));
+    if (d.topStaff.length) { sec('ENG KOʻP SOTGAN'); d.topStaff.forEach(([n, v]) => R.push(row(cut(n, 18), usd(v)))); }
+    if (d.topProducts.length) { sec('TOP MAHSULOT'); d.topProducts.forEach(([n, q]) => R.push(row(cut(n, 20), '×' + sp(q, 2)))); }
+    parts.push(`🏢 <b>${esc(branchNameOf(data, k))}</b>\n` + pre(R));
   }
-  if (order.length > 1) { headRows.push(row(`Jami savdo (${total.count} chek)`, usd(total.revenue))); headRows.push(row('Jami sof foyda', usd(total.profit - total.expense))); }
+  const top = [];
+  if (extra.firma) {
+    top.push(`🏦 <b>Bosh kassa</b>\n` + pre([row('Dollar', usd(extra.firma.USD)), row("Soʻm", uzs(extra.firma.UZS))]));
+  }
+  const sum = [];
+  if (order.length > 1) { sum.push(row(`Jami savdo (${total.count} chek)`, usd(total.revenue))); sum.push(row('Jami sof foyda', usd(total.profit - total.expense))); }
   if (extra.dealerPay && (extra.dealerPay.count || extra.dealerPay.pending)) {
-    headRows.push(row(`Dillerlardan (${extra.dealerPay.count})`, usd(extra.dealerPay.usd)));
-    if (extra.dealerPay.pending) headRows.push(row('  tasdiq kutmoqda', extra.dealerPay.pending + ' ta'));
+    sum.push(row(`Dillerlardan (${extra.dealerPay.count})`, usd(extra.dealerPay.usd)));
+    if (extra.dealerPay.pending) sum.push(row('  tasdiq kutmoqda', extra.dealerPay.pending + ' ta'));
   }
-  if (headRows.length) head.push(pre(headRows));
+  if (sum.length) top.push(`📈 <b>Umumiy</b>\n` + pre(sum));
   // Xabarlarga bo'lish (Telegram chegarasi 4096) — <pre> bloki bo'linmaydi
-  const msgs = []; let cur = head.join('\n');
+  const msgs = []; let cur = [head.join('\n'), ...top].join('\n\n');
   for (const p of parts) {
     if ((cur + '\n\n' + p).length > 3900) { msgs.push(cur); cur = p; } else cur += '\n\n' + p;
   }

@@ -50,24 +50,27 @@ async function testReportText() {
   const date = '2026-10-07';
   const msgs = buildDailyReport(sampleData(date), date, { firma: { USD: 1000, UZS: 2500000 }, dealerPay: { count: 2, usd: 300, pending: 1 } });
   assert.equal(msgs.length, 1); const t = msgs[0];
-  assert.match(t, /Powerful — kunlik hisobot/); assert.match(t, /07\.10\.2026 · kurs 1\$ = 12 500 so'm/);
+  assert.match(t, /Powerful — kunlik hisobot/); assert.match(t, /07\.10\.2026, chorshanba\n💱 Kurs: 1\$ = 12 500 so'm/);
   // v25: ustun uslubi — «nomi ..... qiymat», qiymatlar bitta chiziqda (30 belgi), <pre> ichida
   const R = (l, v) => new RegExp('\n?' + l.replace(/[$()]/g, '\\$&') + ' +' + v.replace(/[$()]/g, '\\$&') + '(\n|</pre>)');
-  assert.match(t, R('Bosh kassa $', '$1 000')); assert.match(t, R("Bosh kassa so'm", "2 500 000 so'm"));
+  assert.match(t, /Bosh kassa<\/b>\n<pre>Dollar +\$1 000\nSoʻm +2 500 000 so'm<\/pre>/);
   assert.match(t, R('Savdo (2 chek)', '$150'), "faqat bugungi, bekor qilingan kirmaydi");
   assert.match(t, R('  naqd', '$100')); assert.match(t, R('  karta', '$20')); assert.match(t, R('  qarzga', '$30'));
   assert.match(t, R('Foyda', '$40')); assert.match(t, R('Xarajat (1)', '$15')); assert.match(t, R('Sof foyda', '$25'), 'hamkor kirimi xarajat emas');
   assert.match(t, R('Undirilgan qarz', '$20'), "250 000 so'm / 12 500; savdo tushumi qarz to'lovi emas");
   assert.match(t, R('Bosh kassaga', '$140'));
-  assert.match(t, R("  Naqd so'm", "1 500 000 so'm")); assert.doesNotMatch(t, /Shaxsiy kassa/, "Shaxsiy kassa hisobotga chiqmaydi");
-  assert.match(t, R('Mijozlar qarzi', '$100')); assert.match(t, R('Taʼminotchilarga', '$40'));
-  assert.match(t, R('  Ali &lt;b&gt;', '$100')); assert.match(t, R('  Drel &lt;i&gt;', '×2')); assert.doesNotMatch(t, /<i>|Ali <b>/, 'nomlardagi HTML ekranlangan');
-  assert.match(t, /Chilonzor<\/b>\n— bugun harakat yoʻq/);
+  assert.match(t, R("KASSALAR\nNaqd so'm", "1 500 000 so'm")); assert.doesNotMatch(t, /Shaxsiy kassa/, "Shaxsiy kassa hisobotga chiqmaydi");
+  assert.match(t, R('QARZLAR\nMijozlar bizga', '$100')); assert.match(t, R('Biz taʼminotchilarga', '$40'));
+  assert.match(t, R('Ali &lt;b&gt;', '$100')); assert.match(t, R('Drel &lt;i&gt;', '×2')); assert.doesNotMatch(t, /<i>|Ali <b>/, 'nomlardagi HTML ekranlangan');
+  assert.match(t, /Chilonzor<\/b>\n<pre>BUGUN\nSavdo va xarajat yoʻq\n─+\nKASSALAR/);
+  assert.doesNotMatch(t, /ERP/, "nom bo'lmasa ham «ERP» emas");
+  assert.match(buildDailyReport({ settings: {}, branchStore: { baza: {} } }, date)[0], /POWERFUL GROUP — kunlik hisobot/, 'standart brend');
   assert.match(t, R('Jami savdo (2 chek)', '$150')); assert.match(t, R('Dillerlardan (2)', '$300')); assert.match(t, R('  tasdiq kutmoqda', '1 ta'));
   // ustunlar tekis: <pre> ichidagi har qator 30 belgidan oshmaydi va qiymatli qatorlar aynan 30
   const rows = [...t.matchAll(/<pre>([\s\S]*?)<\/pre>/g)].flatMap(m => m[1].split('\n')).map(l => l.replace(/&lt;|&gt;|&amp;/g, 'x'));
   assert.ok(rows.length > 10 && rows.every(l => l.length <= 30), 'qatorlar telefonga sig\'adi');
   assert.ok(rows.filter(l => /\S\s{2,}\S+$/.test(l)).every(l => l.length === 30), 'qiymatlar bitta chiziqda');
+  assert.ok(rows.filter(l => /^─+$/.test(l)).every(l => l.length === 30), 'ajratuvchi chiziq ham 30 belgi');
   assert.match(buildDailyReport({ settings: {}, branchStore: { baza: { sales: [{ date, totalUsd: 20.4, paidUsd: 20.4, profitUsd: 1, payType: 'usd' }] } } }, date)[0], /\$20\.40/, "sentli summa — ikki xona");
   // Uzun — bir nechta xabarga (har biri ≤ 4000)
   const big = sampleData(date); for (let i = 0; i < 40; i++) big.branchStore['f' + i] = { sales: [{ date, totalUsd: 1, paidUsd: 1, profitUsd: 1, payType: 'usd', items: Array.from({ length: 5 }, (_, j) => ({ name: 'Mahsulot nomi juda uzun ' + j + '-' + i, qty: 1 })) }] };

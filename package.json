@@ -1,26 +1,24 @@
 {
-  "name": "powerful-pro",
+  "name": "biznes-pro",
   "private": true,
-  "version": "0.0.0",
-  "type": "module",
+  "version": "25.0.0",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "oxlint",
-    "preview": "vite preview"
+    "setup": "node scripts/setup.js",
+    "brand": "node scripts/brand.js",
+    "create-admin": "node scripts/create-admin.js",
+    "build": "node scripts/build.js",
+    "check": "node scripts/check.js",
+    "test": "node tests/run.js",
+    "deploy": "bash scripts/deploy-netlify.sh"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.119.0",
-    "react": "^19.3.1",
-    "react-dom": "^19.3.1"
+    "@supabase/supabase-js": "^2.39.3"
   },
   "devDependencies": {
-    "@types/node": "^24.19.2",
-    "@types/react": "^19.3.0",
-    "@types/react-dom": "^19.3.0",
-    "@vitejs/plugin-react": "^6.1.2",
-    "oxlint": "^1.90.0",
-    "typescript": "~7.0.2",
-    "vite": "^8.3.6"
+    "playwright": "^1.47.0",
+    "@electric-sql/pglite": "^0.5.8"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

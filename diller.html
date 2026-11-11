@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title data-brand-title="{b} — Diller">POWERFUL</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'><rect width='48' height='48' rx='12' fill='%231689C2'/><g fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='M24 11 12 17l12 6 12-6z'/><path d='M12 24l12 6 12-6'/><path d='M12 31l12 6 12-6'/></g></svg>">
+  <meta name="theme-color" content="#0a1120">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Powerful">
+  <meta name="application-name" content="Powerful">
+  <link rel="manifest" href="manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/design-system.css">
+  <style>
+    body{background:var(--bg-primary)}
+    .dl-wrap{max-width:480px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
+    .dl-topbar{background:var(--bg-secondary);border-bottom:1px solid var(--border);padding:14px 18px;
+      display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:20}
+    .dl-topbar h1{font-size:15px;font-weight:800;flex:1}
+    .dl-topbar .sub{font-size:11px;color:var(--text-muted)}
+    .dl-body{padding:16px;flex:1;display:flex;flex-direction:column;gap:14px}
+    .dl-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:16px}
+    .dl-stat{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border-light)}
+    .dl-stat:last-child{border-bottom:none}
+    .dl-login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;
+      background:linear-gradient(160deg,#eaf4fb 0%,#d8ebf7 45%,#c9e2f2 100%)}
+    .dl-login-box{background:#fff;border-radius:20px;padding:40px 30px;width:100%;max-width:350px;
+      box-shadow:0 18px 42px rgba(0,60,100,0.16);text-align:center}
+    .dl-input{width:100%;padding:13px 14px;font-size:14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);
+      margin-bottom:10px;outline:none;box-sizing:border-box;transition:border-color .15s}
+    .dl-input:focus{border-color:#C2410C}
+    .dl-btn{width:100%;padding:13px;background:linear-gradient(135deg,#C2410C,#9A3412);color:#fff;border:none;
+      border-radius:var(--radius-sm);font-size:14px;font-weight:700;cursor:pointer;transition:transform .15s}
+    .dl-btn:active{transform:scale(0.98)}
+    .dl-btn:disabled{opacity:.55;cursor:not-allowed}
+    .dl-err{color:var(--red);font-size:12px;margin-top:10px;min-height:16px}
+    .dl-prow{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border-light);gap:10px}
+    .dl-prow:last-child{border-bottom:none}
+    .dl-pname{font-size:13px;font-weight:700}
+    .dl-pmeta{font-size:11px;color:var(--text-muted)}
+    .dl-qty{font-weight:800;color:var(--gold);min-width:44px;text-align:right}
+    .tabs{display:flex;gap:5px;margin-bottom:4px;flex-wrap:wrap}
+    .tab-btn{flex:1;min-width:74px;padding:8px 4px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg-card);
+      font-size:11.5px;font-weight:700;color:var(--text-secondary);cursor:pointer;text-align:center;white-space:nowrap}
+    .tab-btn.active{background:#C2410C;color:#fff;border-color:#C2410C}
+  </style>
+</head>
+<body>
+<!-- v24.6 (tez kirish): sessiya bo'lsa login oynasi ko'rinmaydi (brauzer avtomatik to'ldirib «qayta kiryapti» deb ko'rinardi) -->
+<div id="fw-splash" class="fw-splash fw-load" aria-live="polite"><div class="fw-load-in"><span class="fw-lock xl on-light" role="img" aria-label="POWERFUL"><img src="assets/brand-logo.png" alt="POWERFUL" data-brand-logo onerror="this.parentNode.classList.add('noimg')"><b class="fw-lock-fb" data-brand-name>POWERFUL</b></span><div class="fw-load-bar" aria-hidden="true"><i></i></div><b class="fw-load-t">Kirilmoqda…</b><small class="fw-load-s">Diller oynasi</small></div></div>
+<script>(function(){try{var ok=sessionStorage.getItem('fw_fast_staff');if(!ok){for(var i=0;i<localStorage.length;i++){if(/^sb-.*-auth-token$/.test(localStorage.key(i))){ok=1;break;}}}if(ok){document.documentElement.classList.add('fw-booting');setTimeout(function(){document.documentElement.classList.remove('fw-booting');},15000);}}catch(e){}})();</script>
+
+<div id="dl-login" class="dl-login-screen">
+  <div class="dl-login-box">
+    <div style="margin-bottom:20px">
+      <span class="fw-lock lg on-light" role="img" aria-label="POWERFUL"><img src="assets/brand-logo.png" alt="POWERFUL" data-brand-logo onerror="this.parentNode.classList.add('noimg')"><b class="fw-lock-fb" data-brand-name>POWERFUL</b></span>
+    </div>
+    <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:24px">Diller portali — ombor va savdo</div>
+    <input class="dl-input" id="dl-login-id" placeholder="Login" autocomplete="username">
+    <div style="position:relative">
+      <input class="dl-input" id="dl-login-pw" type="password" placeholder="Parol" autocomplete="current-password"
+        style="padding-right:44px" onkeydown="if(event.key==='Enter')dlDoLogin()">
+      <button onclick="dlTogglePw(this)" type="button"
+        style="position:absolute;right:6px;top:6px;bottom:6px;width:34px;background:none;border:none;cursor:pointer;color:var(--text-muted)">👁️</button>
+    </div>
+    <button class="dl-btn" id="dl-login-btn" onclick="dlDoLogin()">Kirish →</button>
+    <div class="dl-err" id="dl-login-err"></div>
+  </div>
+</div>
+
+<div id="dl-app" class="dl-wrap has-bnav" style="display:none">
+  <div class="dl-topbar pt-top pt-top2">
+    <button class="fw-shop-sw pt-brand" onclick="dlSwitchTab('home')" aria-label="Bosh sahifa"><span class="fw-shop-mk" data-pt-mark></span>
+      <span class="fw-shop-t"><small>Diller oynasi</small><b data-brand-name>POWERFUL</b></span></button>
+    <div class="pt-who pt-sr"><small id="dl-greet">Xush kelibsiz</small>
+      <h1 id="dl-name">—</h1>
+      <div class="sub" id="dl-region">—</div>
+    </div>
+    <div class="pt-date" id="pt-date" aria-hidden="true"></div>
+    <button class="pt-ib pt-bell" id="dl-bell" onclick="dlNotifOpen()" title="Bildirishnomalar" aria-label="Bildirishnomalar"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg><em id="dl-bell-n" hidden>0</em></button>
+    <button class="pt-ava" id="dl-av" onclick="dlOpenSettings()" title="Profil va sozlamalar" aria-label="Profil va sozlamalar">—</button>
+  </div>
+  <div class="dl-body">
+    <div class="dl-card" id="dl-summary"></div>
+    <div class="tabs pt-tabs">
+      <button class="tab-btn active" id="tab-sale" onclick="dlSwitchTab('sale')"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49A1.003 1.003 0 0 0 20 4H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/></svg><span>Sotuv</span></button>
+      <button class="tab-btn" id="tab-stock" onclick="dlSwitchTab('stock')"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20 2H4c-1 0-2 .9-2 2v3.01c0 .72.43 1.34 1 1.69V20c0 1.1 1.1 2 2 2h14c.9 0 2-.9 2-2V8.7c.57-.35 1-.97 1-1.69V4c0-1.1-1-2-2-2zm-5 12H9v-2h6v2zm5-7H4V4l16-.02V7z"/></svg><span>Omborim</span></button>
+      <button class="tab-btn" id="tab-order" onclick="dlSwitchTab('order')"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg><span>Buyurtma</span></button>
+      <button class="tab-btn" id="tab-pay" onclick="dlSwitchTab('pay')"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19 14V6c0-1.1-.9-2-2-2H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zm-9-1c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm13-6v11c0 1.1-.9 2-2 2H4v-2h17V7h2z"/></svg><span>Toʻlov</span></button>
+      <button class="tab-btn" id="tab-history" onclick="dlSwitchTab('history')"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M5 9.2h3V19H5zM10.6 5h2.8v14h-2.8zm5.6 8H19v6h-2.8z"/></svg><span>Savdolarim</span></button>
+    </div>
+    <div id="dl-content"></div>
+  </div>
+  <nav class="m-bottomnav pt-bottomnav" id="pt-bnav">
+    <button class="m-bn-item" data-tab="stock" onclick="dlSwitchTab('stock')"><span class="m-bn-ic"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20 2H4c-1 0-2 .9-2 2v3.01c0 .72.43 1.34 1 1.69V20c0 1.1 1.1 2 2 2h14c.9 0 2-.9 2-2V8.7c.57-.35 1-.97 1-1.69V4c0-1.1-1-2-2-2zm-5 12H9v-2h6v2zm5-7H4V4l16-.02V7z"/></svg></span><span class="m-bn-l">Omborim</span></button>
+    <button class="m-bn-item" data-tab="order" onclick="dlSwitchTab('order')"><span class="m-bn-ic"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg></span><span class="m-bn-l">Buyurtma</span></button>
+    <button class="m-bn-item m-bn-fab" data-tab="sale" onclick="dlNavScan()" aria-label="QR — Sotuv oynasini ochish"><span class="m-bn-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8.5V6a2 2 0 0 1 2-2h2.5M15.5 4H18a2 2 0 0 1 2 2v2.5M20 15.5V18a2 2 0 0 1-2 2h-2.5M8.5 20H6a2 2 0 0 1-2-2v-2.5"/><g fill="currentColor" stroke="none"><rect x="7.6" y="7.6" width="3.6" height="3.6" rx=".9"/><rect x="12.8" y="7.6" width="3.6" height="3.6" rx=".9"/><rect x="7.6" y="12.8" width="3.6" height="3.6" rx=".9"/><rect x="12.8" y="12.8" width="3.6" height="3.6" rx=".9"/></g></svg></span><span class="m-bn-l">Sotuv</span></button>
+    <button class="m-bn-item" data-tab="pay" onclick="dlSwitchTab('pay')"><span class="m-bn-ic"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19 14V6c0-1.1-.9-2-2-2H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zm-9-1c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm13-6v11c0 1.1-.9 2-2 2H4v-2h17V7h2z"/></svg></span><span class="m-bn-l">Toʻlov</span></button>
+    <button class="m-bn-item" data-tab="history" onclick="dlSwitchTab('history')"><span class="m-bn-ic"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M5 9.2h3V19H5zM10.6 5h2.8v14h-2.8zm5.6 8H19v6h-2.8z"/></svg></span><span class="m-bn-l">Savdolarim</span></button>
+  </nav>
+</div>
+
+
+<div id="toasts"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js" integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.4.4/build/qrcode.min.js" integrity="sha384-0RsG1yo/crf/1Qc14sho26SXXOTngNCjgJw7fuvXBt9W/OChF/Ijx+aUuBDqQwEk" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js" integrity="sha384-c9d8RFSL+u3exBOJ4Yp3HUJXS4znl9f+z66d1y54ig+ea249SpqR+w1wyvXz/lk+" crossorigin="anonymous"></script>
+<script src="js/config.js"></script>
+<script src="js/brand.js"></script>
+<script src="js/shared.js"></script>
+<script src="js/pos.js"></script>
+<script src="js/diller.js"></script>
+<script>
+(function(){
+  var FN='dlSwitchTab', MORE=[];
+  window.ptSheet=function(on){var s=document.getElementById('pt-sheet'); if(s) s.hidden=!on;};
+  function sync(t){
+    document.querySelectorAll('#pt-bnav .m-bn-item[data-tab]').forEach(function(b){b.classList.toggle('active',b.dataset.tab===t);});
+    var m=document.querySelector('#pt-bnav [data-more]'); if(m) m.classList.toggle('active',MORE.indexOf(t)>=0);
+    document.querySelectorAll('#pt-sheet [data-tab]').forEach(function(b){b.classList.toggle('active',b.dataset.tab===t);});
+  }
+  var orig=window[FN];
+  if(typeof orig==='function'){ window[FN]=function(t){ var r=orig.apply(this,arguments); ptSheet(false); sync(t); window.scrollTo(0,0); return r; }; }
+  document.addEventListener('DOMContentLoaded',function(){ try{ sync(typeof ACTIVE_TAB!=='undefined'?ACTIVE_TAB:'sale'); }catch(e){} });
+})();
+</script>
+</body>
+</html>

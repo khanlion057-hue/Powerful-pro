@@ -3447,6 +3447,8 @@ html[data-theme="dark"] .fw-login-card img[data-brand-logo], html[data-theme="da
 @media (max-width:380px){ .fw-lock.xl{ --lk:140px; } .fw-lock.lg{ --lk:116px; } }
 /* Standart logotip: yorug' fonda — asl (qora yozuv), qorong'i mavzuda — oq yozuvli nusxa; yorug' oynalarda (kirish, yuklanish) doim asl */
 html[data-theme="dark"] .fw-lock.on-light img[data-brand-logo], .fw-splash .fw-lock.on-light img[data-brand-logo]{ content:normal; }
+/* Qorong'i mavzuda yuklanish oynasi foni ham qorong'i — standart logotipning oq yozuvli nusxasi (qora yozuv ko'rinmay qolmasin) */
+html[data-theme="dark"] .fw-splash .fw-lock.on-light img[data-brand-logo][src$="assets/brand-logo.png"]{ content:url('../assets/brand-logo-dark.png'); }
 
 /* v24.7: Ta'minot ⇄ — «Oldi-berdi» oynasi */
 /* Ta'minot ⇄ oynasi kompyuterda keng (hamkor kartalari 2 ustunda) */

@@ -14616,12 +14616,7 @@ function showUnifiedLogin() {
           <button id="ul-go" style="width:100%;padding:13px;background:linear-gradient(135deg,#B8700C,#8A5208);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">Kirish →</button>
           <div id="ul-err" style="color:#e23d3d;font-size:12px;margin-top:8px;min-height:16px"></div>
           <button type="button" class="fw-forgot" onclick="fwPwForgot(document.getElementById('ul-login')?.value||'')">Parolni unutdingizmi?</button>
-          <div style="margin-top:10px;padding-top:12px;border-top:1px solid #eef0f4;font-size:11.5px;color:#8b95a5;line-height:1.7">
-            Telegram ulanmagan boʻlsa —<br>administratorga murojaat qiling<br>
-            <a href="https://t.me/azimsher" target="_blank" style="color:#B8700C;text-decoration:none;font-weight:700">@azimsher</a>
-            &nbsp;·&nbsp;
-            <a href="tel:+998913671212" style="color:#B8700C;text-decoration:none;font-weight:700">+998 91 367 12 12</a>
-          </div>
+          ${_ulContactHtml()}
         </div>
       </div>`;
     document.getElementById('ul-go').addEventListener('click', () => _ulSubmit());
@@ -15382,4 +15377,21 @@ function partnerTgUnlink(pid) {
   if (!confirm(`${p.name}: Telegram ulanishi uzilsinmi? Hisobotlar endi yuborilmaydi.`)) return;
   delete p.tgChat; delete p.tgName; delete p.tgUser; p.updatedAt = Date.now();
   save(); auditLog(`Hamkor Telegramdan uzildi: ${p.name}`); closeSheet(); if (S.page === 'hamkorlar') pgHamkorlar();
+}
+
+// Kirish oynasi pastidagi «administratorga murojaat» kontakti — js/brand.js (FW_BRAND.contactTelegram / contactPhone).
+// Ikkalasi ham bo'sh bo'lsa, blok umuman chiqmaydi (boshqa firmaning kontakti qolib ketmasin).
+function _ulContactHtml() {
+  const b = (typeof window !== 'undefined' && window.FW_BRAND) || {};
+  const tg = String(b.contactTelegram || '').trim().replace(/^@/, '');
+  const ph = String(b.contactPhone || '').trim();
+  const links = [];
+  if (/^[A-Za-z0-9_]{3,32}$/.test(tg)) links.push(`<a href="https://t.me/${tg}" target="_blank" rel="noopener" style="color:#B8700C;text-decoration:none;font-weight:700">@${tg}</a>`);
+  const tel = ph.replace(/[^0-9+]/g, '');
+  if (tel.length >= 7) links.push(`<a href="tel:${tel}" style="color:#B8700C;text-decoration:none;font-weight:700">${esc(ph)}</a>`);
+  if (!links.length) return '';
+  return `<div style="margin-top:10px;padding-top:12px;border-top:1px solid #eef0f4;font-size:11.5px;color:#8b95a5;line-height:1.7">
+            Telegram ulanmagan boʻlsa —<br>administratorga murojaat qiling<br>
+            ${links.join('&nbsp;·&nbsp;')}
+          </div>`;
 }

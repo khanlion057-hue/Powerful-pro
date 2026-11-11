@@ -4,5 +4,7 @@
 window.FW_BRAND = {
   name: 'POWERFUL',              // firma (brend) nomi — menyu, kirish oynasi, chek, hisobotlarda
   slogan: "Arra va Rover stanoklari uchun tig'lar, instrument va asbob-uskunalar", // kirish oynasidagi qisqa shior (bo'sh bo'lishi mumkin)
+  contactTelegram: '',          // kirish oynasida «administratorga murojaat»: Telegram username (@ siz); bo'sh — ko'rinmaydi
+  contactPhone: '',             // masalan '+998 90 123 45 67'; bo'sh — ko'rinmaydi
   logo: 'assets/brand-logo.png' // standart logotip — shaffof fon (toq fonda: assets/brand-logo-dark.png avtomatik)
 };

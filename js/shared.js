@@ -1804,7 +1804,7 @@ async function fwLogoutFlow(client, name) {
     + '<b>' + bye + (name ? ', ' + String(name).replace(/[<>&"]/g, '') : '') + '</b><small>Sessiya yopilmoqda…</small>';
   document.body.appendChild(el);
   try { if (client && client.auth && client.auth.signOut) await Promise.race([client.auth.signOut(), new Promise(r => setTimeout(r, 1200))]); } catch (e) {}
-  setTimeout(() => location.replace('index.html'), 150);
+  setTimeout(() => location.replace('index.html'), 350);
 }
 
 // ═══ v24.7: PORTAL QOBIG'I — admin panel joylashuvi va uslubida (sotuvchi, diller) ═══

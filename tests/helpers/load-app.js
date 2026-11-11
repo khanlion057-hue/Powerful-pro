@@ -113,6 +113,7 @@ async function loadApp({ seedState = {}, mockRoutes = [] } = {}) {
     `,
   });
 
+  await page.addScriptTag({ path: path.join(ROOT, 'js', 'fw-round.js') });   // v25.1: so'm yaxlitlash (yagona manba)
   await page.addScriptTag({ path: path.join(ROOT, 'js', 'shared.js') });
   await page.addScriptTag({ path: path.join(ROOT, 'js', 'pos.js') });   // v24.5: savdo oynasi (admin + sotuvchi)
   await page.addScriptTag({ path: path.join(ROOT, 'js', 'main.js') });

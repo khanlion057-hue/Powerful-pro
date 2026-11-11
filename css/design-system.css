@@ -3736,3 +3736,6 @@ html[data-theme="dark"]{ --fw-pat:#e6c58f; --fw-pat-o:.045; }
   box-shadow:none !important; animation:fwBladeSpin .9s linear infinite; filter:drop-shadow(0 8px 20px rgba(224,162,58,.4)); margin:8px auto 4px; }
 .fw-load .fw-load-bar i{ display:none; }
 @media (prefers-reduced-motion:reduce){ .fw-load .fw-load-bar{ animation-duration:3s; } }
+/* v25.1: Hisobot — «Yaxlitlash chegirmalari jami» (davr bo'yicha, alohida qator) */
+.sx-li.sx-round{ background:var(--bg-card); border:1px solid var(--border); border-radius:16px; padding:6px 14px; margin:12px 0; }
+.sx-li.sx-round b{ margin-left:auto; }

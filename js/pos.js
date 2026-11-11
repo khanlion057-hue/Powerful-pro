@@ -52,10 +52,17 @@ const PI = {
 };
 
 // ── Yaxlitlash va pul ──
-function fwRound1000(n) { const v = Math.round(+n || 0); return Math.floor((v + 500) / 1000) * 1000; }   // eng yaqin ming (yarmi — yuqoriga)
+// v25.1: yaxlitlash — yagona manba js/fw-round.js (qadamlar sozlamalarda: roundPriceStep, roundTotalStep)
+function posSteps() {
+  const st = (typeof S !== 'undefined' && S && S.settings) || {};
+  const on = !POS.a || !POS.a.rounding || POS.a.rounding();
+  return FWRound.steps(Object.assign({}, st, { roundingEnabled: on }));
+}
+// Narx — sozlamadagi qadamga (standart 1 000), yarmi tepaga. Nomi eski (boshqa joylar chaqiradi), qadam — sozlamadan.
+function fwRound1000(n) { return FWRound.roundPrice(n, posSteps().price); }
 const _r2p = (n) => Math.round((+n || 0) * 100) / 100;
-// Sozlamalar → «Savdoda so'm yaxlitlash» o'chirilgan bo'lsa — so'mgacha (ming emas)
-function posRound(v) { return (!POS.a || !POS.a.rounding || POS.a.rounding()) ? fwRound1000(v) : Math.round(+v || 0); }
+// Sozlamalar → «Savdoda so'm yaxlitlash» o'chirilgan bo'lsa — butun so'mgacha
+function posRound(v) { return FWRound.roundPrice(v, posSteps().price); }
 // v25: to'liq oyna (admin) yoki sotuvchi rejimi — sotuvchi faqat summani ko'radi: izoh, chegirma, narx va foizni
 // o'zgartirish yo'q; mijoz — faqat kam/ko'p to'lovda (qarz yoki mijoz haqi uchun)
 function posFull() { return !POS.a || !POS.a.full || !!POS.a.full(); }
@@ -92,25 +99,23 @@ function posTotals() {
     subUsd += q * (+it.sellUsd || 0);
     cost += q * (+it.costUsd || 0);
   });
-  if (POS.cur === 'USD') subN = _r2p(subN); else subN = Math.round(subN);
+  if (POS.cur === 'USD') subN = _r2p(subN); else subN = FWRound.toInt(subN);
   let discN = 0;
   if (POS.disc.type === 'pct') {
     const pct = Math.max(0, Math.min(100, +POS.disc.val || 0));
-    discN = POS.cur === 'UZS' ? posRound(subN * pct / 100) : _r2p(subN * pct / 100);
-  } else discN = Math.max(0, +POS.disc.val || 0);
+    discN = POS.cur === 'UZS' ? FWRound.toInt(subN * pct / 100) : _r2p(subN * pct / 100);
+  } else discN = POS.cur === 'UZS' ? FWRound.toInt(Math.max(0, +POS.disc.val || 0)) : Math.max(0, +POS.disc.val || 0);
   discN = Math.min(discN, subN);
-  // v25: tiyin yaxlitligi — so'mda jami pastga, 100 so'mgacha (17 975 → 17 900); qoldiq chegirmaga yoziladi.
-  // Sozlamalardagi «Savdoda soʻm yaxlitlash» bilan boshqariladi. Zarar bo'ladigan bo'lsa (tannarx ma'lum) — yaxlitlanmaydi.
-  let roundN = 0;
-  if (POS.cur === 'UZS' && subN > 0 && POS.disc.reason !== 'short_payment' && (!POS.a || !POS.a.rounding || POS.a.rounding())) {
-    const r = Math.round(subN - discN) % 100;
-    if (r > 0) {
-      const usdAfter = subUsd * (1 - (discN + r) / subN);
-      if (!(cost > 0) || usdAfter >= cost - 1e-9) roundN = r;
-    }
+  // v25.1 (egasi qoidasi): jami — chegirma/foizdan KEYIN, har doim PASTGA, sozlamadagi qadamga (standart 100).
+  // Farq — «Yaxlitlash chegirmasi» (roundN). Tannarxga tegilmaydi: foyda = to'langan jami − tannarx (yaxlitlash farqicha kam).
+  // Istisno: «kam to'lov → chegirma» (short_payment) — mijoz aniq summani to'laydi, ustidan yana yaxlitlanmaydi.
+  let roundN = 0, aslN = POS.cur === 'UZS' ? subN - discN : null;
+  if (POS.cur === 'UZS' && POS.disc.reason !== 'short_payment') {
+    const rt = FWRound.cartTotals(subN, discN, posSteps().total);
+    roundN = rt.yaxlitlash_chegirmasi; aslN = rt.asl_jami;
   }
   discN += roundN;
-  const totN = POS.cur === 'UZS' ? Math.round(subN - discN) : _r2p(subN - discN);
+  const totN = POS.cur === 'UZS' ? subN - discN : _r2p(subN - discN);
   const discPct = subN > 0 ? discN / subN * 100 : 0;
   const totUsd = subUsd * (1 - discPct / 100);
   const cust = posCust();
@@ -118,7 +123,7 @@ function posTotals() {
   const creditAvailN = POS.cur === 'UZS' ? creditUzs : _r2p(creditUzs / posRate());
   const creditN = POS.useCredit ? Math.min(creditAvailN, totN) : 0;
   const needN = POS.cur === 'UZS' ? Math.round(totN - creditN) : _r2p(totN - creditN);
-  return { subN, discN, roundN, totN, discPct, subUsd, totUsd, discUsd: subUsd - totUsd, cost, profitUsd: totUsd - cost,
+  return { subN, discN, roundN, aslN, totN, discPct, subUsd, totUsd, discUsd: subUsd - totUsd, cost, profitUsd: totUsd - cost,
            units, lines: cart.length, creditAvailN, creditN, creditUzs, needN };
 }
 
@@ -428,7 +433,7 @@ function posCartInner(side) {
   const noteCard = `<button class="pos-card" onclick="posAskNote()"><span class="pos-card-ic">${PI.note}</span><span class="pos-card-t"><b>${POS.note ? 'Izoh' : 'Izoh qoʻshish'}</b><small>${POS.note ? esc(POS.note.slice(0, 60)) : 'Chekda chop etilmaydi'}</small></span>${PI.chev}</button>`;
   const discCard = `<button class="pos-card solid" onclick="posOpen('disc')"><span class="pos-card-ic amb">${PI.pct}</span><span class="pos-card-t"><b>Chekka chegirma</b><small>${t.discN - t.roundN > 0 ? '−' + posFmtN(t.discN - t.roundN) + (POS.disc.type === 'pct' ? ` (${+POS.disc.val}%)` : '') : 'Summa yoki foiz'}</small></span>${PI.chev}</button>`;
   return `${kpi}<div class="pos-lines">${lines}</div>${posFull() ? custCard + noteCard + discCard : ''}
-    <div class="pos-total">${t.discN > 0 ? `<div><span>Chegirmasiz</span><s>${posFmtN(t.subN)}</s></div>` : ''}${t.roundN > 0 ? `<div><span>Yaxlitlash</span><span>−${posFmtN(t.roundN)}</span></div>` : ''}<div class="big"><span>Jami</span><b>${posFmtN(t.totN)}</b></div></div>
+    <div class="pos-total">${t.discN > 0 ? `<div><span>Chegirmasiz</span><s>${posFmtN(t.subN)}</s></div>` : ''}${t.discN - t.roundN > 0 ? `<div><span>Chegirma</span><span>−${posFmtN(t.discN - t.roundN)}</span></div>` : ''}${t.roundN > 0 ? `<div><span>Yaxlitlash chegirmasi</span><span>−${posFmtN(t.roundN)}</span></div>` : ''}<div class="big"><span>Jami</span><b>${posFmtN(t.totN)}</b></div></div>
     <div class="pos-foot">${side ? `<button class="pos-btn ghost" onclick="posHold()">${PI.pause} Pauza</button>` : ''}<button class="pos-btn ok" onclick="posOpen('pay')">Toʻlash · ${posFmtN(t.totN)}</button></div>`;
 }
 function posCustSub(c) {
@@ -491,7 +496,7 @@ function posAskNote() {
 function posDiscView() {
   const t = posTotals(), k = POS.kp;
   const v = posParse(k.s);
-  let dN = k.type === 'pct' ? (POS.cur === 'UZS' ? posRound(t.subN * Math.min(100, v) / 100) : _r2p(t.subN * Math.min(100, v) / 100)) : Math.min(v, t.subN);
+  let dN = k.type === 'pct' ? (POS.cur === 'UZS' ? FWRound.toInt(t.subN * Math.min(100, v) / 100) : _r2p(t.subN * Math.min(100, v) / 100)) : Math.min(v, t.subN);
   const newTot = POS.cur === 'UZS' ? Math.round(t.subN - dN) : _r2p(t.subN - dN);
   const newProfit = posNToUsd(newTot) - t.cost;
   const quick = POS.cur === 'UZS' ? [1000, 5000, 10000] : [1, 5, 10];
@@ -725,6 +730,8 @@ function posBuildCtx() {
     custId: cust ? cust.id : null, custName: cust ? cust.name : 'Anonim',
     note: POS.note || '', discountReason: t.discN > 0 ? (t.discN === t.roundN ? 'rounding' : (POS.disc.reason || 'manual')) : null, roundN: t.roundN,
     roundedTotalUzs: POS.cur === 'UZS' ? t.totN : Math.round(t.totUsd * rate),
+    // v25.1: uchta alohida maydon (faqat so'm savdosi): asl jami (chegirmadan keyin), yaxlitlash chegirmasi, to'langan jami
+    ...(POS.cur === 'UZS' ? { asl_jami: t.aslN, yaxlitlash_chegirmasi: t.roundN, tolangan_jami: t.totN } : {}),
   };
 }
 function posNativeForBox(box, n) {

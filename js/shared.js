@@ -1748,7 +1748,10 @@ function fwReceiptHtml(sale, o) {
   const cu = uzs ? 'soʻm' : '$';
   const qn = (q) => Number.isInteger(q) ? fwNum(q) : String(Math.round(q * 1000) / 1000).replace('.', ',');
   const payName = { cash_uzs: 'Naqd', cash: 'Naqd', card: 'Karta', usd: 'Dollar', mixed: 'Aralash', debt: 'Qarzga' }[sale.payType] || 'Toʻlandi';
-  const discLbl = sale.discountReason === 'rounding' ? 'Yaxlitlash' : 'Chegirma';
+  // v25.1: chegirma va «Yaxlitlash chegirmasi» — alohida qatorlar (so'm savdosida saqlangan maydondan; eski savdoda — sababidan)
+  const rf = uzs && typeof FWRound !== 'undefined' ? FWRound.saleFields(sale) : null;
+  const roundD = uzs ? Math.min(c.disc, rf ? rf.yaxlitlash_chegirmasi : (sale.discountReason === 'rounding' ? c.disc : 0)) : 0;
+  const manualD = Math.max(0, c.disc - roundD);
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Chek ${esc(sale.inv || '')}</title><style>
     @page{ size:${mm}mm 297mm; margin:0 }
     html,body{background:#fff;color:#000} body{font-family:'Courier New',monospace;font-size:${mm === 58 ? 11 : 12.5}px;margin:0 auto;padding:4mm 0;width:${pw}mm}
@@ -1769,7 +1772,7 @@ function fwReceiptHtml(sale, o) {
       <div class="row sub"><span>${f(l.unit)}${l.sku ? ' · ' + esc(l.sku) : ''}</span><span>${f(l.line)}</span></div>`).join('')}
     <div class="div"></div>
     <div class="row sub"><span>${c.lines.length} xil</span><span>${esc(qn(c.units))} dona</span></div>
-    ${c.disc > 0 ? `<div class="row"><span>Jami:</span><span>${f(c.sum)} ${cu}</span></div><div class="row"><span>${discLbl}:</span><span>−${f(c.disc)} ${cu}</span></div>` : ''}
+    ${c.disc > 0 ? `<div class="row"><span>Jami:</span><span>${f(c.sum)} ${cu}</span></div>` : ''}${manualD > 0 ? `<div class="row"><span>Chegirma:</span><span>−${f(manualD)} ${cu}</span></div>` : ''}${roundD > 0 ? `<div class="row"><span>Yaxlitlash chegirmasi:</span><span>−${f(roundD)} ${cu}</span></div>` : ''}
     <div class="row tot"><span>JAMI:</span><span>${f(c.total)} ${cu}</span></div>
     ${c.credit > 0 ? `<div class="row"><span>Mijoz haqidan:</span><span>${f(c.credit)} ${cu}</span></div>` : ''}
     ${c.debt > 0 ? `<div class="row"><span>Toʻlandi:</span><span>${f(c.paid)} ${cu}</span></div><div class="row"><span>Qarz:</span><span>${f(c.debt)} ${cu}</span></div>${sale.dueDate ? `<div class="row sub"><span>Toʻlov sanasi:</span><span>${esc(fwDmy(sale.dueDate))}</span></div>` : ''}`
@@ -1957,6 +1960,11 @@ function fwDueLinks(r, text) {
   };
 }
 // Savdo yozuviga muddat maydonlari — faqat nasiya bo'lsa (server debtUsd'i bo'yicha; muddat kiritilmagan bo'lsa standart)
+// v25.1: savdo hujjatiga yaxlitlash maydonlari (asl_jami, yaxlitlash_chegirmasi, tolangan_jami) — faqat so'm savdosida
+function fwSaleRoundFields(ctx) {
+  if (!ctx || ctx.tolangan_jami == null) return {};
+  return { asl_jami: FWRound.toInt(ctx.asl_jami), yaxlitlash_chegirmasi: FWRound.toInt(ctx.yaxlitlash_chegirmasi), tolangan_jami: FWRound.toInt(ctx.tolangan_jami) };
+}
 function fwSaleDueFields(ctx, debtUsd) {
   if (!((+debtUsd || 0) > 0.004)) return {};
   const n = fwDueDaysOk(ctx && ctx.dueDays) || FW_DUE_DEFAULT_DAYS;

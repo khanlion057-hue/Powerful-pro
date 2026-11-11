@@ -37,7 +37,17 @@ async function loadLedger(admin, filial) {
     admin.from('batches').select('*').eq('filial', filial),   // v24.6: barcha ustunlar — o'tkazma partiyalarini ro'yxatga qo'shish uchun
     admin.from('sales').select('local_id,items,subtotal_usd,disc_pct,disc_usd,total_usd,paid_usd,debt_usd,profit_usd,status,edited_at').eq('filial', filial),
   ]);
-  for (const r of [c, s, b, sl]) if (r.error) throw r.error;
+  for (const r of [c, s, b]) if (r.error) throw r.error;
+  // v25.1 (47): savdoning yaxlitlash maydonlari — 47 qo'llangan bo'lsa ular ham (bo'lmasa — avvalgi ustunlar)
+  let slr = sl;
+  if (!slr.error) {
+    const sx = await admin.from('sales').select('local_id,asl_jami_uzs,yaxlitlash_chegirmasi_uzs,tolangan_jami_uzs').eq('filial', filial);
+    if (!sx.error && Array.isArray(sx.data)) {
+      const m = new Map(sx.data.map((r) => [String(r.local_id), r]));
+      slr = { ...sl, data: (sl.data || []).map((r) => ({ ...r, ...(m.get(String(r.local_id)) || {}) })) };
+    }
+  }
+  if (slr.error) throw slr.error;
   // v23.6 (29): hisobdan chiqarish hujjatlari — bazadan (29 bo'lmasa — yo'q, JSON'dagi qoladi)
   let writeoffs = null;
   const wq = admin.from('stock_writeoffs').select('*').eq('filial', filial);
@@ -57,7 +67,7 @@ async function loadLedger(admin, filial) {
   if (!su.error) (su.data || []).forEach(r => { const v = suppliers.get(String(r.supplier_local_id)); if (v) Object.assign(v, { debtCur: 'UZS', debtUzs: r2(r.debt_uzs) }); });
   const batches = new Map((b.data || []).map(r => [String(r.local_id), { qty: num(r.qty), sold: num(r.sold), status: r.status, costUsd: num(r.cost_usd),
     pid: num(r.pid), bno: r.bno || null, origin: r.origin || null, fromBranch: r.from_branch || null, date: r.batch_date ? String(r.batch_date).slice(0, 10) : null }]));
-  const sales = new Map((sl.data || []).filter(r => r.local_id).map(r => [String(r.local_id), r]));
+  const sales = new Map((slr.data || []).filter(r => r.local_id).map(r => [String(r.local_id), r]));
   return { customers, suppliers, batches, sales, writeoffs, credits };
 }
 
@@ -140,7 +150,9 @@ function overlayBranchLedger(branchObj, ledger, prev) {
         totalUsd: num(db.total_usd), paidUsd: num(db.paid_usd), debtUsd: num(db.debt_usd), profitUsd: num(db.profit_usd),
         // v24.8 (K2): tannarxni ko'rmaydigan xodim yozgan savdoda costUsd yo'q — bazadagi summa va foydadan
         ...(s.costUsd == null ? { costUsd: r4(num(db.total_usd) - num(db.profit_usd)) } : {}),
-        ...(db.edited_at ? { edited: true } : {}) });
+        ...(db.edited_at ? { edited: true } : {}),
+        // v25.1 (47): yaxlitlash maydonlari — bazadagi qiymat ustun
+        ...(db.tolangan_jami_uzs != null ? { asl_jami: num(db.asl_jami_uzs), yaxlitlash_chegirmasi: num(db.yaxlitlash_chegirmasi_uzs), tolangan_jami: num(db.tolangan_jami_uzs) } : {}) });
     }
     out.sales = list;
   }

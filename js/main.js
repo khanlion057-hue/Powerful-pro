@@ -3202,7 +3202,7 @@ async function _savdoCommitInner(ctx) {
       // tasdiq so'rasa (LOSS_ACK_REQUIRED) — bir marta so'raladi va o'sha kalit bilan qayta yuboriladi
       const _body = (ack) => ({ items: srvItems, discPct: ctx.discPct, paidUsd: ctx.paidUsd, custId, boxPayments, inv, idemKey, filial: S.branch,
           saleLocalId: saleId, payType: ctx.payType, boxId: ctx.boxId || null, custName: (S.customers.find(c => c.id === custId) || {}).name || 'Anonim', saleDate: td(),
-          lossAck: !!ack, overpay, creditUseUzs, discountReason: ctx.discountReason || null, priceMode: ctx.mode === 'wholesale' ? 'wholesale' : 'retail', dueDate: ctx.dueDate || null, dueDays: ctx.dueDays || null });
+          lossAck: !!ack, overpay, creditUseUzs, discountReason: ctx.discountReason || null, priceMode: ctx.mode === 'wholesale' ? 'wholesale' : 'retail', dueDate: ctx.dueDate || null, dueDays: ctx.dueDays || null, ...fwSaleRoundFields(ctx) });
       // v25: oflayn bo'lsa — savdo navbatga (internet qaytganda shu kalit bilan yuboriladi)
       offlineQ = { id: idemKey, kind: 'sale', url: '/.netlify/functions/sale-checkout-atomic', body: _body(!!ctx.lossAck || netUsd < -0.005), branch: S.branch };
       if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new TypeError('Failed to fetch (oflayn)');
@@ -3259,7 +3259,7 @@ async function _savdoCommitInner(ctx) {
     // P1.2 — haqiqatda olinadigan so'm jami (yaxlit) va savdo vaqtidagi kurs (keyin kurs o'zgarsa ham o'zgarmaydi)
     roundedTotalUzs: ctx.roundedTotalUzs, changeN: ctx.changeN || undefined, paidN: ctx.paidN,
     rateUsdUzs: CUR.usdUzs, rateUsdCny: CUR.usdCny, rateDate: CUR.lastRateDate || td(),
-    ...fwSaleDueFields(ctx, debtUsd),   // v24.9: nasiya muddati
+    ...fwSaleDueFields(ctx, debtUsd), ...fwSaleRoundFields(ctx),   // v24.9: nasiya muddati; v25.1: yaxlitlash maydonlari
   };
   if (queued) sale.pending = true;   // v25: oflayn — serverga hali yetmagan
   S.sales.push(sale);
@@ -11485,6 +11485,7 @@ function openKunlikHisob() {
         ${kpi('Tushum', CUR.fmtUsd(sum.totalRevenue), 'gold', paySub)}
         ${kpi('Qarzga sotildi', CUR.fmtUsd(sum.totalDebt), sum.totalDebt>0?'red':'')}
         ${kpi('Qarz undirildi', CUR.fmtUsd(sum.debtIn), sum.debtIn>0?'emerald':'')}
+        ${(() => { const rs = FWRound.periodRoundingTotal((S.sales || []).filter(x => x && x.date === today)); return rs > 0 ? kpi('Yaxlitlash chegirmalari', fwNum(rs) + ' soʻm', '', 'mijoz foydasiga') : ''; })()}
         ${kpi('Xarajat', '−'+CUR.fmtUsd(sum.totalExpense), sum.totalExpense>0?'red':'', sum.expenseCount?`${sum.expenseCount} ta`:'')}
         ${seeProfit ? kpi('Sof natija', (sum.netUsd>=0?'+':'')+CUR.fmtUsd(sum.netUsd), sum.netUsd>=0?'emerald':'red', `foyda ${CUR.fmtUsd(sum.totalProfit)}${sum.writeoff>0?` · hisobdan chiqarish −${CUR.fmtUsd(sum.writeoff)}`:''}`) : ''}
       </div>
@@ -12416,6 +12417,8 @@ function pgHisobot() {
     </button>
   </section>
 
+  ${(() => { const rs = FWRound.periodRoundingTotal(D.sales); return `<div class="sx-li sx-round" title="Narx 1 000 soʻmga, jami summa 100 soʻmga yaxlitlanadi (mijoz foydasiga) — shu davrdagi farqlar yigʻindisi"><span class="sx-li-ic" style="--c:var(--indigo)">${ICONF.calc}</span><span class="sx-li-l">Yaxlitlash chegirmalari jami</span><b>${fwNum(rs)} soʻm</b></div>`; })()}
+
   <section class="sx-cash">
     <div class="sx-cash-h"><span class="sx-tile-ic" style="--c:var(--emerald)">${ICONF.payments}</span>
       <div><b>Kassadagi naqd pul</b><small>Davr ichida naqd ${D.cIn-D.cOut>=0?'qoʻshildi':'kamaydi'}</small></div>
@@ -12707,7 +12710,8 @@ function pgSozlamalar() {
       ro({ic:'inbox', c:'sky', t:'Kirim va hisob valyutasi', sub: FW_ACC[fwAccMode()][1] + ' · savdo — soʻmda' + (fwAccLock().state === 'locked' ? ' · 🔒 qulflangan' : fwAccLock().state === 'pass' ? ` · 🔒 ${fwAccLock().left} kun parol bilan` : ''), val: FW_ACC[fwAccMode()][0], on:"fwAccSheet()"}),
       ro({ic:'percent', c:'amber', t:'Xitoy bank komissiyasi', sub:'CNY kirim uchun', val:`${(CUR.BANK_FEE*100).toFixed(2)}%`, on:"stEditBankFee()"}),
       ro({ic:'percent', c:'red', t:'Maksimal chegirma', sub:'Admin boʻlmagan xodim narxni shundan koʻp tushira olmaydi (chakana / optom narxdan)', val:`${stMaxDiscPct()}%`, on:"stEditMaxDisc()"}),
-      ro({ic:'calc', c:'indigo', t:'Savdoda soʻm yaxlitlash', sub:'Narx — eng yaqin 1 000 soʻm; jami — pastga 100 soʻm (17 975 → 17 900)', toggle:true, id:'st-rounding', checked: st.roundingEnabled!==false, on:"stSetRounding(this.checked)"}),
+      ro({ic:'calc', c:'indigo', t:'Savdoda soʻm yaxlitlash', sub:`Narx ${fwNum(FWRound.steps({ ...st, roundingEnabled: true }).price)} soʻmga, jami summa ${fwNum(FWRound.steps({ ...st, roundingEnabled: true }).total)} soʻmga yaxlitlanadi (mijoz foydasiga)`, toggle:true, id:'st-rounding', checked: st.roundingEnabled!==false, on:"stSetRounding(this.checked)"}),
+      ro({ic:'calc', c:'sky', t:'Yaxlitlash qadamlari', sub:'Narx — eng yaqin qadamga (yarmi tepaga); jami — har doim pastga', val:`${fwNum(FWRound.steps({ ...st, roundingEnabled: true }).price)} / ${fwNum(FWRound.steps({ ...st, roundingEnabled: true }).total)}`, on:"stRoundStepsSheet()"}),
       ro({ic:'warning', c:'amber', t:'\u00abOmborda kam\u00bb chegarasi', sub:'Yangi mahsulotlar uchun', val:`${n(st.lowStockDefault??5)} dona`, on:"stLowStockSheet()"}),
       ro({ic:'edit', c:'indigo', t:'Chek yozuvi (standart)', sub: esc(st.receipt||'Xaridingiz uchun rahmat!') + ' · filial oʻz matnini bersa — oʻshanisi', on:"stEditReceipt()"}),
     ]) : group('Butun firma', [
@@ -12968,6 +12972,25 @@ function stScanSheet() {
       `<label style="display:flex;gap:10px;align-items:flex-start;padding:8px 0"><input type="radio" name="st-scan" value="${k}" ${m === k ? 'checked' : ''} onchange="setScanMode(this.value);closeSheet();pgSozlamalar()"><span><b>${l}</b><br><small style="color:var(--text-muted)">${d}</small></span></label>`).join('')}</div>` });
 }
 function stSetRounding(on) { S.settings.roundingEnabled = !!on; save(); auditLog('Yaxlitlash: '+(on?'yoqildi':"o'chirildi")); }
+// v25.1: yaxlitlash qadamlari — sozlamada (kodga qattiq yozilmagan). Narx: eng yaqin qadam; jami: pastga.
+function stRoundStepsSheet() {
+  const cur = FWRound.steps({ ...S.settings, roundingEnabled: true });
+  const opt = (list, v) => list.map(x => `<option value="${x}" ${x === v ? 'selected' : ''}>${fwNum(x)} soʻm</option>`).join('');
+  openSheet({ ic: 'calc', c: 'sky', title: 'Yaxlitlash qadamlari', sub: 'Faqat soʻmdagi savdo uchun',
+    body: `<div class="bs-card"><label class="bs-lbl" for="st-rp">Tovar narxi — eng yaqin</label>
+      <select class="bs-in" id="st-rp">${opt([100, 500, 1000, 5000], cur.price)}</select>
+      <small class="bs-note">Masalan 1 000: 12 400 → 12 000; 12 500 → 13 000</small>
+      <label class="bs-lbl" for="st-rt" style="margin-top:10px">Savat jami — pastga</label>
+      <select class="bs-in" id="st-rt">${opt([1, 10, 50, 100, 500, 1000], cur.total)}</select>
+      <small class="bs-note">Masalan 100: 17 975 → 17 900; farq chekda «Yaxlitlash chegirmasi» boʻlib chiqadi</small></div>`,
+    foot: `<button class="bs-btn" onclick="stRoundStepsSave()">Saqlash</button>` });
+}
+function stRoundStepsSave() {
+  const p = +document.getElementById('st-rp')?.value, t = +document.getElementById('st-rt')?.value;
+  if (!FWRound.STEPS_OK.includes(p) || !FWRound.STEPS_OK.includes(t)) { toast('Qadam notoʻgʻri', 'error'); return; }
+  S.settings.roundPriceStep = p; S.settings.roundTotalStep = t; save();
+  auditLog(`Yaxlitlash qadamlari: narx ${p}, jami ${t}`); closeSheet(); pgSozlamalar(); fwSaveToast('Saqlandi');
+}
 function stBranchMenu(key) {
   const active = isBranchActive(key);
   modal(`

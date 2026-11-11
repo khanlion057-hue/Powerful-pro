@@ -734,7 +734,7 @@ async function svCommitSale(ctx) {
     const _body = (ack) => ({
       items, discPct: ctx.discPct, paidUsd: ctx.paidUsd, custId, boxPayments, inv, idemKey: S._svCk.key, filial: SV_BRANCH,
       saleLocalId: S._svCk.saleId, payType: ctx.payType, boxId: ctx.boxId || null, custName: cust?.name || 'Anonim', saleDate: td(),
-      lossAck: !!ack, overpay, creditUseUzs, discountReason: ctx.discountReason || null, priceMode: ctx.mode === 'wholesale' ? 'wholesale' : 'retail', dueDate: ctx.dueDate || null, dueDays: ctx.dueDays || null });
+      lossAck: !!ack, overpay, creditUseUzs, discountReason: ctx.discountReason || null, priceMode: ctx.mode === 'wholesale' ? 'wholesale' : 'retail', dueDate: ctx.dueDate || null, dueDays: ctx.dueDays || null, ...fwSaleRoundFields(ctx) });
     const _send = (ack) => authFetch('/.netlify/functions/sale-checkout-atomic', { method: 'POST', body: JSON.stringify(_body(ack)) });
     let result;
     try {
@@ -769,7 +769,7 @@ async function svCommitSale(ctx) {
       paidUsd: Math.min(ctx.paidUsd, +result.totalUsd), debtUsd: +result.debtUsd, payType: ctx.payType, boxId: ctx.boxId || null,
       mixedRows: ctx.mixedRows, profitUsd: +result.profitUsd, status: 'done', staffId: ME.id, staffName: ME.name,
       cur: ctx.cur, mode: ctx.mode, note: ctx.note || undefined, discountReason: ctx.discountReason || undefined, roundedTotalUzs: ctx.roundedTotalUzs, changeN: ctx.changeN || undefined, paidN: ctx.paidN, rateUsdUzs: CUR.usdUzs,
-      ...fwSaleDueFields(ctx, +result.debtUsd),   // v24.9: nasiya muddati
+      ...fwSaleDueFields(ctx, +result.debtUsd), ...fwSaleRoundFields(ctx),   // v24.9: nasiya muddati; v25.1: yaxlitlash maydonlari
     };
     S.sales.push(sale);
     if (cust) cust.total = (cust.total || 0) + CUR.toUzs(sale.totalUsd);
@@ -792,7 +792,7 @@ async function svCommitSale(ctx) {
     subtotalUsd: ctx.subtotalUsd, disc: ctx.discPct, discUsd: ctx.discUsd, totalUsd: ctx.totalUsd,
     paidUsd: ctx.paidUsd, debtUsd: ctx.debtUsd, payType: ctx.payType, boxId: ctx.boxId || null, mixedRows: ctx.mixedRows,
     profitUsd: ctx.profitUsd, status: 'done', staffId: ME.id, staffName: ME.name, cur: ctx.cur, mode: ctx.mode, note: ctx.note || undefined, roundedTotalUzs: ctx.roundedTotalUzs, changeN: ctx.changeN || undefined, paidN: ctx.paidN,
-    ...fwSaleDueFields(ctx, ctx.debtUsd),   // v24.9: nasiya muddati
+    ...fwSaleDueFields(ctx, ctx.debtUsd), ...fwSaleRoundFields(ctx),   // v24.9: nasiya muddati; v25.1: yaxlitlash maydonlari
   };
   S.sales.push(sale);
   ctx.items.forEach(it => deductFIFO(it.pid, it.qty));
@@ -811,7 +811,7 @@ function svQueueOffline(ctx, o) {
     paidUsd: Math.min(ctx.paidUsd, ctx.totalUsd), debtUsd: ctx.debtUsd, payType: ctx.payType, boxId: ctx.boxId || null,
     mixedRows: ctx.mixedRows, profitUsd: ctx.profitUsd, status: 'done', pending: true, staffId: ME.id, staffName: ME.name,
     cur: ctx.cur, mode: ctx.mode, note: ctx.note || undefined, discountReason: ctx.discountReason || undefined, roundedTotalUzs: ctx.roundedTotalUzs, changeN: ctx.changeN || undefined, paidN: ctx.paidN, rateUsdUzs: CUR.usdUzs,
-    ...fwSaleDueFields(ctx, ctx.debtUsd),
+    ...fwSaleDueFields(ctx, ctx.debtUsd), ...fwSaleRoundFields(ctx),
   };
   S.sales.push(sale);
   // Ko'rinish uchun mahalliy qoldiq (server javobi kelganda haqiqiy qiymat bilan almashtiriladi)

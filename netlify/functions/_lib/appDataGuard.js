@@ -333,6 +333,12 @@ function normalizeIncomingSettings(ex, nv) {
   };
   if (Object.prototype.hasOwnProperty.call(out, 'tgBranchChats')) out.tgBranchChats = chatMap(out.tgBranchChats, /^[A-Za-z0-9_-]{1,40}$/);
   if (Object.prototype.hasOwnProperty.call(out, 'tgDealerChatMap')) out.tgDealerChatMap = chatMap(out.tgDealerChatMap, /^\d{1,15}$/);
+  // v25.1: yaxlitlash qadamlari — faqat ruxsat etilgan qiymatlar (js/fw-round.js STEPS_OK); aks holda avvalgisi
+  ['roundPriceStep', 'roundTotalStep'].forEach((k) => {
+    if (out[k] == null) return;
+    const v = Number(out[k]);
+    if (![1, 10, 50, 100, 200, 500, 1000, 5000, 10000].includes(v)) { if (prev[k] !== undefined) out[k] = prev[k]; else delete out[k]; } else out[k] = v;
+  });
   if (out.tgRemindHour != null) { const h = parseInt(out.tgRemindHour, 10); out.tgRemindHour = h >= 6 && h <= 22 ? h : 9; }
   return out;
 }

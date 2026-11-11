@@ -4,6 +4,7 @@
 // Sana — ilovadagi savdo sanasi bilan bir xil (UTC sana); yuborish soati Toshkent vaqti bo'yicha
 // 06:00–23:00 oralig'ida, bu oraliqda Toshkent va UTC sanasi bir xil.
 'use strict';
+const FWRound = require('../../../js/fw-round.js');
 
 const num = (v) => { const x = Number(v); return Number.isFinite(x) ? x : 0; };
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
@@ -43,6 +44,7 @@ function branchDay(b, date, rate) {
   sales.forEach((s) => (s.items || []).forEach((i) => { const k = i.name || i.sku || ('#' + i.pid); prod[k] = (prod[k] || 0) + num(i.qty); }));
   const boxes = (b.cashboxes || []).filter((k) => k && k.type !== 'qobiljon');
   return {
+    roundUzs: FWRound.periodRoundingTotal(sales),   // v25.1: yaxlitlash chegirmalari jami (so'm)
     count: sales.length, revenue: sum(sales, 'totalUsd'), profit: sum(sales, 'profitUsd'), newDebt: sum(sales, 'debtUsd'), pay,
     expense: sum(exp, 'amtUsd'), expenseCount: exp.length, debtIn, handed, closings: closings.length,
     custDebtUsd: (b.customers || []).reduce((a, c) => a + (rate > 0 ? Math.max(0, num(c && c.debt)) / rate : 0), 0),
@@ -97,6 +99,7 @@ function buildDailyReport(data, date, extra = {}) {
       R.push(row('Foyda', usd(d.profit)));
       R.push(row(`Xarajat${d.expenseCount ? ` (${d.expenseCount})` : ''}`, usd(d.expense)));
       R.push(row('Sof foyda', usd(d.profit - d.expense)));
+      if (d.roundUzs > 0) R.push(row('Yaxlitlash chegirmalari', uzs(d.roundUzs)));
       if (d.debtIn > 0) R.push(row('Undirilgan qarz', usd(d.debtIn)));
       R.push(d.handed > 0 ? row('Bosh kassaga', usd(d.handed)) : row('Kassa', 'yopilmagan'));
     }

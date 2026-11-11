@@ -9917,3 +9917,17 @@ end;
 $$;
 revoke all on function public.sale_checkout_v37(text, text, jsonb, jsonb, bigint, text, text, boolean, jsonb, numeric, text) from public, anon, authenticated;
 grant execute on function public.sale_checkout_v37(text, text, jsonb, jsonb, bigint, text, text, boolean, jsonb, numeric, text) to service_role;
+
+-- ────────────────────────────────────────────────────────────────────
+-- 47-migratsiya (supabase-migration-47-yaxlitlash.sql) — savdoda so'm yaxlitlash maydonlari
+-- ────────────────────────────────────────────────────────────────────
+alter table public.sales add column if not exists asl_jami_uzs bigint;
+alter table public.sales add column if not exists yaxlitlash_chegirmasi_uzs bigint;
+alter table public.sales add column if not exists tolangan_jami_uzs bigint;
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'sales_yaxlitlash_chk' and conrelid = 'public.sales'::regclass) then
+    alter table public.sales add constraint sales_yaxlitlash_chk check (
+      asl_jami_uzs is null or (yaxlitlash_chegirmasi_uzs >= 0 and tolangan_jami_uzs >= 0
+                               and asl_jami_uzs = tolangan_jami_uzs + yaxlitlash_chegirmasi_uzs));
+  end if;
+end $$;

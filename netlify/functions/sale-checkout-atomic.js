@@ -3,6 +3,7 @@
 // savdo, mijoz qarzi, kassa balansi, ta'minotchi qarzi BITTA tranzaksiyada.
 // RBAC + filial-server-tomonidan aniqlash + idempotency — barchasi bor.
 const { notifyCreditSale } = require('./_lib/tgEvents');
+const FWRound = require('../../js/fw-round.js');
 const { getAdminClient, json, methodGuard, parseBody, requireStaffAuth, resolveFilial, serverError } = require('./_lib/supabaseAdmin');
 const { claimIdempotent, completeIdempotent, releaseIdempotent, claimResponse } = require('./_lib/idempotency');
 const { cashAuthorityOn, loadBranchBoxes } = require('./_lib/cashAuthority');
@@ -46,6 +47,25 @@ function validateCheckout(b) {
     if (b.custId == null) return "Haqdan foydalanish uchun mijoz tanlanishi shart";
   }
   return null;
+}
+
+// v25.1: so'm yaxlitlash — 3 ta maydon (asl_jami, yaxlitlash_chegirmasi, tolangan_jami) savdo qatoriga (47-migratsiya).
+// Brauzer yuborgan qiymatlar TEKSHIRILADI: butun son, manfiy emas, asl = to'langan + farq, farq < jami qadami (sozlamadan).
+// Noto'g'ri yoki 47 qo'llanmagan bo'lsa — savdo baribir saqlangan (bu faqat qo'shimcha maydon), xato logga.
+function roundingFieldsOf(body, settings) {
+  const a = body.asl_jami, y = body.yaxlitlash_chegirmasi, t = body.tolangan_jami;
+  if (a == null || y == null || t == null) return null;
+  if (![a, y, t].every((v) => Number.isSafeInteger(v) && v >= 0)) return null;
+  if (a !== t + y) return null;
+  if (y >= FWRound.steps(settings).total && y > 0) return null;
+  return { asl_jami_uzs: a, yaxlitlash_chegirmasi_uzs: y, tolangan_jami_uzs: t };
+}
+async function saveRoundingFields(admin, filial, localId, body, settings) {
+  const f = roundingFieldsOf(body, settings || {}); if (!f || !localId) return;
+  try {
+    const { error } = await admin.from('sales').update(f).eq('filial', filial).eq('local_id', String(localId));
+    if (error && error.code !== '42703') console.warn('[sale-checkout-atomic] yaxlitlash maydonlari:', error.message);   // 42703 — 47 qo'llanmagan
+  } catch (e) { console.warn('[sale-checkout-atomic] yaxlitlash maydonlari:', e && e.message); }
 }
 
 // v25.1: nasiya savdo — Telegram guruhiga (mijoz, telefon, mahsulotlar, qaytarish sanasi). Savdo yozilgandan keyin;
@@ -202,6 +222,10 @@ exports.handler = async (event) => {
       // v24.8 (K2): tannarx va foyda — faqat ruxsat egasiga (zarar summasi — 32-migratsiya qaroridek, alohida 409 javobda)
       const out = redactLedgerResponse({ ...data, ledger: true }, auth);
       await completeIdempotent(admin, claim, out);
+      if (!(data && data.replay)) {
+        let st = {}; try { st = ((await loadMain()) || {}).settings || {}; } catch (_) {}
+        await saveRoundingFields(admin, filial, body.saleLocalId != null ? String(body.saleLocalId) : opKey.slice(0, 64), body, st);
+      }
       await creditNotice(admin, body, auth, filial, data);
       return json(out, 200);
     }

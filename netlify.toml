@@ -1,6 +1,7 @@
 # Powerful PRO — Netlify sozlamalari
 # build: dist/ papkasi yig'iladi (faqat sayt fayllari; testlar/SQL/hujjatlar internetga chiqmaydi)
 [build]
+  base = "/"
   command = "node scripts/build.js"
   publish = "dist"
   functions = "netlify/functions"

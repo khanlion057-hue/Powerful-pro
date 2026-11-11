@@ -3720,3 +3720,19 @@ html[data-theme="dark"]{ --fw-pat:#e6c58f; --fw-pat-o:.045; }
   box-shadow:none !important; animation:fwBladeSpin .9s linear infinite; filter:drop-shadow(0 8px 20px rgba(224,162,58,.4)); margin:8px auto 4px; }
 .fw-splash .fw-load-bar i{ display:none; }
 @media (prefers-reduced-motion:reduce){ .fw-splash .fw-load-bar{ animation-duration:3s; } }
+
+/* ═══ Barcha yuklanish ekranlari bir xil (admin #bp-loading.fw-load ham, portallar .fw-splash ham):
+   ko'mir-qora + oltin fon, oq yozuvli logo, uzun satr o'rniga katta aylanuvchi arra tig'i.
+   Avval admin panelda yorug' fon va uzun satr qolib ketgan edi (faqat .fw-splash tuzatilgan edi). ═══ */
+.fw-load, .fw-splash.fw-load{
+  background:radial-gradient(110% 80% at 88% 6%, rgba(224,162,58,.38) 0%, transparent 55%),
+             radial-gradient(90% 70% at 0% 100%, rgba(138,82,8,.32) 0%, transparent 60%),
+             linear-gradient(160deg,#1b1c1f 0%,#26272b 50%,#151517 100%) !important; color:#f5ead6; }
+.fw-load::before{ background-color:#f3dfb8; opacity:.07; }
+.fw-load .fw-lock.on-light img[data-brand-logo][src$="assets/brand-logo.png"]{ content:url('../assets/brand-logo-dark.png'); }
+.fw-load .fw-lock.on-light .fw-lock-fb{ color:#f5ead6; }
+.fw-load .fw-load-t{ color:#f5ead6; } .fw-load .fw-load-s{ color:#c9b89a; }
+.fw-load .fw-load-bar{ width:96px; height:96px; padding:0; border-radius:50%; overflow:visible; background:url('../assets/saw-blade.svg') center/contain no-repeat !important;
+  box-shadow:none !important; animation:fwBladeSpin .9s linear infinite; filter:drop-shadow(0 8px 20px rgba(224,162,58,.4)); margin:8px auto 4px; }
+.fw-load .fw-load-bar i{ display:none; }
+@media (prefers-reduced-motion:reduce){ .fw-load .fw-load-bar{ animation-duration:3s; } }

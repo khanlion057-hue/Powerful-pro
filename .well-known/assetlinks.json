@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "uz.powerfulgroup.app",
+    "sha256_cert_fingerprints": ["17:5F:54:F6:79:BD:65:89:67:08:38:D3:89:9D:32:AF:F0:22:FB:89:21:2C:5F:33:84:A1:90:EC:68:DE:84:DE"]
+  }
+}]

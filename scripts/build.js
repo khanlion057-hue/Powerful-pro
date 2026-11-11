@@ -10,7 +10,7 @@ const { checkAnonKey, checkUrl, parseConfigJs } = require('./lib/config');
 
 const ROOT = path.join(__dirname, '..');
 const DIST = path.join(ROOT, 'dist');
-const SITE = ['index.html', 'sotuvchi.html', 'diller.html', '404.html', 'manifest.json', 'sw.js', 'icon-180.png', 'icon-192.png', 'icon-512.png', 'assets', 'css', 'js'];
+const SITE = ['index.html', 'sotuvchi.html', 'diller.html', '404.html', 'manifest.json', 'sw.js', 'icon-180.png', 'icon-192.png', 'icon-512.png', 'assets', 'css', 'js', '.well-known'];
 
 function copy(src, dst) {
   const st = fs.statSync(src);

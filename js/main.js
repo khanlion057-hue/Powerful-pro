@@ -12990,7 +12990,14 @@ function stEditTelegram() {
       ${meSw('st-tg-ev-pay', 'Mijoz qarz toʻlovi', 'Har toʻlovda: kim, qancha toʻladi va qancha qoldi; toʻliq yopilsa — alohida belgi', on('pay'))}
       ${meSw('st-tg-ev-dealer', 'Diller oldi-berdisi va toʻlovlari', 'Joʻnatma (sotish uchun yoki qarzga), qaytarish, diller savdosi, toʻlov — mahsulotlar roʻyxati va qarz qoldigʻi bilan', on('dealer'))}
       ${meSw('st-tg-ev-month', 'Oy yakuni — dillerlar hisoboti', 'Har oyning 1-kuni: oʻtgan oy boʻyicha har diller olgani, toʻlagani va qarzi', on('month'))}
-      ${meField('Dillerlar guruhi/kanali (ixtiyoriy)', `<input class="form-control" id="st-tg-dealer-chats" placeholder="@kanal_nomi, -1001234567890" value="${esc((Array.isArray(st.tgDealerChats)?st.tgDealerChats:[]).join(', '))}">`, "Boʻsh qolsa — diller xabarlari asosiy guruhga. Vergul bilan, koʻpi bilan 5 ta.")}`; })()}
+      ${meSw('st-tg-ev-copyMain', 'Asosiy guruhga hammasidan nusxa', 'Yoqiq boʻlsa — barcha filial va dillerlar xabarlari sizning asosiy guruhingizga ham keladi (umumiy nazorat)', on('copyMain'))}
+      ${meField('Barcha dillerlar umumiy guruhi (ixtiyoriy)', `<input class="form-control" id="st-tg-dealer-chats" placeholder="@kanal_nomi, -1001234567890" value="${esc((Array.isArray(st.tgDealerChats)?st.tgDealerChats:[]).join(', '))}">`, "Faqat egasi/rahbariyat uchun — barcha dillerlar xabarlari. Boʻsh qolsa — asosiy guruhga.")}`; })()}
+      ${meSec('Filial guruhlari — har biriga faqat oʻz filiali')}
+      <p class="bs-note" style="margin:-4px 0 8px">Filial guruhiga faqat shu filialning nasiya, toʻlov, eslatma va kunlik hisoboti boradi. Boshqa filial maʼlumoti chiqmaydi.</p>
+      ${Object.keys(S._store || { baza: 1 }).map(k => meField(esc(branchName(k)), `<input class="form-control" data-tg-br="${esc(k)}" placeholder="-1001234567890 yoki @guruh" value="${esc((st.tgBranchChats || {})[k] || '')}">`, '')).join('')}
+      ${meSec('Diller guruhlari — har biriga faqat oʻzi')}
+      <p class="bs-note" style="margin:-4px 0 8px">Diller guruhiga faqat shu dillerning joʻnatma, qaytarish, savdo, toʻlov va oy yakuni hisoboti boradi. Boshqa diller maʼlumoti chiqmaydi.</p>
+      ${(S.dealers || []).length ? (S.dealers || []).map(d => meField(esc(d.name || ('Diller #' + d.id)), `<input class="form-control" data-tg-dl="${esc(String(d.id))}" placeholder="-1001234567890 yoki @guruh" value="${esc((st.tgDealerChatMap || {})[d.id] || '')}">`, '')).join('') : '<p class="bs-note">Hali diller yoʻq.</p>'}
       ${meSec("Yangi mahsulot eʼloni (onlayn-doʻkon)")}
       ${meSw('st-tg-ann', "Yangi mahsulot qoʻshilganda kanal/guruhlarga eʼlon qilinsin", "Rasm, nom, narx va havola bilan. Bir mahsulot bir chatga faqat bir marta yuboriladi; xato boʻlsa — qayta yuborish mumkin.", !!st.tgAnnounceOn)}
       <div class="tgw-row" style="margin-bottom:8px"><a class="btn btn-ghost btn-sm" id="tgw-add-channel" href="${fwTgBotName() ? 'https://t.me/' + esc(fwTgBotName()) + '?startchannel=powerful&admin=post_messages' : '#'}" target="_blank" rel="noopener">Botni kanalga admin qilish ↗</a>
@@ -13087,7 +13094,20 @@ function stSaveTelegram() {
   const _badDl = _dlChats.find(x => !/^-?\d{3,20}$|^@[A-Za-z0-9_]{4,64}$/.test(x));
   if (_badDl) { toast(`Dillerlar guruhi notoʻgʻri: ${_badDl} (@nom yoki -100… raqam)`, 'error'); return; }
   S.settings.tgDealerChats = [...new Set(_dlChats)].slice(0, 5);
-  S.settings.tgEvt = Object.fromEntries(['credit', 'pay', 'remind', 'dealer', 'month'].map(k => [k, !!document.getElementById('st-tg-ev-' + k)?.checked]));
+  S.settings.tgEvt = Object.fromEntries(['credit', 'pay', 'remind', 'dealer', 'month', 'copyMain'].map(k => [k, !!document.getElementById('st-tg-ev-' + k)?.checked]));
+  // v25.1: filial va diller guruhlari — MAXFIYLIK: bitta guruh ikki filial/dillerga yoki egasining guruhiga berilmaydi
+  const _CHAT_OK = (x) => /^-?\d{3,20}$|^@[A-Za-z0-9_]{4,64}$/.test(x);
+  const _own = [];
+  const _readMap = (attr) => { const o = {}; document.querySelectorAll(`[${attr}]`).forEach(el => { const v = el.value.trim(); if (v) { o[el.getAttribute(attr)] = v; _own.push({ v, who: el.closest('.me-field, .form-group, label')?.querySelector('label, .me-l, b')?.textContent || el.getAttribute(attr) }); } }); return o; };
+  const _brMap = _readMap('data-tg-br'), _dlMap = _readMap('data-tg-dl');
+  const _badOwn = _own.find(x => !_CHAT_OK(x.v));
+  if (_badOwn) { toast(`Guruh notoʻgʻri: ${_badOwn.v} (@nom yoki -100… raqam)`, 'error'); return; }
+  const _seen = new Map();
+  for (const x of _own) { if (_seen.has(x.v)) { toast(`Bitta guruh ikki joyga berilgan (${x.v}) — har filial/dillerning guruhi alohida boʻlishi kerak`, 'error'); return; } _seen.set(x.v, x.who); }
+  const _ownerChats = new Set([chat, ..._dlChats].filter(Boolean));
+  const _leak = _own.find(x => _ownerChats.has(x.v));
+  if (_leak) { toast(`${_leak.v} — bu sizning asosiy/umumiy guruhingiz; filial yoki dillerga boshqa guruh bering`, 'error'); return; }
+  S.settings.tgBranchChats = _brMap; S.settings.tgDealerChatMap = _dlMap;
   S.settings.tgRemindHour = Math.min(22, Math.max(6, parseInt(document.getElementById('st-tg-remind-hour')?.value || '9', 10) || 9));
   S.settings.tgAnnounceOn = !!document.getElementById('st-tg-ann')?.checked;
   S.settings.tgAnnounceChats = [...new Set(_annChats)].slice(0, 10);

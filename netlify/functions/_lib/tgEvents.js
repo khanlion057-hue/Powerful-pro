@@ -7,9 +7,12 @@
 //   • Xabar yuborilmasa ham amal BEKOR QILINMAYDI (best-effort, qisqa vaqt chegarasi, xato faqat logga).
 //   • Bot tokeni faqat serverda (app_data.settings.tgBotToken); javobga qo'shilmaydi.
 // Sozlamalar (app_data.settings):
-//   tgChatId            — asosiy guruh (nasiya, to'lov, eslatma)
-//   tgDealerChats       — dillerlar guruhi/kanali (bo'sh bo'lsa — asosiy guruh); ro'yxat yoki vergul bilan
-//   tgEvt               — { credit, pay, remind, dealer, month } (berilmagan → yoqiq)
+//   tgChatId            — egasining asosiy guruhi (hamma hodisa — umumiy nazorat; tgEvt.copyMain=false bo'lsa yo'q)
+//   tgBranchChats       — { filialKaliti: chat } — HAR FILIALNING O'Z GURUHI: faqat shu filialning nasiya/to'lov/eslatma/hisoboti
+//   tgDealerChatMap     — { dillerId: chat } — HAR DILLERNING O'Z GURUHI: faqat shu dillerning oldi-berdisi va oy yakuni
+//   tgDealerChats       — barcha dillerlar bo'yicha umumiy guruh/kanal (bo'sh bo'lsa — asosiy guruh)
+//   tgEvt               — { credit, pay, remind, dealer, month, copyMain } (berilmagan → yoqiq)
+// MAXFIYLIK: filial guruhiga boshqa filial, diller guruhiga boshqa diller ma'lumoti HECH QACHON yuborilmaydi.
 //   tgRemindHour        — eslatma soati (Toshkent, 6–22; standart 9)
 'use strict';
 const { TOKEN_RE, CHAT_RE, tgSend } = require('./dailyReportRun');
@@ -35,10 +38,17 @@ function chatList(v) {
   const raw = Array.isArray(v) ? v : String(v || '').split(/[\s,;]+/);
   return [...new Set(raw.map((x) => String(x || '').trim()).filter((x) => CHAT_RE.test(x)))].slice(0, 5);
 }
-function chatsFor(st, kind) {
+// Kimga: o'z guruhi (filial yoki diller) + egasining umumiy guruhi. ctx: { filial } yoki { dealerId }; own:false — faqat umumiy.
+const mapChat = (m, k) => { const v = m && typeof m === 'object' ? String(m[k] || '').trim() : ''; return CHAT_RE.test(v) ? v : null; };
+function chatsFor(st, kind, ctx = {}) {
+  const copyMain = !(st.tgEvt && st.tgEvt.copyMain === false);
   const main = CHAT_RE.test(String(st.tgChatId || '')) ? [String(st.tgChatId)] : [];
-  if (kind === 'dealer' || kind === 'month') { const d = chatList(st.tgDealerChats); return d.length ? d : main; }
-  return main;
+  const dealerKind = kind === 'dealer' || kind === 'month';
+  const overview = dealerKind ? (chatList(st.tgDealerChats).length ? chatList(st.tgDealerChats) : main) : main;
+  const own = ctx.own === false ? null : dealerKind ? (ctx.dealerId != null ? mapChat(st.tgDealerChatMap, ctx.dealerId) : null)
+    : (ctx.filial ? mapChat(st.tgBranchChats, ctx.filial) : null);
+  const list = [...(own ? [own] : []), ...((copyMain || !own) ? overview : [])];
+  return [...new Set(list)];
 }
 
 async function loadSettings(admin) {
@@ -56,10 +66,10 @@ async function loadBranch(admin, main, filial) {
 const branchName = (st, k) => (st.branchNames && st.branchNames[k]) || (k === 'baza' ? 'Baza' : k);
 
 // Yuborish — hech qachon xato tashlamaydi; 6 soniyadan ortiq kutmaydi
-async function send(st, kind, text) {
+async function send(st, kind, text, ctx = {}) {
   try {
     if (!TOKEN_RE.test(String(st.tgBotToken || '')) || !evtOn(st, kind)) return { ok: false, skipped: true };
-    const chats = chatsFor(st, kind); if (!chats.length) return { ok: false, skipped: true };
+    const chats = chatsFor(st, kind, ctx); if (!chats.length) return { ok: false, skipped: true };
     const res = await Promise.race([
       Promise.all(chats.map((c) => tgSend(st.tgBotToken, c, text))),
       new Promise((r) => setTimeout(() => r([{ ok: false, description: 'timeout' }]), 6000)),
@@ -108,7 +118,7 @@ async function notifyCreditSale(admin, args) {
     } catch (_) {}
     const { text, debt } = creditSaleText({ ...args, st, cust, rate: num(st.usdUzs), custDebtUzs });
     if (!(debt >= 0.005)) return;   // qarz yo'q — nasiya emas
-    await send(st, 'credit', text);
+    await send(st, 'credit', text, { filial: args.filial });
   } catch (e) { console.warn('[tgEvents] credit', e && e.message); }
 }
 
@@ -126,7 +136,7 @@ async function notifyCustomerPayment(admin, { filial, customerId, amount, curren
       `🏢 ${esc(branchName(st, filial))}${staffName ? ' · ' + esc(staffName) : ''}`,
       pre([row('Toʻlandi', currency === 'USD' ? usd(amount) : uzs(amount)), row('Qolgan qarz', debtAfterUzs != null ? uzs(Math.max(0, debtAfterUzs)) : '—')]),
     ].join('\n');
-    await send(st, 'pay', text);
+    await send(st, 'pay', text, { filial });
   } catch (e) { console.warn('[tgEvents] pay', e && e.message); }
 }
 
@@ -153,7 +163,7 @@ async function notifyDealerOp(admin, { kind, mode, dealerId, items, filial, staf
     const text = [title, `👤 <b>${esc(d.name)}</b>${d.phone ? ' · ' + esc(d.phone) : ''}${d.region ? ' · ' + esc(d.region) : ''}`,
       `🏢 ${esc(branchName(st, filial))}${staffName ? ' · ' + esc(staffName) : ''}`, pre(R),
       `📒 Diller qarzi: <b>${esc(usd(d.debt_usd))}</b>`].join('\n');
-    await send(st, 'dealer', text);
+    await send(st, 'dealer', text, { dealerId });
   } catch (e) { console.warn('[tgEvents] dealer', e && e.message); }
 }
 async function notifyDealerPayment(admin, { dealerId, amountUsd, debtAfterUsd, via, filial, staffName }) {
@@ -167,7 +177,7 @@ async function notifyDealerPayment(admin, { dealerId, amountUsd, debtAfterUsd, v
       `👤 <b>${esc(d.name)}</b>${d.phone ? ' · ' + esc(d.phone) : ''}`,
       `🏢 ${esc(branchName(st, filial))}${staffName ? ' · ' + esc(staffName) : ''}${via ? ' · ' + esc(via) : ''}`,
       pre([row('Toʻlandi', usd(amountUsd)), row('Qolgan qarz', usd(Math.max(0, after)))])].join('\n');
-    await send(st, 'dealer', text);
+    await send(st, 'dealer', text, { dealerId });
   } catch (e) { console.warn('[tgEvents] dealer-pay', e && e.message); }
 }
 
@@ -200,7 +210,9 @@ function remindText(st, list, date) {
 }
 
 // ── 5) Oy yakuni: dillerlar hisoboti (o'tgan oy) ──
-async function monthDealerText(admin, st, ym) {
+// Natija: { overview: barcha dillerlar jadvali (egasiga), perDealer: [{ dealerId, text }] — har dillerga FAQAT o'zi }
+const MO = ['yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun', 'iyul', 'avgust', 'sentabr', 'oktabr', 'noyabr', 'dekabr'];
+async function monthDealerReports(admin, st, ym) {
   const from = ym + '-01T00:00:00Z';
   const [y, m] = ym.split('-').map(Number); const to = new Date(Date.UTC(y, m, 1)).toISOString();
   const { data: dealers } = await admin.from('dealers').select('id,name,debt_usd,active').order('name');
@@ -211,19 +223,26 @@ async function monthDealerText(admin, st, ym) {
     const n = await admin.from('dealer_pay_notices').select('dealer_id,amount_usd,status').gte('created_at', from).lt('created_at', to);
     (n.data || []).filter((x) => x.status !== 'rejected').forEach((x) => pays.push({ dealer_id: x.dealer_id, amount_usd: x.amount_usd }));
   } catch (_) { /* jadval yo'q */ }
-  const R = [];
-  let tShip = 0, tPay = 0, tDebt = 0;
+  const title = `${MO[m - 1]} ${y} yakuni`;
+  const R = [], perDealer = [];
+  let tShip = 0, tRet = 0, tPay = 0, tDebt = 0;
   for (const d of (dealers || []).filter((x) => x && x.active !== false)) {
-    const ship = moves.filter((x) => x.dealer_id === d.id && /ship|send|jo/i.test(String(x.type))).reduce((a, x) => a + num(x.qty) * num(x.cost_usd), 0);
+    const mine = moves.filter((x) => x.dealer_id === d.id);
+    const ship = mine.filter((x) => /send|ship/i.test(String(x.type))).reduce((a, x) => a + num(x.qty) * num(x.cost_usd), 0);
+    const ret = mine.filter((x) => /return/i.test(String(x.type))).reduce((a, x) => a + num(x.qty) * num(x.cost_usd), 0);
     const paid = pays.filter((x) => x.dealer_id === d.id).reduce((a, x) => a + num(x.amount_usd), 0);
-    tShip += ship; tPay += paid; tDebt += num(d.debt_usd);
-    R.push(esc(cut(d.name, W)), row('  Olgan (tannarx)', usd(ship)), row('  Toʻlagan', usd(paid)), row('  Qarzi', usd(d.debt_usd)));
+    tShip += ship; tRet += ret; tPay += paid; tDebt += num(d.debt_usd);
+    const rows = [row('Olgan (tannarx)', usd(ship)), ...(ret > 0 ? [row('Qaytargan', usd(ret))] : []), row('Toʻlagan', usd(paid)), row('Oy oxiridagi qarz', usd(d.debt_usd))];
+    R.push(esc(cut(d.name, W)), row('  Olgan', usd(ship)), ...(ret > 0 ? [row('  Qaytargan', usd(ret))] : []), row('  Toʻlagan', usd(paid)), row('  Qarzi', usd(d.debt_usd)));
+    perDealer.push({ dealerId: d.id, text: `📆 <b>${esc(d.name)} — ${title}</b>\n` + pre(rows) });
   }
-  if (!R.length) return null;
-  R.push(LINE, row('Jami olgan', usd(tShip)), row('Jami toʻlagan', usd(tPay)), row('Jami qarz', usd(tDebt)));
-  const MO = ['yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun', 'iyul', 'avgust', 'sentabr', 'oktabr', 'noyabr', 'dekabr'];
-  return (`📆 <b>Dillerlar — ${MO[m - 1]} ${y} yakuni</b>\n` + pre(R)).slice(0, 3900);
+  if (!perDealer.length) return { overview: null, perDealer };
+  R.push(LINE, row('Jami olgan', usd(tShip)), ...(tRet > 0 ? [row('Jami qaytgan', usd(tRet))] : []), row('Jami toʻlagan', usd(tPay)), row('Jami qarz', usd(tDebt)));
+  return { overview: (`📆 <b>Dillerlar — ${title}</b>\n` + pre(R)).slice(0, 3900), perDealer };
 }
 
-module.exports = { notifyCreditSale, notifyCustomerPayment, notifyDealerOp, notifyDealerPayment, dueList, remindText, monthDealerText,
+// Eslatmani filiallarga bo'lish: { filial: [...] } — filial guruhiga faqat o'z mijozlari
+function dueByBranch(list) { const m = {}; for (const x of list) (m[x.filial] = m[x.filial] || []).push(x); return m; }
+
+module.exports = { notifyCreditSale, notifyCustomerPayment, notifyDealerOp, notifyDealerPayment, dueList, remindText, monthDealerReports, dueByBranch, mapChat,
   creditSaleText, evtOn, chatsFor, send, loadSettings };

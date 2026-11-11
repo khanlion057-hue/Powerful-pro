@@ -323,8 +323,16 @@ function normalizeIncomingSettings(ex, nv) {
   }
   if (Object.prototype.hasOwnProperty.call(out, 'tgEvt')) {
     const e = out.tgEvt && typeof out.tgEvt === 'object' ? out.tgEvt : {};
-    out.tgEvt = {}; ['credit', 'pay', 'remind', 'dealer', 'month'].forEach((k) => { if (k in e) out.tgEvt[k] = !!e[k]; });
+    out.tgEvt = {}; ['credit', 'pay', 'remind', 'dealer', 'month', 'copyMain'].forEach((k) => { if (k in e) out.tgEvt[k] = !!e[k]; });
   }
+  // v25.1: har filialning va har dillerning O'Z guruhi — { kalit: chat }; kalit/chat formati tekshiriladi, ≤200 ta
+  const chatMap = (v, keyRe) => {
+    const o = {}; if (!v || typeof v !== 'object' || Array.isArray(v)) return o;
+    for (const [k, c] of Object.entries(v).slice(0, 200)) { const cv = String(c || '').trim(); if (keyRe.test(k) && /^-?\d{3,20}$|^@[A-Za-z0-9_]{4,64}$/.test(cv)) o[k] = cv; }
+    return o;
+  };
+  if (Object.prototype.hasOwnProperty.call(out, 'tgBranchChats')) out.tgBranchChats = chatMap(out.tgBranchChats, /^[A-Za-z0-9_-]{1,40}$/);
+  if (Object.prototype.hasOwnProperty.call(out, 'tgDealerChatMap')) out.tgDealerChatMap = chatMap(out.tgDealerChatMap, /^\d{1,15}$/);
   if (out.tgRemindHour != null) { const h = parseInt(out.tgRemindHour, 10); out.tgRemindHour = h >= 6 && h <= 22 ? h : 9; }
   return out;
 }

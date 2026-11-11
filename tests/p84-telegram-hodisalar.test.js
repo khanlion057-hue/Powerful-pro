@@ -108,6 +108,45 @@ async function testReminder() {
   assert.match(t, /Jami: <b>1 700 000 so'm<\/b>/);
 }
 
+
+// ── Maxfiylik: har filial va har dillerning O'Z guruhi ──
+async function testOwnGroups() {
+  const st = { ...BASE_ST, tgBranchChats: { baza: '-1009990001', f729: '-1009990002' }, tgDealerChatMap: { 3: '-1008880003', 4: '-1008880004' } };
+  // chatsFor: filial — o'zi + egasi; boshqa filial guruhi YO'Q
+  assert.deepEqual(ev.chatsFor(st, 'credit', { filial: 'f729' }), ['-1009990002', '-1001112223334']);
+  assert.ok(!ev.chatsFor(st, 'credit', { filial: 'f729' }).includes('-1009990001'), 'boshqa filial guruhiga yuborilmaydi');
+  // diller — o'zi + egasi; boshqa diller guruhi YO'Q
+  assert.deepEqual(ev.chatsFor(st, 'dealer', { dealerId: 4 }), ['-1008880004', '-1001112223334']);
+  // egasiga nusxa o'chirilgan — faqat o'z guruhi
+  const st2 = { ...st, tgEvt: { copyMain: false } };
+  assert.deepEqual(ev.chatsFor(st2, 'dealer', { dealerId: 3 }), ['-1008880003']);
+  // o'z guruhi yo'q — egasiga (nusxa o'chiq bo'lsa ham xabar yo'qolmaydi)
+  assert.deepEqual(ev.chatsFor(st2, 'credit', { filial: 'f99' }), ['-1001112223334']);
+  // haqiqiy yuborish: diller 3 jo'natmasi — diller 4 guruhiga bormaydi
+  const dealer = { id: 3, name: 'Diller A', debt_usd: 10 };
+  const f = captureFetch();
+  try {
+    await ev.notifyDealerOp(fakeAdmin({ st, dealer }), { kind: 'ship', dealerId: 3, items: [{ pid: 1, name: 'X', qty: 1 }], filial: 'baza' });
+    assert.deepEqual(f.sent.map(x => x.body.chat_id).sort(), ['-1001112223334', '-1008880003']);
+  } finally { f.restore(); }
+  // eslatma filiallarga bo'linadi
+  const parts = ev.dueByBranch([{ filial: 'baza', name: 'A' }, { filial: 'f729', name: 'B' }, { filial: 'baza', name: 'C' }]);
+  assert.deepEqual(Object.fromEntries(Object.entries(parts).map(([k, v]) => [k, v.map(x => x.name)])), { baza: ['A', 'C'], f729: ['B'] });
+}
+
+async function testMonthPerDealer() {
+  const rows = { dealers: [{ id: 3, name: 'Diller A', debt_usd: 100, active: true }, { id: 4, name: 'Diller B', debt_usd: 50, active: true }],
+    dealer_stock_moves: [{ dealer_id: 3, type: 'send', qty: 10, cost_usd: 20 }, { dealer_id: 4, type: 'send', qty: 1, cost_usd: 5 }, { dealer_id: 3, type: 'return', qty: 2, cost_usd: 20 }],
+    dealer_payments: [{ dealer_id: 3, amount_usd: 60 }], dealer_pay_notices: [{ dealer_id: 4, amount_usd: 7, status: 'accepted' }, { dealer_id: 4, amount_usd: 99, status: 'rejected' }] };
+  const admin = { from(t) { const q = { select: () => q, gte: () => q, lt: () => q, order: () => q, then: (ok) => Promise.resolve({ data: rows[t] || [], error: null }).then(ok) }; return q; } };
+  const rep = await ev.monthDealerReports(admin, {}, '2026-10');
+  assert.match(rep.overview, /Dillerlar — oktabr 2026 yakuni[\s\S]*Diller A[\s\S]*Diller B[\s\S]*Jami olgan +\$205/);
+  const a = rep.perDealer.find(x => x.dealerId === 3).text, b = rep.perDealer.find(x => x.dealerId === 4).text;
+  assert.match(a, /Diller A — oktabr 2026[\s\S]*Olgan \(tannarx\) +\$200[\s\S]*Qaytargan +\$40[\s\S]*Toʻlagan +\$60[\s\S]*qarz +\$100/);
+  assert.doesNotMatch(a, /Diller B/, 'diller A hisobotida boshqa diller yoʻq');
+  assert.match(b, /Toʻlagan +\$7(\n|<)/, 'rad etilgan toʻlov hisoblanmaydi'); assert.doesNotMatch(b, /Diller A/);
+}
+
 module.exports = {
   name: 'P84 — Telegram hodisa xabarlari: nasiya, eslatma, toʻlovlar, diller oldi-berdisi',
   cases: [
@@ -115,5 +154,7 @@ module.exports = {
     { name: 'Nasiya yuborish: faqat qarz boʻlsa; oʻchiq/tokensiz — yoʻq; Telegram xatosi savdoni toʻxtatmaydi', run: testCreditNotify },
     { name: 'Mijoz va diller toʻlovlari (toʻliq yopilsa belgi), diller joʻnatmasi (qarzga/sotish uchun) — dillerlar guruhiga', run: testPaymentsAndDealers },
     { name: 'Eslatma: bugun va muddati oʻtganlar; qarzi yopilgan, muddati kelmagan, bekor qilingan — chiqmaydi', run: testReminder },
+    { name: 'Maxfiylik: filial/diller xabari faqat oʻz guruhiga (+ egasiga nusxa); boshqasiga — yoʻq; eslatma filiallarga boʻlinadi', run: testOwnGroups },
+    { name: 'Oy yakuni: egasiga umumiy jadval, har dillerga faqat oʻzi (olgan, qaytargan, toʻlagan, qarz)', run: testMonthPerDealer },
   ],
 };

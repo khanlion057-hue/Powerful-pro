@@ -745,7 +745,7 @@ function _fwCatModalShell(inner) {
   document.body.appendChild(o);
   return o;
 }
-const _fwBtn = (primary) => `padding:9px 16px;border-radius:9px;font-weight:700;font-size:13px;cursor:pointer;border:1px solid ${primary ? 'transparent' : 'var(--border,#ccc)'};background:${primary ? 'var(--blue,#C2410C)' : 'transparent'};color:${primary ? '#fff' : 'inherit'}`;
+const _fwBtn = (primary) => `padding:9px 16px;border-radius:9px;font-weight:700;font-size:13px;cursor:pointer;border:1px solid ${primary ? 'transparent' : 'var(--border,#ccc)'};background:${primary ? 'var(--blue,#B8700C)' : 'transparent'};color:${primary ? '#fff' : 'inherit'}`;
 // mode: 'create' (turi) yoki 'rename' (id). onDone(cat) — muvaffaqiyatdan keyin
 function fwCatModalOpen({ mode = 'create', turi = 'dokon', id = null, onDone } = {}) {
   const c = mode === 'rename' ? fwExpCatById(id) : null;

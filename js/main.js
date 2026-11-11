@@ -1875,7 +1875,7 @@ async function initData() {
   S._store = { baza: _emptyBranchDefaults(), f729: _emptyBranchDefaults() };
   _applyBranchSnapshot(S._store.baza);
   S.partners = [
-    {id:1, name:"Siz (Ta'sischi)", invested:0, keepPct:100, isFounder:true, color:'#C2410C', av:'ST'},
+    {id:1, name:"Siz (Ta'sischi)", invested:0, keepPct:100, isFounder:true, color:'#B8700C', av:'ST'},
     {id:2, name:'Investor 1', invested:0, keepPct:50, isFounder:false, color:'#0ea876', av:'I1'},
     {id:3, name:'Investor 2', invested:0, keepPct:30, isFounder:false, color:'#7c3aed', av:'I2'},
   ];
@@ -1942,7 +1942,7 @@ function openBranchSwitch() {
         const active = S.branch===key;
         return `
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;margin-bottom:10px;
-          border:1px solid ${active?'var(--gold)':'var(--border)'};border-radius:var(--radius-sm);background:${active?'rgba(194,65,12,0.08)':'transparent'}">
+          border:1px solid ${active?'var(--gold)':'var(--border)'};border-radius:var(--radius-sm);background:${active?'rgba(184,112,12,0.08)':'transparent'}">
           <div style="font-weight:700">${ICONF.building} ${esc(branchName(key))} ${active?'<span class="badge badge-success" style="margin-left:6px">Joriy</span>':''}</div>
           <div style="display:flex;gap:6px">
             <button class="btn btn-ghost btn-sm" onclick="promptRenameBranch('${key}')" title="Nomini oʻzgartirish">✏️</button>
@@ -2215,7 +2215,7 @@ const NAMES = {
   cheklar:'Barcha cheklar', jurnal:'Amallar jurnali'
 };
 const LOGO_GLYPH = `<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 3 7.5l9 4.5 9-4.5z"/><path d="M3 12l9 4.5 9-4.5"/><path d="M3 16.5l9 4.5 9-4.5"/></svg>`;
-const BRAND_MARK_SVG = `<svg viewBox="0 0 48 48" width="48" height="48" xmlns="http://www.w3.org/2000/svg"><rect width="48" height="48" rx="12" fill="#C2410C"/><g fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M24 11 12 17l12 6 12-6z"/><path d="M12 24l12 6 12-6"/><path d="M12 31l12 6 12-6"/></g></svg>`;
+const BRAND_MARK_SVG = `<svg viewBox="0 0 48 48" width="48" height="48" xmlns="http://www.w3.org/2000/svg"><rect width="48" height="48" rx="12" fill="#B8700C"/><g fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M24 11 12 17l12 6 12-6z"/><path d="M12 24l12 6 12-6"/><path d="M12 31l12 6 12-6"/></g></svg>`;
 // v23.6: logotip — brenddan (Sozlamalar / js/brand.js), qattiq yozilmagan
 function brandLoginLogo(){ return fwBrandLockup('lg on-light'); }
 
@@ -3388,7 +3388,7 @@ function saleEditBodyHtml(s) {
   const cart = S.saleEditCart||[];
   const total = cart.reduce((sum,i)=>sum+(i.qty*i.sellUsd),0);
   return `
-    <div style="font-size:11px;color:var(--gold-dark);background:rgba(194,65,12,.08);border:1px solid rgba(194,65,12,.3);border-radius:8px;padding:8px 10px;margin-bottom:12px">
+    <div style="font-size:11px;color:var(--gold-dark);background:rgba(184,112,12,.08);border:1px solid rgba(184,112,12,.3);border-radius:8px;padding:8px 10px;margin-bottom:12px">
       ⚠️ Saqlaganingizda: eski mahsulotlar omborga qaytariladi, yangi miqdor/narx bo'yicha qayta hisoblanadi. Kassa va mijoz qarzi ham avtomatik tuzatiladi.
     </div>
     ${cart.map((i,idx)=>`
@@ -5197,7 +5197,7 @@ function filialOrdersHtml() {
   if (S.branch === 'baza') {
     const pending = orders.filter(o=>o.toBranch==='baza' && o.status==='pending');
     if (!pending.length) return '';
-    return `<div style="background:rgba(194,65,12,0.06);border:1px solid rgba(194,65,12,0.25);border-radius:var(--radius-sm);padding:12px;margin:12px 0">
+    return `<div style="background:rgba(184,112,12,0.06);border:1px solid rgba(184,112,12,0.25);border-radius:var(--radius-sm);padding:12px;margin:12px 0">
       <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:8px">📨 Filiallardan buyurtmalar (${pending.length})</div>
       ${pending.map(o=>`<div style="background:var(--bg-card);border-radius:8px;padding:10px;margin-bottom:8px">
         <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">${ICONF.building} <b>${branchName(o.fromBranch)}</b> — ${fmtD(o.createdAt)} — ${o.items.length} xil mahsulot</div>
@@ -5971,7 +5971,7 @@ function openBatchGroupEdit(bno) {
         </label>
         <button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="applyBatchGroupSupplier('${escJsAttr(bno)}')">Ta'minotchi/holatni butun partiyaga qo'llash</button>
       </div>
-      <div style="font-size:11px;color:var(--gold-dark);background:rgba(194,65,12,.08);border:1px solid rgba(194,65,12,.3);border-radius:8px;padding:8px 10px;margin-bottom:10px">
+      <div style="font-size:11px;color:var(--gold-dark);background:rgba(184,112,12,.08);border:1px solid rgba(184,112,12,.3);border-radius:8px;padding:8px 10px;margin-bottom:10px">
         ⚠️ Miqdor/Tannarx qatorlari — formula qayta hisoblanmasdan, to'g'ridan-to'g'ri saqlanadi.
       </div>
       <table style="width:100%;font-size:12px">
@@ -6091,7 +6091,7 @@ function openBatchEdit(bid) {
   modal(`
     <div class="modal-header"><div class="modal-title">✏️ Kirimni tahrirlash — ${esc(p?.sku||'')}</div><button class="modal-close" onclick="closeModal()">×</button></div>
     <div class="modal-body">
-      <div style="font-size:11px;color:var(--gold-dark);background:rgba(194,65,12,.08);border:1px solid rgba(194,65,12,.3);border-radius:8px;padding:8px 10px;margin-bottom:12px">
+      <div style="font-size:11px;color:var(--gold-dark);background:rgba(184,112,12,.08);border:1px solid rgba(184,112,12,.3);border-radius:8px;padding:8px 10px;margin-bottom:12px">
         ⚠️ Miqdorni sotilgandan (${b.sold} dona) kamroq qila olmaysiz. Ta'minotchi qarzi avtomatik tuzatiladi.
       </div>
       <div class="form-group"><label class="form-label">Miqdor (jami, ${b.sold} dona allaqachon sotilgan)</label>
@@ -6205,7 +6205,7 @@ function pgKirim() {
         <div id="k-transit-warn" style="font-size:11px;color:var(--gold);margin:-8px 0 14px;${S.kirimStatus==='transit'?'':'display:none'}">⏳ Yo'lda turgan tovar ombor qoldig'iga qo'shilmaydi va savdoga chiqmaydi — yetib kelganda "✅ Yetib keldi" tugmasini bosasiz va u savdoda.</div>
 
         <!-- MAHSULOTLAR RO'YXATI -->
-        <div style="background:rgba(194,65,12,0.04);border:1px solid rgba(194,65,12,0.15);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px">
+        <div style="background:rgba(184,112,12,0.04);border:1px solid rgba(184,112,12,0.15);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
             <span style="font-size:12px;font-weight:700;color:var(--gold)">📦 Mahsulotlar (<span id="k-item-cur">${S.importCur==='CNY'?'¥':S.importCur==='UZS'?"so'm":'$'}</span> da)</span>
             <button class="kf-addrow" onclick="addImportRow()">${ICONF.add}<span>Qoʻshish</span></button>
@@ -7699,7 +7699,7 @@ function printTaminotchiTarixi(sid) {
 // ════════════════════════════════════════════
 // HAMKORLAR
 // ════════════════════════════════════════════
-const PARTNER_COLORS = ['#C2410C','#0ea876','#7c3aed','#2f6fed','#e23d3d','#0ea5e9'];
+const PARTNER_COLORS = ['#B8700C','#0ea876','#7c3aed','#2f6fed','#e23d3d','#0ea5e9'];
 
 // ── v23: HAMKORLAR — HAR BIR FILIALNING O'Z INVESTORLARI ──────────────
 // Filial o'z balansini, hisob-kitobini, investorlari va mijozlarini o'zi yuritadi (egasining
@@ -8368,7 +8368,7 @@ function printPartnerPeriod(periodId) {
 // ════════════════════════════════════════════
 // DILLERLAR
 // ════════════════════════════════════════════
-const DEALER_COLORS = ['#2f6fed','#0ea876','#C2410C','#7c3aed','#e23d3d'];
+const DEALER_COLORS = ['#2f6fed','#0ea876','#B8700C','#7c3aed','#e23d3d'];
 
 // ════════════════════════════════════════════
 // SOTUVCHILAR — xodimlarni boshqarish (admin panel)
@@ -9671,7 +9671,7 @@ function dillerOrdersHtml() {
           <strong>${esc(d?.name||'Noma\'lum diller')}</strong>
           <span style="font-size:11px;color:var(--text-muted);margin-left:8px">${new Date(o.created_at).toLocaleString('uz-UZ')}</span>
         </div>
-        <span class="badge" style="background:${o.status==='pending'?'rgba(194,65,12,.15)':o.status==='approved'?'rgba(14,168,118,.15)':'rgba(226,61,61,.15)'};color:${o.status==='pending'?'var(--gold-dark)':o.status==='approved'?'var(--emerald)':'var(--red)'};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">
+        <span class="badge" style="background:${o.status==='pending'?'rgba(184,112,12,.15)':o.status==='approved'?'rgba(14,168,118,.15)':'rgba(226,61,61,.15)'};color:${o.status==='pending'?'var(--gold-dark)':o.status==='approved'?'var(--emerald)':'var(--red)'};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">
           ${o.status==='pending'?'⏳ Kutilmoqda':o.status==='approved'?'✅ Tasdiqlangan':'❌ Rad etilgan'}
         </span>
       </div>
@@ -12469,7 +12469,7 @@ function sxDebtsHtml() {
 function sxCatsHtml(D) {
   const m = {}; D.sales.forEach(s=>(s.items||[]).forEach(i=>{ const c = S.products.find(p=>p.id===i.pid)?.cat || 'Boshqa'; m[c]=(m[c]||0)+(i.lineUsd||0); }));
   const list = Object.entries(m).sort((x,y)=>y[1]-x[1]); const tot = list.reduce((s,x)=>s+x[1],0);
-  const pal = ['#22c55e','#38bdf8','#a855f7','#f97316','#ec4899','#818cf8','#eab308','#14b8a6','#f43f5e','#94a3b8'];
+  const pal = ['#22c55e','#38bdf8','#a855f7','#E8A33A','#ec4899','#818cf8','#eab308','#14b8a6','#f43f5e','#94a3b8'];
   return `<section class="sx-card">
     <div class="sx-sec"><b>Kategoriyalar</b><i></i></div>
     ${list.length ? `<div class="sx-stack">${list.map(([c,v],i)=>`<i style="flex:${v};background:${pal[i%pal.length]}" title="${esc(c)}"></i>`).join('')}</div>
@@ -12484,7 +12484,7 @@ function sxStaffHtml(D) {
     o.rev += s.totalUsd||0; o.n++; const pt = o[s.payType]!==undefined ? s.payType : 'cash_uzs';
     if (pt==='debt') o.debt += s.totalUsd||0; else { o[pt] += s.paidUsd||0; o.debt += s.debtUsd||0; } });
   const list = Object.entries(m).sort((x,y)=>y[1].rev-x[1].rev); const max = Math.max(1, ...list.map(x=>x[1].rev));
-  const seg = [['cash_uzs','#22c55e',"Naqd"],['card','#3b82f6','Karta'],['usd','#eab308','Dollar'],['mixed','#a855f7','Aralash'],['debt','#f97316','Qarz']];
+  const seg = [['cash_uzs','#22c55e',"Naqd"],['card','#3b82f6','Karta'],['usd','#eab308','Dollar'],['mixed','#a855f7','Aralash'],['debt','#E8A33A','Qarz']];
   const [a,b] = sxRange();
   return `<section class="sx-card">
     <div class="sx-sec"><b>Xodimlar</b><i></i><span class="sx-sub" style="margin:0">${a===b?a.split('-').reverse().join('.'):''}</span></div>
@@ -14613,14 +14613,14 @@ function showUnifiedLogin() {
           <div class="fw-pw-f" style="margin-bottom:14px"><input id="ul-pass" type="password" placeholder="Parol" autocomplete="current-password"
             style="width:100%;padding:13px 48px 13px 14px;font-size:14px;border:1.5px solid #e1e6ed;border-radius:10px;outline:none;box-sizing:border-box"
             onkeydown="if(event.key==='Enter')_ulSubmit()">${_fwPwEye('ul-pass')}</div>
-          <button id="ul-go" style="width:100%;padding:13px;background:linear-gradient(135deg,#C2410C,#9A3412);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">Kirish →</button>
+          <button id="ul-go" style="width:100%;padding:13px;background:linear-gradient(135deg,#B8700C,#8A5208);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">Kirish →</button>
           <div id="ul-err" style="color:#e23d3d;font-size:12px;margin-top:8px;min-height:16px"></div>
           <button type="button" class="fw-forgot" onclick="fwPwForgot(document.getElementById('ul-login')?.value||'')">Parolni unutdingizmi?</button>
           <div style="margin-top:10px;padding-top:12px;border-top:1px solid #eef0f4;font-size:11.5px;color:#8b95a5;line-height:1.7">
             Telegram ulanmagan boʻlsa —<br>administratorga murojaat qiling<br>
-            <a href="https://t.me/azimsher" target="_blank" style="color:#C2410C;text-decoration:none;font-weight:700">@azimsher</a>
+            <a href="https://t.me/azimsher" target="_blank" style="color:#B8700C;text-decoration:none;font-weight:700">@azimsher</a>
             &nbsp;·&nbsp;
-            <a href="tel:+998913671212" style="color:#C2410C;text-decoration:none;font-weight:700">+998 91 367 12 12</a>
+            <a href="tel:+998913671212" style="color:#B8700C;text-decoration:none;font-weight:700">+998 91 367 12 12</a>
           </div>
         </div>
       </div>`;
@@ -14788,7 +14788,7 @@ function showPinScreen() {
     const render = () => {
       const plen = setMode ? 4 : Math.max(4, Math.min(10, getAppPin().length||4));
       const dots = Array.from({length:plen}, (_,i)=>`<span style="width:14px;height:14px;border-radius:50%;display:inline-block;margin:0 6px;
-        background:${i<pin.length?'#C2410C':'#e1e6ed'};transition:background .15s"></span>`).join('');
+        background:${i<pin.length?'#B8700C':'#e1e6ed'};transition:background .15s"></span>`).join('');
       body.innerHTML = `
       <div class="fw-brand-bg" style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px">
         <div class="fw-login-card" style="background:#fff;border-radius:20px;padding:36px 28px;width:100%;max-width:330px;box-shadow:0 18px 42px rgba(15,23,42,0.16);text-align:center">
@@ -14801,7 +14801,7 @@ function showPinScreen() {
             <button data-num="0" style="padding:16px 0;font-size:19px;font-weight:700;border:1.5px solid #eef0f4;background:#fafbfc;border-radius:12px;cursor:pointer;color:#1c2433">0</button>
             <button id="pin-back" style="padding:16px 0;font-size:18px;font-weight:700;border:none;background:transparent;border-radius:12px;cursor:pointer;color:#8b95a5">⌫</button>
           </div>
-          <button id="pin-go" style="width:100%;padding:12px;margin-top:6px;background:linear-gradient(135deg,#C2410C,#9A3412);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">Kirish →</button>
+          <button id="pin-go" style="width:100%;padding:12px;margin-top:6px;background:linear-gradient(135deg,#B8700C,#8A5208);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">Kirish →</button>
           <div id="pin-err" style="color:#e23d3d;font-size:12px;min-height:16px;margin-top:8px"></div>
         </div>
       </div>`;
@@ -14851,7 +14851,7 @@ function showBranchScreen() {
             <div style="display:flex;flex-direction:column;gap:12px">
               ${Object.keys(BRANCHES).filter(isBranchActive).map(key=>{
                 const b = BRANCHES[key];
-                const colorBg = key==='baza' ? 'rgba(154,52,18,0.1)' : 'rgba(242,33,28,0.1)';
+                const colorBg = key==='baza' ? 'rgba(138,82,8,0.1)' : 'rgba(242,33,28,0.1)';
                 const sub = key==='baza' ? 'Asosiy ombor va hisob' : 'Filial ombor va hisob';
                 return `<button data-branch="${key}" style="display:flex;align-items:center;gap:14px;width:100%;padding:16px 18px;background:#fff;border:1.5px solid #e6eaf0;border-radius:14px;font-size:15px;font-weight:700;color:#1c2433;cursor:pointer;text-align:left">
                 <span style="width:42px;height:42px;flex-shrink:0;border-radius:12px;background:${colorBg};display:flex;align-items:center;justify-content:center;font-size:20px">${b.icon}</span>
@@ -14862,7 +14862,7 @@ function showBranchScreen() {
           </div>
         </div>`;
       body.querySelectorAll('[data-branch]').forEach(btn => {
-        btn.addEventListener('mouseenter', () => { btn.style.borderColor = '#C2410C'; btn.style.background = '#f5faff'; });
+        btn.addEventListener('mouseenter', () => { btn.style.borderColor = '#B8700C'; btn.style.background = '#f5faff'; });
         btn.addEventListener('mouseleave', () => { btn.style.borderColor = '#e6eaf0'; btn.style.background = '#fff'; });
         btn.addEventListener('click', () => renderPinStep(btn.dataset.branch));
       });
@@ -14888,7 +14888,7 @@ function showBranchScreen() {
             <input type="password" id="branch-pin-inp" maxlength="10" placeholder="••••"
               style="width:100%;padding:14px;font-size:22px;text-align:center;letter-spacing:8px;border:2px solid #e1e6ed;border-radius:10px;outline:none;margin-bottom:12px;box-sizing:border-box"
               autofocus>
-            <button id="branch-pin-go" style="width:100%;padding:14px;background:linear-gradient(135deg,#C2410C,#9A3412);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:8px">Kirish →</button>
+            <button id="branch-pin-go" style="width:100%;padding:14px;background:linear-gradient(135deg,#B8700C,#8A5208);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:8px">Kirish →</button>
             <button id="branch-pin-back" style="width:100%;padding:10px;background:transparent;color:#8b95a5;border:none;font-size:13px;cursor:pointer">← Orqaga</button>
             <div id="branch-pin-err" style="color:#e23d3d;font-size:12px;margin-top:6px;min-height:16px"></div>
           </div>
@@ -14923,7 +14923,7 @@ function showBranchScreen() {
               style="width:100%;padding:12px;font-size:18px;text-align:center;border:2px solid #e1e6ed;border-radius:10px;outline:none;margin-bottom:10px;box-sizing:border-box">
             <input type="password" id="branch-pin-new2" maxlength="10" placeholder="Yangi parol — qayta" autocomplete="new-password"
               style="width:100%;padding:12px;font-size:18px;text-align:center;border:2px solid #e1e6ed;border-radius:10px;outline:none;margin-bottom:12px;box-sizing:border-box">
-            <button id="branch-pin-set" style="width:100%;padding:14px;background:linear-gradient(135deg,#C2410C,#9A3412);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:8px">Parolni oʻrnatish →</button>
+            <button id="branch-pin-set" style="width:100%;padding:14px;background:linear-gradient(135deg,#B8700C,#8A5208);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:8px">Parolni oʻrnatish →</button>
             <button id="branch-pin-back" style="width:100%;padding:10px;background:transparent;color:#8b95a5;border:none;font-size:13px;cursor:pointer">← Orqaga</button>
             <div id="branch-pin-err" style="color:#e23d3d;font-size:12px;margin-top:6px;min-height:16px"></div>
           </div>

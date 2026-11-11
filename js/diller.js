@@ -612,7 +612,7 @@ async function dlSubmitOrder() {
 function dlMyOrdersHtml() {
   return `<div class="dl-card">
     ${MY_ORDERS.length ? MY_ORDERS.map(o => {
-      const badge = o.status==='pending' ? ['⏳ Kutilmoqda','var(--gold-dark)','rgba(194,65,12,.12)']
+      const badge = o.status==='pending' ? ['⏳ Kutilmoqda','var(--gold-dark)','rgba(184,112,12,.12)']
         : o.status==='approved' ? ['✅ Tasdiqlangan','var(--emerald)','rgba(14,168,118,.12)']
         : ['❌ Rad etilgan','var(--red)','rgba(226,61,61,.12)'];
       return `<div style="padding:12px 0;border-bottom:1px solid var(--border-light)">

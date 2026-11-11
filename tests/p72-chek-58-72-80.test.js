@@ -29,7 +29,7 @@ module.exports = {
         assert.deepEqual([r.chg.given, r.chg.change, r.chg.total], [1320000, 7000, 1313000], 'Naqd − Qaytim = JAMI');
         assert.deepEqual([r.usd.sum, r.usd.total, r.usd.disc], [30.99, 30.99, 0], '$ chek');
         assert.ok(r.old, 'eski chek ochiladi (so\'mda)');
-        assert.match(r.html, /Yaxlitlash:/); assert.match(r.html, /× 1 250/); assert.match(r.html, /× 0,25/);
+        assert.match(r.html, /Yaxlitlash chegirmasi:/); assert.match(r.html, /× 1 250/); assert.match(r.html, /× 0,25/);   // v25.1: alohida qator nomi
         assert.match(r.html, /Qaytim:<\/span><span>1 800 soʻm/); assert.match(r.html, /Naqd:<\/span><span>5 330 000 soʻm/);
         assert.match(r.html, /14:20/);
         assert.deepEqual(errors, []);

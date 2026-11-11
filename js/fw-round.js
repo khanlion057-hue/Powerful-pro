@@ -61,7 +61,14 @@
       return { asl_jami: toInt(s.asl_jami), yaxlitlash_chegirmasi: toInt(s.yaxlitlash_chegirmasi), tolangan_jami: toInt(s.tolangan_jami) };
     }
     if (s.cur === 'USD' || !(Number(s.roundedTotalUzs) > 0)) return null;   // dollar savdosi yoki juda eski yozuv
-    var tol = toInt(s.roundedTotalUzs), r = s.discountReason === 'rounding' || Number(s.roundN) > 0 ? toInt(s.roundN || 0) : 0;
+    var tol = toInt(s.roundedTotalUzs), r = 0;
+    if (Number(s.roundN) > 0) r = toInt(s.roundN);
+    else if (s.discountReason === 'rounding') {
+      // Eski savdo (maydonlarsiz): butun chegirma — yaxlitlash; farq qatorlardan (savdo vaqtidagi kurs bilan) tiklanadi
+      var rate = Number(s.rateUsdUzs), sum = 0;
+      if (rate > 0) (s.items || []).forEach(function (i) { sum += toInt((Number(i.qty) || 0) * toInt((Number(i.sellUsd) || 0) * rate)); });
+      if (sum > tol && sum - tol < 1000) r = sum - tol;
+    }
     return { asl_jami: tol + r, yaxlitlash_chegirmasi: r, tolangan_jami: tol };
   }
 

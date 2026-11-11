@@ -1,5 +1,6 @@
 // P70 — v25 (egasi qarori): TIYIN YAXLITLIGI. So'mdagi savdo jami pastga, 100 so'mgacha yaxlitlanadi
-// (17 975 → 17 900); qoldiq chegirmaga yoziladi. Zarar bo'lsa, $ savdoda yoki sozlama o'chiq bo'lsa yaxlitlanmaydi.
+// (17 975 → 17 900); qoldiq chegirmaga yoziladi. v25.1 (egasi qoidasi): HAR DOIM pastga — tannarxga yaqin narxda ham
+// (foyda yaxlitlash farqicha kam chiqadi, tannarx o'zgarmaydi); $ savdoda yoki sozlama o'chiq bo'lsa yaxlitlanmaydi.
 const assert = require('node:assert/strict');
 const { openPage } = require('./p4-responsive.test.js')._helpers;
 
@@ -15,7 +16,7 @@ const seed = () => {
 module.exports = {
   name: 'P70 — tiyin yaxlitligi: jami pastga 100 soʻmgacha, zararda / $ da / sozlama oʻchiqda — yoʻq',
   cases: [
-    { name: 'so\'m: 328 250 → 328 200 (50 so\'m chegirma), to\'liq to\'lov aniq; zarar, $, sozlama — yaxlitlanmaydi', async run() {
+    { name: 'so\'m: 328 250 → 328 200 (50 so\'m chegirma), to\'liq to\'lov aniq; har doim pastga (tannarxga yaqin ham); $, sozlama — yaxlitlanmaydi', async run() {
       const { browser, page, errors } = await openPage('index.html', { width: 390, height: 844, mobile: true, admin: true });
       try {
         const r = await page.evaluate(async (seedSrc) => {
@@ -27,8 +28,8 @@ module.exports = {
           const t = posTotals(); out.a = { sub: t.subN, round: t.roundN, tot: t.totN, disc: t.discN };
           posOpen('pay'); posPaySet(posTotals().needN);
           const c = posBuildCtx(); out.ctx = { st: c.status, reason: c.discountReason, totN: c.totalN, usdOk: Math.abs(c.totalUsd * 12500 - c.totalN) < 1 };
-          // Zarar: narx tannarxga juda yaqin — yaxlitlash zararga olib keladi → yaxlitlanmaydi
-          S.cart[0].sellUsd = 84.0003; out.loss = posTotals().roundN;
+          // v25.1: tannarxga juda yaqin narx — baribir pastga yaxlitlanadi (har doim)
+          S.cart[0].sellUsd = 84.0003; { const tl = posTotals(); out.loss = { round: tl.roundN, tot: tl.totN, cost: Math.round(tl.cost * 12500) }; }
           // $ savdo — yaxlitlanmaydi
           S.cart[0].sellUsd = 105.13; POS.cur = 'USD'; out.usd = posTotals().roundN; POS.cur = 'UZS';
           // Sozlama o'chiq
@@ -39,7 +40,7 @@ module.exports = {
         assert.equal(r.a.round, 50); assert.equal(r.a.tot, r.a.sub - 50); assert.equal(r.a.tot % 100, 0);
         assert.equal(r.a.disc, 50, 'qoldiq chegirmaga');
         assert.equal(r.ctx.st, 'exact'); assert.equal(r.ctx.reason, 'rounding'); assert.equal(r.ctx.totN, r.a.tot); assert.ok(r.ctx.usdOk, '$ jami so\'m jami bilan mos');
-        assert.equal(r.loss, 0, 'zarar bo\'lsa yaxlitlanmaydi');
+        assert.ok(r.loss.round > 0 && r.loss.tot % 100 === 0, 'tannarxga yaqin narxda ham har doim pastga yaxlitlanadi (v25.1)');
         assert.equal(r.usd, 0, '$ savdoda yaxlitlanmaydi');
         assert.equal(r.off, 0, 'sozlama o\'chiq');
         assert.deepEqual(errors, []);

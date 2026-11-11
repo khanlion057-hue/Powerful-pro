@@ -42,6 +42,10 @@ async function testProfit() {
   const sales = [{ asl_jami: 17975, yaxlitlash_chegirmasi: 75, tolangan_jami: 17900 }, { asl_jami: 50050, yaxlitlash_chegirmasi: 50, tolangan_jami: 50000 },
     { asl_jami: 1099, yaxlitlash_chegirmasi: 99, tolangan_jami: 1000, status: 'voided' }, { cur: 'USD', totalUsd: 10 }, { roundedTotalUzs: 30000, discountReason: 'manual' }];
   assert.equal(R.periodRoundingTotal(sales), 125);
+  // Eski savdo (maydonlarsiz, sababi «rounding»): farq qatorlardan tiklanadi; qo'lda chegirma — yaxlitlash emas
+  assert.deepEqual(R.saleFields({ cur: 'UZS', rateUsdUzs: 12500, roundedTotalUzs: 17900, discountReason: 'rounding', items: [{ qty: 1, sellUsd: 17975 / 12500 }] }),
+    { asl_jami: 17975, yaxlitlash_chegirmasi: 75, tolangan_jami: 17900 });
+  assert.equal(R.saleFields({ cur: 'UZS', rateUsdUzs: 12500, roundedTotalUzs: 15000, discountReason: 'manual', items: [{ qty: 1, sellUsd: 2 }] }).yaxlitlash_chegirmasi, 0);
 }
 
 async function testPosAndReceipt() {

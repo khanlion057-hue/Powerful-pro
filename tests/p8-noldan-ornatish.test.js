@@ -80,7 +80,7 @@ async function testSchemaAppliesFromZero() {
     // v24.5: 35-migratsiya (v23.10.2 dagi 31 dan) — +7 funksiya (_dealer_json, _ledger_op_batch_ids, _dealer_lock,
     //   dealer_ship_atomic, dealer_return_atomic, dealer_sale_record_atomic, dealer_atomic_available); jadval/cheklov soni
     //   o'zgarmaydi (ledger_ops_kind_chk — almashtirildi, diller amallari qo'shildi).
-    assert.deepEqual(c, { tables:64, views:3, funcs:113, policies:19, cons:231, idx:158, rls:64, evt:1, bucket:1 });   // v24.6: +36 (2 jadval, 4 funksiya); v24.8: +37 (+5 funksiya, −2 eski record_dealer_sale); v24.9: +38 (3 jadval, 1 funksiya); v25: +40 (1 funksiya, 1 cheklov), +41 (1 funksiya), +42 (5 funksiya), +43 (2 jadval, 1 funksiya), +44 (1 funksiya), +45 (3 funksiya)
+    assert.deepEqual(c, { tables:64, views:3, funcs:113, policies:19, cons:232, idx:158, rls:64, evt:1, bucket:1 });   // v25.1: +47 (sales: 3 ustun, 1 tekshiruv cheklovi); v24.6: +36 (2 jadval, 4 funksiya); v24.8: +37 (+5 funksiya, −2 eski record_dealer_sale); v24.9: +38 (3 jadval, 1 funksiya); v25: +40 (1 funksiya, 1 cheklov), +41 (1 funksiya), +42 (5 funksiya), +43 (2 jadval, 1 funksiya), +44 (1 funksiya), +45 (3 funksiya)
     const s = await one(db, `select count(*)::int n, md5(string_agg(r.key||':'||p.key, ',' order by r.key collate "C", p.key collate "C")) h,
       (select md5(string_agg(key||'|'||module||'|'||label, ',' order by key collate "C")) from permissions) ph,
       (select md5(string_agg(key||'|'||name||'|'||coalesce(description,'')||'|'||is_system, ',' order by key collate "C")) from roles) rh

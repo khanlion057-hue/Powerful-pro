@@ -1749,7 +1749,8 @@ function fwReceiptHtml(sale, o) {
   const qn = (q) => Number.isInteger(q) ? fwNum(q) : String(Math.round(q * 1000) / 1000).replace('.', ',');
   const payName = { cash_uzs: 'Naqd', cash: 'Naqd', card: 'Karta', usd: 'Dollar', mixed: 'Aralash', debt: 'Qarzga' }[sale.payType] || 'Toʻlandi';
   // v25.1: chegirma va «Yaxlitlash chegirmasi» — alohida qatorlar (so'm savdosida saqlangan maydondan; eski savdoda — sababidan)
-  const rf = uzs && typeof FWRound !== 'undefined' ? FWRound.saleFields(sale) : null;
+  // Yangi savdo — saqlangan maydondan; eski savdo (maydonsiz) — avvalgidek: sababi «rounding» bo'lsa butun chegirma
+  const rf = uzs && sale.tolangan_jami != null && typeof FWRound !== 'undefined' ? FWRound.saleFields(sale) : null;
   const roundD = uzs ? Math.min(c.disc, rf ? rf.yaxlitlash_chegirmasi : (sale.discountReason === 'rounding' ? c.disc : 0)) : 0;
   const manualD = Math.max(0, c.disc - roundD);
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Chek ${esc(sale.inv || '')}</title><style>

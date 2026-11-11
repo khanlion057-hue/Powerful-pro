@@ -33,13 +33,16 @@ async function testRoleless() {
   r = await save(['savdo.create'], { usdCny: 7.5 }); assert.equal(r.db.usdCny, 7.5, 'CNY +4% — qabul');
 }
 async function testEditorsAndAdmin() {
-  let r = await save(['sozlamalar.edit'], { usdUzs: 15000 }); assert.equal(r.db.usdUzs, 15000, "sozlamalar.edit — istalgan o'zgarish"); assert.ok(r.actions.includes('rate_change'));
+  // v25.1 (egasi talabi): kurs — butun firma sozlamasi; filial menejeri («sozlamalar.edit») ham faqat ±15%, katta o'zgarish — egasi
+  let r = await save(['sozlamalar.edit'], { usdUzs: 15000 }); assert.equal(r.db.usdUzs, 12600, "sozlamalar.edit (filial menejeri) — +19% rad");
+  r = await save(['sozlamalar.edit'], { usdUzs: 12800 }); assert.equal(r.db.usdUzs, 12800, "sozlamalar.edit — ±15% ichida qabul"); assert.ok(r.actions.includes('rate_change'));
+  r = await save(['rollar.manage', 'sozlamalar.edit'], { usdUzs: 15000 }); assert.equal(r.db.usdUzs, 15000, "egasi (rollar.manage) — istalgan o'zgarish"); assert.ok(r.actions.includes('rate_change'));
   r = await save('admin', { usdUzs: 20000 }); assert.equal(r.db.usdUzs, 20000, 'admin — istalgan'); assert.ok(r.actions.includes('rate_change'));
 }
 module.exports = {
   name: "P54 — HARDENING: kurs o'zgarishi — ruxsatsiz xodimga ±15%, noto'g'ri qiymat rad, har o'zgarish jurnalda (PGlite)",
   cases: [
     { name: "Rolsiz/kassir: 99999 va noto'g'ri qiymatlar rad (baza va javob — server qiymati), ±15% ichida — qabul; jurnal", run: testRoleless },
-    { name: "sozlamalar.edit va admin: istalgan o'zgarish, jurnalda", run: testEditorsAndAdmin },
+    { name: "Filial menejeri (sozlamalar.edit) — ±15%; egasi va admin — istalgan o'zgarish, jurnalda", run: testEditorsAndAdmin },
   ],
 };

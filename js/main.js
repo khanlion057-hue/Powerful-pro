@@ -12683,7 +12683,7 @@ function pgSozlamalar() {
     ]) : ''}
 
     ${group('Ilova haqida', [
-      `<div class="st-row static"><span class="st-ic" style="--c:var(--text-muted)">${ICONF.info}</span><span class="st-tx"><b>Versiya</b></span><span class="st-val">${esc(fwBrand().name)} · v${FW_RELEASE}</span></div>`,
+      `<div class="st-row static"><span class="st-ic" style="--c:var(--text-muted)">${ICONF.info}</span><span class="st-tx"><b>Versiya</b></span><span class="st-val">v${FW_RELEASE}</span></div>`,
     ])}
 
     <button class="st-logout" onclick="appLogout()">${ICONF.logout}<span>Chiqish</span></button>

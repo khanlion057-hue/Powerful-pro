@@ -1,0 +1,87 @@
+# Powerful PRO — Netlify sozlamalari
+# build: dist/ papkasi yig'iladi (faqat sayt fayllari; testlar/SQL/hujjatlar internetga chiqmaydi)
+[build]
+  command = "node scripts/build.js"
+  publish = "dist"
+  functions = "netlify/functions"
+
+[build.environment]
+  # v24.5 (v23.10.2 dan): @supabase/supabase-js 2.117 — Node >=22 (Node 20 da createClient "native WebSocket not found"
+  # bilan yiqiladi → barcha funksiyalar 500, login ishlamaydi). Funksiyalar runtime'i ham aniq 22.
+  # SECRETS_SCAN_OMIT_KEYS olib tashlandi: Netlify sir skaneri service-role kalitini ham tekshirsin.
+  NODE_VERSION = "22"
+  AWS_LAMBDA_JS_RUNTIME = "nodejs22.x"
+  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1"
+
+[functions]
+  node_bundler = "esbuild"
+
+# v24.5 (v23.10.2 dan): marshrutlash. Ilova HASH routing ishlatadi (index.html#savdo, #kassa …) — server ichki sahifalarni ko'rmaydi,
+# shuning uchun "/* /index.html 200" (SPA catch-all) QO'YILMAYDI: u yo'q fayl/funksiya so'roviga ham index.html (200)
+# qaytarib, xatolarni yashirardi (masalan JS fetch JSON o'rniga HTML oladi). Faqat aniq qisqa manzillar:
+[[redirects]]
+  from = "/sotuvchi"
+  to = "/sotuvchi.html"
+  status = 200
+
+[[redirects]]
+  from = "/diller"
+  to = "/diller.html"
+  status = 200
+
+[[redirects]]
+  from = "/index"
+  to = "/"
+  status = 301
+# Boshqa yo'q manzil — dist/404.html (bosh sahifaga havola bilan; Netlify'ning umumiy "Page not found" o'rniga)
+
+# Asosiy xavfsizlik sarlavhalari (sayt boshqa saytga "ramka" sifatida qo'yilmasin va h.k.)
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    # v23.10.1: HTTPS majburiy; kamera — QR skaner, joylashuv — onlayn-do'kon xaritasi (faqat o'z sayti)
+    Strict-Transport-Security = "max-age=31536000"
+    Permissions-Policy = "camera=(self), geolocation=(self), microphone=(), payment=(), usb=()"
+    # CSP (v23.10.2, ongli qarorlar — tests/p33: haqiqiy Chromium + mutatsiya):
+    #  script-src: o'z sayti + cdn.jsdelivr.net (har resurs SRI sha384 bilan). 'unsafe-inline' — MAJBURIY: ilova inline <script>
+    #    va ~550 ta onclick'ga tayanadi (olib tashlansa sotuvchi.html darhol buziladi — P33 mutatsiyasi); 'unsafe-eval' YO'Q.
+    #  connect-src: faqat o'z sayti (Netlify Functions) + Supabase REST/Auth/Storage; v25: + CDN va shriftlar (faqat oflayn
+#    keshi uchun — service worker ularni keshga oladi; skript baribir SRI bilan tekshiriladi). Telegram — FAQAT server (brauzer chiqmaydi);
+    #    realtime (wss) ishlatilmaydi — ruxsat yo'q.
+    #  img-src https: — mahsulot rasmlari (Storage yoki tashqi https havola) va xarita plitkalari; rasm skript bajara olmaydi.
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co https://cdn.jsdelivr.net https://fonts.googleapis.com https://fonts.gstatic.com; media-src 'self' blob:; worker-src 'self' blob:; manifest-src 'self'; frame-src 'none'; frame-ancestors 'self'; object-src 'none'; base-uri 'self'; form-action 'self'"
+
+# v25: sahifa, JS va CSS — telefon (ilova WebView) eski nusxani keshdan ishlatib qolmasin: har ochilishda serverdan
+# tekshiriladi (o'zgarmagan bo'lsa 304 — tez), yangi deploy darhol ko'rinadi
+[[headers]]
+  for = "/js/*"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/css/*"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+# v25: service worker — har ochilishda yangisi tekshiriladi (eski versiya keshda qolib ketmasin)
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+    Service-Worker-Allowed = "/"
+
+# v23.9: kunlik hisobot Telegram guruhiga — har soatda tekshiradi, Sozlamalardagi soatdan keyin kuniga bir marta yuboradi
+[functions."telegram-daily-report"]
+  schedule = "5 * * * *"
+
+# v24.5: kunlik zaxira nusxa — egasining shaxsiy Telegram chatiga (Sozlamalar → Maʼlumotlar), kuniga bir marta
+[functions."backup-daily"]
+  schedule = "35 * * * *"

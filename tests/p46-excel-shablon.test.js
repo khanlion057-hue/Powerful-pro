@@ -15,6 +15,7 @@ const { loadApp, ROOT } = require('./helpers/load-app');
 
 function excelJsPath() {
   const cands = [process.env.FW_CDN_DIR && path.join(process.env.FW_CDN_DIR, 'exceljs@4.4.0', 'package', 'dist', 'exceljs.min.js'),
+    path.join(require('os').tmpdir(), 'fw-cdn-cache', 'exceljs@4.4.0', 'package', 'dist', 'exceljs.min.js'), // p42 testi yaratadigan standart kesh
     path.join(ROOT, 'node_modules', 'exceljs', 'dist', 'exceljs.min.js')].filter(Boolean);
   const p = cands.find(x => fs.existsSync(x));
   if (!p) throw new Error('exceljs 4.4.0 topilmadi — FW_CDN_DIR ni bering (p42 testidagi kabi)');

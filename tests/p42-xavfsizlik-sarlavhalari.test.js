@@ -23,7 +23,7 @@ function cdnDir() {
     if (fs.existsSync(path.join(d, 'package', 'package.json'))) continue;
     fs.mkdirSync(d, { recursive: true });
     const tgz = execFileSync('npm', ['pack', `${n}@${v}`, '--silent'], { cwd: d, encoding: 'utf8' }).trim().split('\n').pop();
-    execFileSync('tar', ['xzf', tgz, '-C', d]);
+    execFileSync('tar', ['xzf', tgz, '-C', d], { cwd: d }); // npm pack faylni d ichiga yozadi — nisbiy nom shu yerdan o'qiladi
   }
   return dir;
 }

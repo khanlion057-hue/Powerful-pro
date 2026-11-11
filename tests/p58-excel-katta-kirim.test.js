@@ -8,6 +8,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs'); const path = require('path');
 const { loadApp } = require('./helpers/load-app');
 const XLJS = [process.env.FW_CDN_DIR && path.join(process.env.FW_CDN_DIR, 'exceljs@4.4.0', 'package', 'dist', 'exceljs.min.js'),
+  path.join(require('os').tmpdir(), 'fw-cdn-cache', 'exceljs@4.4.0', 'package', 'dist', 'exceljs.min.js'), // p42 testi yaratadigan standart kesh
   path.join(__dirname, '..', 'node_modules', 'exceljs', 'dist', 'exceljs.min.js')].filter(Boolean).find(p => fs.existsSync(p));
 
 async function withApp(fn) {

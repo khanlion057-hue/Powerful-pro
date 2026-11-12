@@ -144,7 +144,69 @@ function makeRover(N){
   x.beginPath();x.arc(0,0,BR*.12,0,6.283);x.fillStyle='#121417';x.fill();
   return c;
 }
-var blade=makeRover(96),bladeS=makeBlade(48,false);
+// Kichik skorlovchi arra — haqiqiy 120×24T BCK (egasi surati): xira kulrang plastina, yaltiroq cho'tkalangan markaz,
+// 24 yirik karbid tish, ilgakli tirqishlar, yozuvlar arra bo'ylab (yoy shaklida).
+function makeScoring(N){
+  var sz=Math.ceil((BR*2+8)*BK),c=document.createElement('canvas');c.width=c.height=sz;
+  var x=c.getContext('2d');x.translate(sz/2,sz/2);x.scale(BK,BK);
+  var Rt=BR,Rg=BR-13,Rb=Rg-3,Rc=BR*.70,i;
+  function P(a,r){return [Math.cos(a)*r,Math.sin(a)*r]}
+  var step=Math.PI*2/N;
+  // tishli plastina — xira kulrang po'lat
+  x.beginPath();
+  for(i=0;i<N;i++){
+    var a=i*step,s0=P(a+step*.04,Rg+1),b1=P(a+step*.40,Rt-3.2),tip=P(a+step*.66,Rt),
+        f1=P(a+step*.68,Rg+1),gb=P(a+step*.80,Rb-3.5),e0=P(a+step*1.04,Rg+1);
+    i?x.lineTo(s0[0],s0[1]):x.moveTo(s0[0],s0[1]);
+    x.lineTo(b1[0],b1[1]);x.lineTo(tip[0],tip[1]);x.lineTo(f1[0],f1[1]);
+    x.quadraticCurveTo(gb[0],gb[1],e0[0],e0[1]);
+  }
+  x.closePath();
+  var pg=x.createRadialGradient(-BR*.3,-BR*.3,BR*.2,0,0,BR);pg.addColorStop(0,'#c2c3c5');pg.addColorStop(1,'#9a9b9e');
+  x.fillStyle=pg;x.fill();x.strokeStyle='rgba(40,42,46,.5)';x.lineWidth=.4;x.stroke();
+  // karbid uchliklar: kulrang, old yuzi yaltiroq
+  for(i=0;i<N;i++){
+    var a1=i*step,t1=P(a1+step*.665,Rt+.3),t2=P(a1+step*.685,Rt-9),t3=P(a1+step*.47,Rt-9.5),t4=P(a1+step*.45,Rt-2.4);
+    x.beginPath();x.moveTo(t1[0],t1[1]);x.lineTo(t2[0],t2[1]);x.lineTo(t3[0],t3[1]);x.lineTo(t4[0],t4[1]);x.closePath();
+    var kg=x.createLinearGradient(t4[0],t4[1],t1[0],t1[1]);kg.addColorStop(0,'#6f747a');kg.addColorStop(.7,'#9aa0a6');kg.addColorStop(1,'#d9dde1');
+    x.fillStyle=kg;x.fill();x.strokeStyle='rgba(20,22,26,.7)';x.lineWidth=.35;x.stroke();
+    x.beginPath();x.moveTo(t1[0],t1[1]);x.lineTo(t2[0],t2[1]);x.strokeStyle='rgba(255,255,255,.95)';x.lineWidth=1.3;x.stroke();
+  }
+  // ilgakli tirqishlar
+  for(i=0;i<3;i++){
+    var a2=i*Math.PI*2/3+.4,p1=P(a2,Rg-.5),p2=P(a2+.04,Rc+3.5),cc=P(a2+.11,Rc+3);
+    x.beginPath();x.moveTo(p1[0],p1[1]);x.lineTo(p2[0],p2[1]);x.strokeStyle='#f2f3f4';x.lineWidth=1;x.stroke();
+    x.beginPath();x.arc(cc[0],cc[1],2.8,a2+Math.PI*1.1,a2+Math.PI*2.7);x.strokeStyle='#f2f3f4';x.lineWidth=1.2;x.stroke();
+  }
+  // markaz — yaltiroq cho'tkalangan disk (radial nurlar)
+  x.beginPath();x.arc(0,0,Rc,0,6.283);
+  if(x.createConicGradient){var g=x.createConicGradient(.2,0,0),st=['#5d5a5a','#c9c9cb','#4a4848','#8e8b8b','#e6e6e8','#585656','#a9a7a8','#3f3d3d'];
+    for(var k=0;k<=st.length;k++)g.addColorStop(k/st.length,st[k%st.length]);x.fillStyle=g}else x.fillStyle='#8a8888';
+  x.fill();
+  x.save();x.clip();
+  for(i=0;i<90;i++){var ra=Math.random()*6.283;x.beginPath();x.moveTo(0,0);x.lineTo(Math.cos(ra)*Rc,Math.sin(ra)*Rc);
+    x.strokeStyle='rgba(255,255,255,'+rnd(.04,.16)+')';x.lineWidth=rnd(.3,1.2);x.stroke()}
+  x.restore();
+  // yozuvlar — arra bo'ylab (yoy shaklida)
+  function arc(txt,R,font,col,stroke){
+    x.font=font;x.textAlign='center';x.textBaseline='middle';
+    var ws=[],tot=0,j;for(j=0;j<txt.length;j++){ws[j]=x.measureText(txt[j]).width+.25;tot+=ws[j]}
+    var a=-Math.PI/2-tot/R/2;
+    for(j=0;j<txt.length;j++){var da=ws[j]/R,mid=a+da/2;
+      x.save();x.translate(Math.cos(mid)*R,Math.sin(mid)*R);x.rotate(mid+Math.PI/2);
+      if(stroke){x.strokeStyle=col;x.lineWidth=.45;x.strokeText(txt[j],0,0)}else{x.fillStyle=col;x.fillText(txt[j],0,0)}
+      x.restore();a+=da}
+  }
+  arc('Powerful',Rc*.80,'bold 11px Arial','rgba(235,236,238,.9)',true);
+  arc('CAC00/N 120X24TX3.0-4.0/2.2X20-BCK',Rc*.64,'bold 3.4px Arial','rgba(28,28,30,.85)');
+  arc('MAX.12000.RPM',Rc*.56,'bold 3.4px Arial','rgba(28,28,30,.85)');
+  arc('5102-2225310002-02',Rc*.48,'bold 3.4px Arial','rgba(28,28,30,.85)');
+  // katta o'q teshigi (20 mm)
+  x.beginPath();x.arc(0,0,BR*.17,0,6.283);x.fillStyle='#f4f5f6';x.fill();
+  x.strokeStyle='rgba(30,30,34,.55)';x.lineWidth=.6;x.stroke();
+  return c;
+}
+var blade=makeRover(96),bladeS=makeScoring(24);
 
 /* ---------- yog'och taxta (usti, uzunasiga tolali) ---------- */
 function makeTop(L,Hh,k){

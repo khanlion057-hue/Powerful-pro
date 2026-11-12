@@ -4,7 +4,7 @@
    • CDN kutubxonalari (versiyasi qat'iy, SRI bilan) va shriftlar — keshdan darhol (tez ochilish); yo'q bo'lsa tarmoqdan.
    • Server funksiyalari (/.netlify/functions), Supabase va boshqa so'rovlar — HECH QACHON keshlanmaydi (pul va qoldiq
      ma'lumoti faqat serverdan; oflayn savdolar ilovaning o'z navbatida turadi va internet qaytganda yuboriladi). */
-const CACHE = 'powerful-v25-10';
+const CACHE = 'powerful-v25-11';
 const SHELL = [
   './', './index.html', './sotuvchi.html', './diller.html', './manifest.json',
   './css/style.css', './css/design-system.css',

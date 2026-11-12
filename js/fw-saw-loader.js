@@ -79,7 +79,72 @@ function makeBlade(N,big){
   x.beginPath();x.arc(0,0,BR*.13,0,6.283);x.fillStyle='#121417';x.fill();
   return c;
 }
-var blade=makeBlade(48,true),bladeS=makeBlade(24,false);
+// Katta asosiy arra — haqiqiy Rover tig'i (egasi surati): butun disk cho'tkalangan kumush, ingichka o'yilgan aylana,
+// 96 karbid tish, mis tiqinli kengayish tirqishlari, radius bo'ylab yozuv.
+function makeRover(N){
+  var sz=Math.ceil((BR*2+8)*BK),c=document.createElement('canvas');c.width=c.height=sz;
+  var x=c.getContext('2d');x.translate(sz/2,sz/2);x.scale(BK,BK);
+  var Rt=BR,Rg=BR-4.6,Rb=Rg-1.6,i;
+  function P(a,r){return [Math.cos(a)*r,Math.sin(a)*r]}
+  function conic(st,rot){
+    if(!x.createConicGradient){var r=x.createRadialGradient(-20,-20,5,0,0,BR);r.addColorStop(0,st[0]);r.addColorStop(1,st[1]);return r}
+    var g=x.createConicGradient(rot,0,0);for(var k=0;k<=st.length;k++)g.addColorStop(k/st.length,st[k%st.length]);return g;
+  }
+  var step=Math.PI*2/N;
+  // tishli disk (tor, chuqur tublar)
+  x.beginPath();
+  for(i=0;i<N;i++){
+    var a=i*step,s0=P(a,Rg-.2),cb=P(a+step*.4,Rt-1.4),tip=P(a+step*.74,Rt-.6),
+        f1=P(a+step*.76,Rb+.6),gc=P(a+step*.88,Rb-1.4),e0=P(a+step,Rg-.2);
+    i?x.lineTo(s0[0],s0[1]):x.moveTo(s0[0],s0[1]);
+    x.quadraticCurveTo(cb[0],cb[1],tip[0],tip[1]);x.lineTo(f1[0],f1[1]);x.quadraticCurveTo(gc[0],gc[1],e0[0],e0[1]);
+  }
+  x.closePath();
+  x.fillStyle=conic(['#9ea4ab','#e6e9ec','#8a9098','#c9cdd2','#f4f6f7','#959ba2','#d7dbdf','#7f858c'],.5);x.fill();
+  x.strokeStyle='rgba(20,22,26,.45)';x.lineWidth=.25;x.stroke();
+  // cho'tkalangan iz va yaltiroq nurlar
+  x.save();x.beginPath();x.arc(0,0,Rg,0,6.283);x.clip();
+  for(i=0;i<120;i++){var rr=rnd(BR*.2,Rg);x.beginPath();x.arc(0,0,rr,0,6.283);
+    x.strokeStyle='rgba('+(Math.random()<.5?'255,255,255':'60,64,70')+','+rnd(.03,.09)+')';x.lineWidth=rnd(.2,.6);x.stroke()}
+  [[-.9,.30],[1.9,.22],[3.5,.16]].forEach(function(b){
+    var g=x.createLinearGradient(Math.cos(b[0])*-BR,Math.sin(b[0])*-BR,Math.cos(b[0])*BR,Math.sin(b[0])*BR);
+    g.addColorStop(.42,'rgba(255,255,255,0)');g.addColorStop(.5,'rgba(255,255,255,'+b[1]+')');g.addColorStop(.58,'rgba(255,255,255,0)');
+    x.fillStyle=g;x.fillRect(-BR,-BR,BR*2,BR*2)});
+  x.restore();
+  // karbid uchliklar (yaltiroq, biroz kamalakrang)
+  var th=3.2;
+  for(i=0;i<N;i++){
+    var a1=i*step,t1=P(a1+step*.74,Rt),t2=P(a1+step*.77,Rt-th),t3=P(a1+step*.56,Rt-th),t4=P(a1+step*.55,Rt-.5);
+    x.beginPath();x.moveTo(t1[0],t1[1]);x.lineTo(t2[0],t2[1]);x.lineTo(t3[0],t3[1]);x.lineTo(t4[0],t4[1]);x.closePath();
+    var cg=x.createLinearGradient(t4[0],t4[1],t2[0],t2[1]);cg.addColorStop(0,'#ffffff');cg.addColorStop(.5,'#d8dde3');cg.addColorStop(1,'#8f969e');
+    x.fillStyle=cg;x.fill();x.strokeStyle='rgba(20,22,26,.6)';x.lineWidth=.22;x.stroke();
+  }
+  // o'yilgan aylana chiziq
+  x.beginPath();x.arc(0,0,BR*.79,0,6.283);x.strokeStyle='rgba(50,54,60,.45)';x.lineWidth=.4;x.stroke();
+  x.beginPath();x.arc(0,0,BR*.79+.5,0,6.283);x.strokeStyle='rgba(255,255,255,.5)';x.lineWidth=.3;x.stroke();
+  // kengayish tirqishlari — uchida mis tiqin
+  for(i=0;i<4;i++){
+    var a2=i*Math.PI/2+.3,p1=P(a2,Rb),p2=P(a2-.03,BR*.83);
+    x.beginPath();x.moveTo(p1[0],p1[1]);x.lineTo(p2[0],p2[1]);x.strokeStyle='#15171a';x.lineWidth=.55;x.stroke();
+    x.beginPath();x.arc(p2[0],p2[1],1.7,0,6.283);x.fillStyle='#b8693c';x.fill();
+    x.strokeStyle='rgba(255,255,255,.7)';x.lineWidth=.35;x.stroke();
+  }
+  // yozuv — radius bo'ylab (suratdagidek)
+  x.save();x.rotate(-Math.PI*.30);
+  x.textAlign='left';x.textBaseline='middle';
+  x.font='bold 8.5px Arial,sans-serif';x.fillStyle='rgba(55,58,64,.85)';x.fillText('Powerful',BR*.24,0);
+  x.font='bold 2.7px Arial';x.fillStyle='rgba(55,58,64,.85)';
+  x.fillText('CAB01 300X96TX3.2/2.2X30-TP',BR*.24,6.4);
+  x.fillText('MAX.6000.RPM',BR*.34,9.6);
+  x.fillText('5102-080521001-03',BR*.30,12.8);
+  x.restore();
+  // o'q teshigi va gardish
+  x.beginPath();x.arc(0,0,BR*.2,0,6.283);x.fillStyle=conic(['#c4c9ce','#8f959c','#e3e6e9','#9da3aa'],0);x.fill();
+  x.strokeStyle='rgba(30,34,38,.45)';x.lineWidth=.45;x.stroke();
+  x.beginPath();x.arc(0,0,BR*.12,0,6.283);x.fillStyle='#121417';x.fill();
+  return c;
+}
+var blade=makeRover(96),bladeS=makeBlade(48,false);
 
 /* ---------- yog'och taxta (usti, uzunasiga tolali) ---------- */
 function makeTop(L,Hh,k){

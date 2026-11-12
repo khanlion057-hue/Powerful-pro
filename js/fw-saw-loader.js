@@ -1,5 +1,5 @@
-// POWERFUL GROUP — YUKLANISH ANIMATSIYASI (egasi namunasi, 2026-11): format-kesish stanoki yon tomondan — 4 qavat plita,
-// ustidan siquvchi bosadi, ostidan karetkadagi kichik (skorlovchi) va katta arra chapga yurib kesadi. Yorug' sahna.
+// POWERFUL GROUP — YUKLANISH ANIMATSIYASI (egasi dizayni, 2026-11): formatli arra stanoki USTIDAN ko'rinishda, ishni boshlayotgandek —
+// arralar tezlik oladi, kichik (skorlovchi) va katta arra yog'och taxtani uzunasiga kesadi: 4 kesim → 5 bo'lak. Yorug' stol.
 // Admin (#bp-loading), sotuvchi va diller (#fw-splash) yuklanish oynalarida avtomatik ishga tushadi.
 // Faqat oyna KO'RINIB turganda chiziladi (kirib bo'lgach — to'xtaydi, protsessor/batareya band qilinmaydi).
 // «Kamroq harakat» (prefers-reduced-motion) yoqilgan qurilmada — chizilmaydi (oddiy arra tig'i qoladi).
@@ -8,73 +8,12 @@
   if (typeof window === 'undefined' || !window.requestAnimationFrame) return;
   try { if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return; } catch (e) {}
 
-var WH=250,BR=68,PH=62,PY=156,TS=22;
+var WH=250;
+var INTRO=1300,FEED=1400,SEP=450,STG=FEED+SEP,NS=4,NP=5,OUT=2400,TOTAL=INTRO+NS*STG+OUT,KY=104,SW=16,GAPS=3,SCX=70;
 function rnd(a,b){return a+Math.random()*(b-a)}
 function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
 function ease(q){q=clamp(q,0,1);return q<.5?2*q*q:1-Math.pow(-2*q+2,2)/2}
 
-/* ---------- arra diski (bir marta) ---------- */
-/* ---------- arra diski (egasi namunasi: mayda o'tkir tishlar, kumush disk, qizil to'lqinsimon kesiklar) ---------- */
-var BK=3;
-function makeBlade(N,big,rev){
-  var sz=Math.ceil((BR*2+8)*BK),c=document.createElement('canvas');c.width=c.height=sz;
-  var x=c.getContext('2d');x.translate(sz/2,sz/2);x.scale(BK,BK);
-  var Rt=BR,Rg=BR-(big?5.5:9),i;          // tish uchi va tish tubi radiusi
-  function P(a,r){return [Math.cos(a)*r,Math.sin(a)*r]}
-  // tishlar: oldinga egilgan o'tkir uchburchak (namunadagidek arra tishi)
-  var step=Math.PI*2/N;
-  x.beginPath();
-  for(i=0;i<N;i++){
-    var a=i*step,sg=rev?-1:1,g0=P(a*sg,Rg),tip=P((a+step*.78)*sg,Rt),g1=P((a+step*.86)*sg,Rg+.6);
-    i?x.lineTo(g0[0],g0[1]):x.moveTo(g0[0],g0[1]);x.lineTo(tip[0],tip[1]);x.lineTo(g1[0],g1[1]);
-  }
-  x.closePath();
-  var tg=x.createRadialGradient(0,0,Rg-4,0,0,Rt);tg.addColorStop(0,'#9aa0a7');tg.addColorStop(1,'#5f656c');
-  x.fillStyle=tg;x.fill();x.strokeStyle='rgba(40,44,50,.55)';x.lineWidth=.35;x.stroke();
-  // disk tanasi — kumush
-  x.beginPath();x.arc(0,0,Rg-.3,0,6.283);
-  var bg=x.createRadialGradient(-Rg*.35,-Rg*.4,Rg*.1,0,0,Rg);
-  bg.addColorStop(0,'#f4f5f6');bg.addColorStop(.55,'#d3d6da');bg.addColorStop(1,'#b4b9bf');
-  x.fillStyle=bg;x.fill();
-  // ichki (to'qroq) doira va gupchak
-  x.beginPath();x.arc(0,0,Rg*.44,0,6.283);
-  var ig=x.createRadialGradient(-6,-6,2,0,0,Rg*.44);ig.addColorStop(0,'#c9ccd0');ig.addColorStop(1,'#a2a7ad');
-  x.fillStyle=ig;x.fill();x.strokeStyle='rgba(60,64,70,.35)';x.lineWidth=.6;x.stroke();
-  x.beginPath();x.arc(0,0,Rg*.2,0,6.283);x.fillStyle='#8e9399';x.fill();
-  x.beginPath();x.arc(0,0,Rg*.11,0,6.283);x.fillStyle='#16181b';x.fill();
-  // gardishdagi kalitsimon tirqishlar (issiqlik kengayishi uchun)
-  var ns=big?6:4;
-  for(i=0;i<ns;i++){
-    var a2=i*Math.PI*2/ns+.2,p1=P(a2,Rg+.5),p2=P(a2+.05,Rg-(big?9:7)),p3=P(a2+.05,Rg-(big?10.5:8.2));
-    x.beginPath();x.moveTo(p1[0],p1[1]);x.lineTo(p2[0],p2[1]);x.strokeStyle='#4a4f56';x.lineWidth=.9;x.stroke();
-    x.beginPath();x.arc(p3[0],p3[1],big?1.5:1.3,0,6.283);x.fillStyle='#4a4f56';x.fill();
-  }
-  // qizil to'lqinsimon (shovqinni pasaytiruvchi) lazer kesiklari
-  if(big){
-    for(i=0;i<6;i++){
-      var a3=i*Math.PI/3+.72,cx=Math.cos(a3)*Rg*.7,cy=Math.sin(a3)*Rg*.7;
-      x.save();x.translate(cx,cy);x.rotate(a3);
-      x.beginPath();
-      for(var k=0;k<=16;k++){var tt=k/16,yy=(tt-.5)*12,xx=Math.sin(tt*Math.PI*3)*2.2;k?x.lineTo(xx,yy):x.moveTo(xx,yy)}
-      x.strokeStyle='#d0312d';x.lineWidth=1.25;x.lineCap='round';x.stroke();x.restore();
-    }
-    // yozuv: POWERFUL PRO
-    x.save();x.font='900 5.6px Arial';x.textAlign='center';x.textBaseline='middle';
-    var txt='POWERFUL PRO',R0=Rg*.31,ws=[],tot=0;
-    for(i=0;i<txt.length;i++){ws[i]=x.measureText(txt[i]).width+.5;tot+=ws[i]}
-    var aa=-Math.PI/2-tot/R0/2;
-    for(i=0;i<txt.length;i++){var da=ws[i]/R0,mid=aa+da/2;
-      x.save();x.translate(Math.cos(mid)*R0,Math.sin(mid)*R0);x.rotate(mid+Math.PI/2);
-      x.fillStyle=i>=9?'#c2720c':'#2f343b';x.fillText(txt[i],0,0);x.restore();aa+=da}
-    x.restore();
-  }
-  // yaltiroq
-  x.beginPath();x.arc(0,0,Rg-.3,0,6.283);
-  var sh=x.createLinearGradient(-Rg,-Rg,Rg,Rg);sh.addColorStop(0,'rgba(255,255,255,.28)');sh.addColorStop(.5,'rgba(255,255,255,0)');sh.addColorStop(1,'rgba(0,0,0,.08)');
-  x.fillStyle=sh;x.fill();
-  return c;
-}
-var blade=makeBlade(96,true,true),bladeS=makeBlade(26,false,false);   // katta — soat millariga teskari, kichik — soat bo'yicha
 
 /* ---------- yog'och taxta (usti, uzunasiga tolali) ---------- */
 function makeTop(L,Hh,k){
@@ -110,137 +49,156 @@ function makeTop(L,Hh,k){
 }
 
 /* ---------- DSP (qirindili plita) qirqimi — egasi namunasi ---------- */
-function makeChip(L,Hh,k){
-  var c=document.createElement('canvas');c.width=Math.ceil(L*k);c.height=Math.ceil(Hh*k);
-  var x=c.getContext('2d');x.scale(k,k);
-  var g=x.createLinearGradient(0,0,0,Hh);g.addColorStop(0,'#e2c27e');g.addColorStop(.5,'#d4ae66');g.addColorStop(1,'#dcb872');
-  x.fillStyle=g;x.fillRect(0,0,L,Hh);
-  var n=Math.round(L*Hh*.9),i,cols=['#b8873e','#f0d79a','#a8762f','#e8c985','#c99a4e','#8f6327'];
-  for(i=0;i<n;i++){
-    var yy=rnd(0,Hh),edge=Math.min(yy,Hh-yy)<Hh*.22;      // chetlarida mayda, o'rtasida yirikroq qirindi
-    var w=edge?rnd(.6,1.6):rnd(1,3.4),h=edge?rnd(.3,.7):rnd(.4,1.1);
-    x.globalAlpha=rnd(.35,.85);x.fillStyle=cols[(Math.random()*cols.length)|0];
-    x.save();x.translate(rnd(0,L),yy);x.rotate(rnd(-.5,.5));x.fillRect(-w/2,-h/2,w,h);x.restore();
-  }
-  x.globalAlpha=1;return c;
-}
-
-/* ---------- bitta yuklanish ekrani (egasi namunasi: format-kesish stanoki, yon tomondan) ---------- */
-// 4 qavat plita taxlami; ustidan ikki ustunli siquvchi (prijim) tushib bosadi; ostidan karetka chapga yuradi —
-// oldinda kichik (skorlovchi) arra, orqasida katta arra. Har o'tish — 25%. Stanokdagi yozuv — faqat «POWERFUL PRO».
-var NB=4,DOWN=450,PASS=2600,UP=400,CYC=DOWN+PASS+UP,HOLD=700,NL=4,LH=13,LG=2.2;
-var RED='#d6332b';
+/* ---------- bitta yuklanish ekrani ---------- */
 function Loader(frame,getScale){
   var self=this;
   var cv=frame.querySelector('canvas'),pct=frame.querySelector('.pct'),ctx=cv.getContext('2d');
-  var W=380,s=1,res=1,TOP=78,BOT=78+NL*LH+(NL-1)*LG,R1=96,R2=34,DX=R1+R2+46,tex=[],parts=[],angle=0,t0=null;
+  var W=380,s=1,res=1,pw=70,gap=6,xS=0,xE=0,L=160,bS=0,BX=190,tex=null,parts=[],angle=0,t0=null,last=0,spinStep=.3;
   function setup(){
     var cw=cv.clientWidth,ch=cv.clientHeight;if(!cw||!ch)return;
     var sc=getScale();res=clamp((window.devicePixelRatio||1)*sc,.7,2.6);
     cv.width=Math.round(cw*res);cv.height=Math.round(ch*res);
-    s=ch/WH;W=cw/s;tex=[];
-    for(var i=0;i<NL;i++)tex.push(makeChip(W,LH,res*s*1.1));
+    s=ch/WH;W=cw/s;
+    BX=W/2-20;bS=BX+SCX;L=clamp(W*.40,100,480);xS=bS+30;xE=BX-30-L;tex=makeTop(L,NP*SW,res*s*1.1);
   }
   self.setup=setup;
   var ro=window.ResizeObserver?new ResizeObserver(setup):null;if(ro)ro.observe(cv);
   setup();
 
-  function arrowDown(x,y,len){
-    ctx.strokeStyle=RED;ctx.lineWidth=4;ctx.lineCap='butt';ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y+len-8);ctx.stroke();
-    ctx.fillStyle=RED;ctx.beginPath();ctx.moveTo(x,y+len);ctx.lineTo(x-7,y+len-10);ctx.lineTo(x+7,y+len-10);ctx.fill();
+  function spawn(x,y,n){for(var i=0;i<n;i++){var pl=Math.random();
+    parts.push({x:x,y:y-rnd(0,2),vx:rnd(-3.4,1.2),vy:-rnd(1.4,4.4),life:1,dec:rnd(.012,.028),s:rnd(.9,2.5),
+      c:pl<.5?'236,210,165':pl<.8?'214,178,126':'248,236,212'})}}
+
+  function slotY(s){return KY+SW+GAPS+s*(SW+GAPS)}
+  function stripY(o,r,sp){
+    var n=NP-r,hi=NP-1-r;
+    if(r<NS&&o===hi)return KY+(slotY(0)-KY)*sp;
+    if(o>hi){var s0=r-1-(NP-1-o);return slotY(s0)+(SW+GAPS)*sp}
+    return KY+SW-n*SW+o*SW+SW*sp;
   }
-  function arrowLeft(x,y,len){
-    ctx.strokeStyle=RED;ctx.lineWidth=4.5;ctx.beginPath();ctx.moveTo(x+len,y);ctx.lineTo(x+9,y);ctx.stroke();
-    ctx.fillStyle=RED;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+12,y-7.5);ctx.lineTo(x+12,y+7.5);ctx.fill();
+  function drawStrip(o,y,x){
+    var kk=tex.width/L;
+    if(x>W||x+L<0)return;
+    ctx.fillStyle='rgba(0,0,0,.16)';ctx.fillRect(x+2,y+2.5,L,SW);
+    ctx.drawImage(tex,0,o*SW*kk,L*kk,SW*kk,x,y,L,SW);
+    // kesilgan chet — yangi kesilgan yog'och (ochroq)
+    ctx.fillStyle='#e2b47c';ctx.fillRect(x,y,L,1.5);ctx.fillRect(x,y+SW-1.5,L,1.5);
+    ctx.fillStyle='rgba(60,38,16,.35)';ctx.fillRect(x,y+1.5,L,.6);ctx.fillRect(x,y+SW-2.1,L,.6);
+    ctx.fillStyle='#d9a86e';ctx.fillRect(x,y,1.5,SW);ctx.fillRect(x+L-1.5,y,1.5,SW);
   }
-  function arcArrow(cx,cy,r,a0,a1){
-    ctx.strokeStyle=RED;ctx.lineWidth=4;ctx.lineCap='butt';
-    ctx.beginPath();ctx.arc(cx,cy,r,a0,a1,a1<a0);ctx.stroke();
-    var e=a1,dir=a1>a0?1:-1,tx=-Math.sin(e)*dir,ty=Math.cos(e)*dir,px=cx+Math.cos(e)*r,py=cy+Math.sin(e)*r;
-    ctx.fillStyle=RED;ctx.beginPath();
-    ctx.moveTo(px+tx*9,py+ty*9);ctx.lineTo(px-ty*7,py+tx*7);ctx.lineTo(px+ty*7,py-tx*7);ctx.fill();
+  function drawTable(fenceY){
+    var g=ctx.createLinearGradient(0,0,W*.3,WH);
+    g.addColorStop(0,'#eef0f3');g.addColorStop(.5,'#dfe2e6');g.addColorStop(1,'#e8ebee');
+    ctx.fillStyle=g;ctx.fillRect(0,0,W,WH+2);
+    ctx.fillStyle='rgba(0,0,0,.025)';
+    for(var yy=2;yy<WH;yy+=3)ctx.fillRect(0,yy,W,.7);
+    // arra yoriqlari (kesish plitasi)
+    var px=BX-64,pw2=SCX+64+44;
+    ctx.fillStyle='#b7bdc4';ctx.fillRect(px,KY-12,pw2,24);
+    ctx.fillStyle='rgba(255,255,255,.7)';ctx.fillRect(px,KY-12,pw2,1);
+    ctx.fillStyle='rgba(0,0,0,.18)';ctx.fillRect(px,KY+12,pw2,1.5);
+    ctx.fillStyle='#2a2d32';ctx.fillRect(px+6,KY-2.8,pw2-12,5.6);
+    // tayanch chizigʻi (fence)
+    var fg=ctx.createLinearGradient(0,fenceY,0,fenceY+7);
+    fg.addColorStop(0,'#9aa1ab');fg.addColorStop(.4,'#6a707a');fg.addColorStop(1,'#3d4148');
+    ctx.fillStyle=fg;ctx.fillRect(0,fenceY,W,7);
+    ctx.fillStyle='rgba(0,0,0,.35)';ctx.fillRect(0,fenceY+7,W,2.5);
+    ctx.fillStyle='#e0a030';ctx.fillRect(0,fenceY+1,W,.8);
   }
-  function steel(x,y,w,h){
-    var g=ctx.createLinearGradient(x,y,x+w,y+h);
-    g.addColorStop(0,'#aeb9b6');g.addColorStop(.35,'#e9eeec');g.addColorStop(.6,'#c3ccc9');g.addColorStop(1,'#93a09c');
-    ctx.fillStyle=g;ctx.fillRect(x,y,w,h);ctx.strokeStyle='rgba(50,60,58,.5)';ctx.lineWidth=.8;ctx.strokeRect(x+.4,y+.4,w-.8,h-.8);
+  // yuqoridan koʻrinish: arra faqat ingichka chiziq (chetidan) boʻlib koʻrinadi
+  function topBlade(x,y,chord,dirS){
+    var x1=x-chord/2,i;
+    var fade=ctx.createLinearGradient(x1,0,x1+chord,0);
+    fade.addColorStop(0,'rgba(215,220,226,0)');fade.addColorStop(.18,'rgba(215,220,226,1)');
+    fade.addColorStop(.82,'rgba(215,220,226,1)');fade.addColorStop(1,'rgba(215,220,226,0)');
+    var sh=ctx.createLinearGradient(x1,0,x1+chord,0);
+    sh.addColorStop(0,'rgba(0,0,0,0)');sh.addColorStop(.2,'rgba(0,0,0,.4)');sh.addColorStop(.8,'rgba(0,0,0,.4)');sh.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=sh;ctx.fillRect(x1+2,y+1.8,chord,2.4);
+    ctx.fillStyle=fade;ctx.fillRect(x1,y-1.3,chord,2.6);
+    var ph=angle*14*dirS;
+    for(i=0;i<chord/5+2;i++){
+      var pos=(i*5+ph)%chord;if(pos<0)pos+=chord;
+      var al=Math.sin(Math.PI*pos/chord);
+      ctx.fillStyle='rgba(255,255,255,'+(al*.95)+')';ctx.fillRect(x1+pos-.7,y-2.5,1.4,5);
+    }
   }
-  function disc(cx,cy,R,a,img,flip){
-    ctx.save();ctx.translate(cx,cy);ctx.rotate(a);if(flip)ctx.scale(1,-1);
-    var d=2*(BR+4)*R/BR;ctx.drawImage(img,-d/2,-d/2,d,d);ctx.restore();
+  function label(txt,x,yFrom,yTo){
+    ctx.strokeStyle='rgba(224,160,48,.8)';ctx.lineWidth=.7;ctx.beginPath();ctx.moveTo(x,yFrom);ctx.lineTo(x,yTo);ctx.stroke();
+    ctx.beginPath();ctx.arc(x,yFrom,1.6,0,6.283);ctx.fillStyle='#e0a030';ctx.fill();
+    ctx.font='bold 7.5px Arial';ctx.textAlign='center';ctx.fillStyle='#9a5d08';ctx.fillText(txt,x,yTo+9);
   }
-  function plate(){
-    var w=104,h=22,x=12,y=12;
-    ctx.fillStyle='#1f2227';ctx.fillRect(x,y,w,h);
-    ctx.fillStyle='#e0a030';ctx.fillRect(x,y,3,h);
-    ctx.textAlign='left';ctx.textBaseline='middle';ctx.font='900 11px Arial';
-    ctx.fillStyle='#f3f4f6';ctx.fillText('POWERFUL',x+10,y+h/2+.5);
-    var pw=ctx.measureText('POWERFUL ').width;ctx.fillStyle='#e0a030';ctx.fillText('PRO',x+10+pw,y+h/2+.5);
-    ctx.textBaseline='alphabetic';
+  function slit(xa,xb,ly,deep){
+    if(xb<=xa)return;
+    if(!deep){ctx.fillStyle='rgba(50,52,58,.6)';ctx.fillRect(xa,ly-.6,xb-xa,1.2);return}
+    var kg=ctx.createLinearGradient(0,ly-2,0,ly+2);kg.addColorStop(0,'#8a6a42');kg.addColorStop(.3,'#1a1410');kg.addColorStop(.5,'#050506');kg.addColorStop(.7,'#1a1410');kg.addColorStop(1,'#8a6a42');
+    ctx.fillStyle=kg;ctx.fillRect(xa,ly-1.8,xb-xa,3.6);
   }
-  function dust(x,y,n,dir){for(var i=0;i<n;i++){var pl=Math.random();
-    parts.push({x:x,y:y+rnd(-3,3),vx:dir*rnd(.8,3.8),vy:rnd(-2.6,1),life:1,dec:rnd(.02,.045),s:rnd(.9,2.2),
-      c:pl<.5?'214,176,104':pl<.8?'184,135,62':'240,215,154'})}}
+  function dust(x,y,n){for(var i=0;i<n;i++){var pl=Math.random();
+    parts.push({x:x,y:y+rnd(-1.5,1.5),vx:-rnd(.8,4),vy:rnd(-2.6,2.6),life:1,dec:rnd(.02,.05),s:rnd(.9,2.3),
+      c:pl<.5?'225,205,175':pl<.8?'196,170,135':'245,242,236'})}}
 
   self.frame=function(ts,dt){
-    if(!tex.length)return;
-    if(!t0)t0=ts;
-    var t=ts-t0;if(t>NB*CYC+HOLD){t0=ts;t=0;parts.length=0}
-    var k=Math.min(Math.floor(t/CYC),NB),lt=t-k*CYC;
-    var bd=0,q=0;                                   // bd: siquvchi pastga (0..1), q: karetka yo'li (0..1)
-    if(k<NB){
-      if(lt<DOWN)bd=ease(lt/DOWN);
-      else if(lt<DOWN+PASS){bd=1;q=(lt-DOWN)/PASS}
-      else{bd=1-ease((lt-DOWN-PASS)/UP);q=1}
+    if(!tex)return;
+    if(!t0){t0=ts;last=ts}
+    var t=ts-t0;if(t>TOTAL){t0=ts-INTRO;t=INTRO;parts.length=0}
+    var spin=t<INTRO?.15+.85*ease(t/INTRO):1;            // ishga tushish: arralar asta tezlik oladi
+    spinStep=.34*spin*dt/16;angle+=spinStep;
+
+    var k=t<INTRO?-1:Math.min(Math.floor((t-INTRO)/STG),NS);
+    var lt=k>=0?t-(INTRO+k*STG):0;
+    var r=Math.max(k,0),sp=0,pq=0,feeding=false,xB=xS;
+    if(k<0){xB=xS+(1-ease(t/INTRO))*(W+60)}
+    else if(k<NS){
+      if(lt<FEED){var q=lt/FEED;pq=q*.7+ease(q)*.3;xB=xS+pq*(xE-xS);feeding=true}
+      else{pq=1;sp=ease((lt-FEED)/SEP);xB=(k<NS-1)?xE+(xS-xE)*sp:xE}
     }
-    pct.textContent=Math.round((k<NB?(k+q)/NB:1)*100)+'%';
-    angle+=.13*dt/16;
+    pct.textContent=Math.round((k<0?0:k<NS?(k+pq)/NS:1)*100)+'%';
 
     ctx.setTransform(res*s,0,0,res*s,0,0);ctx.clearRect(0,0,W,WH+2);
-    var g=ctx.createLinearGradient(0,0,0,WH);g.addColorStop(0,'#ffffff');g.addColorStop(1,'#eef0f2');
-    ctx.fillStyle=g;ctx.fillRect(0,0,W,WH+2);
 
-    // karetka: katta arra o'ngdan chapga yuradi, kichik arra oldinda (chapda)
-    // ikkala arra doim ko'rinib turadi: karetka o'ngdan chapga kesib o'tadi, siquvchi ko'tarilganda qaytadi
-    var xR=W-R1-6,xL=Math.max(DX+R2+16,W*.40),BX;
-    if(k>=NB||lt<DOWN)BX=xR;
-    else if(lt<DOWN+PASS)BX=xR-(q*.75+ease(q)*.25)*(xR-xL);
-    else BX=xL+ease((lt-DOWN-PASS)/UP)*(xR-xL);
-    var SX=BX-DX;
-    var c1y=TOP+R1-4,c2y=BOT-7+R2;
-    // karetka plitasi (ikki arra orasida)
-    steel(SX+R2*.3,BOT+18,DX-R2*.3,58);
-    disc(SX,c2y,R2,angle*1.9,bladeS,false);       // kichik arra (soat yo'nalishida)
-    // plita taxlami (4 qavat)
-    for(var i=0;i<NL;i++){
-      var y=TOP+i*(LH+LG);
-      ctx.drawImage(tex[i],0,0,tex[i].width,tex[i].height,0,y,W,LH);
-      ctx.strokeStyle='rgba(60,50,30,.6)';ctx.lineWidth=.7;ctx.strokeRect(-1,y+.35,W+2,LH-.7);
+    var rr=k<NS?r:0,nn=NP-rr;
+    drawTable(KY+SW-nn*SW-7+(k<NS?SW*sp:0));
+
+    if(k<NS){
+      var hi=NP-1-r,o;
+      for(o=0;o<NP;o++){
+        var x=o>hi?xE:(o===hi?(lt<FEED||k<0?xB:xE):xB);
+        drawStrip(o,stripY(o,r,sp),x);
+      }
+      if(k>=0&&sp===0){
+        slit(xB,Math.min(bS,xB+L),KY,false);       // skorlovchi arra izi (sayoz)
+        slit(xB,Math.min(BX,xB+L),KY,true);        // asosiy arra izi (chuqur)
+      }
+    }else{
+      var tOut=t-INTRO-NS*STG,e=ease((tOut-900)/900),o2;
+      for(o2=0;o2<NP;o2++)drawStrip(o2,stripY(o2,NS,0),xE-e*(W+60));
+      var xn=xS+(1-e)*(W+60);
+      for(o2=0;o2<NP;o2++)drawStrip(o2,stripY(o2,0,0),xn);
     }
-    // katta arra — taxlam oldida (namunadagidek), plitani butun qalinligi bo'yicha kesadi
-    disc(BX,c1y,R1,-angle,blade,false);
-    // siquvchi (prijim) va ustunlar
-    var bx0=W*.12,bx1=W*.80,by=TOP-16-(1-bd)*12;
-    steel(bx0+30,0,7,by);steel(bx1-37,0,7,by);
-    steel(bx0,by,bx1-bx0,14);
-    if(bd>.05){ctx.globalAlpha=Math.min(1,bd*1.4);arrowDown(bx0-12,by-44,40);arrowDown(bx1+12,by-44,40);ctx.globalAlpha=1}
-    // aylanish va yurish strelkalari
-    if(BX<W+R1&&BX>-R1){
-      arcArrow(BX,c1y,R1*.62,Math.PI*.32,-Math.PI*.12);
-      arrowLeft(SX+R2+14,BOT+48,Math.min(70,DX-R2-30));
-    }
-    if(SX<W+R2&&SX>-R2){
-      arcArrow(SX,c2y,R2+12,Math.PI*.85,Math.PI*1.3);
-    }
+
+    // arralar: har bir kesim chizigʻida kichik skorlovchi (oldin) va katta asosiy arra
+    topBlade(bS,KY,52,-1);   // kichik skorlovchi arra (teskari aylanadi)
+    topBlade(BX,KY,100,1);   // katta asosiy arra
+
+    // yozuvlar
+    label('KATTA ARRA',BX,KY+14,KY+40);
+    label('KICHIK ARRA',bS+4,KY+14,KY+40);
+    // stanokdagi yozuv — faqat «POWERFUL PRO»
+    var nw=104,nh=22,nx=W-nw-12,ny=WH-nh-12;
+    ctx.fillStyle='#1f2227';ctx.fillRect(nx,ny,nw,nh);ctx.fillStyle='#e0a030';ctx.fillRect(nx,ny,3,nh);
+    ctx.textAlign='left';ctx.textBaseline='middle';ctx.font='900 11px Arial';ctx.fillStyle='#f3f4f6';ctx.fillText('POWERFUL',nx+10,ny+nh/2+.5);
+    var npw=ctx.measureText('POWERFUL ').width;ctx.fillStyle='#e0a030';ctx.fillText('PRO',nx+10+npw,ny+nh/2+.5);ctx.textBaseline='alphabetic';
+    // ishga tushish yozuvi
+    if(t<INTRO){ctx.globalAlpha=1-ease(t/INTRO);ctx.textAlign='left';ctx.font='bold 9px Arial';ctx.fillStyle='#2e7d32';
+      ctx.beginPath();ctx.arc(18,18,3.5,0,6.283);ctx.fill();ctx.fillText('ISHGA TUSHMOQDA…',26,21);ctx.globalAlpha=1}
+
     // qirindi
-    if(bd===1&&q>0&&q<1)dust(BX-R1*.62,TOP+4,3,-1);
-    if(bd===1&&q>0&&q<1)dust(SX-R2*.5,BOT-2,1,-1);
-    for(var p2=parts.length-1;p2>=0;p2--){
-      var p=parts[p2];p.x+=p.vx;p.y+=p.vy;p.vy+=.08;p.vx*=.97;p.life-=p.dec;
-      if(p.life<=0){parts.splice(p2,1);continue}
+    if(feeding&&xB<BX&&xB+L>BX){dust(BX-4,KY,3)}
+    for(var q2=parts.length-1;q2>=0;q2--){
+      var p=parts[q2];p.x+=p.vx;p.y+=p.vy;p.vx*=.96;p.vy*=.96;p.life-=p.dec;
+      if(p.life<=0){parts.splice(q2,1);continue}
       ctx.fillStyle='rgba('+p.c+','+(p.life*.9)+')';ctx.fillRect(p.x,p.y,p.s,p.s*.8);
     }
-    plate();
   };
 }
 

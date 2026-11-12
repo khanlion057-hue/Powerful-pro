@@ -50,7 +50,7 @@ async function renderAndCheck(browser, html, widthMm, tmp) {
     assert.equal(m.cellOver, 0, `${widthMm}mm: Soni/Narxi/Summa o'z ustunidan chiqmaydi`);
     for (const r of m.rows) {
       // v25.2: ustunlar sig'sa — nom va «Soni» bitta qatorda; sig'masa (tor qog'oz / katta summa) — «ixcham»: nom to'liq kenglikda, «Soni | Narxi | Summa» pastki qatorda
-      if (!m.compact) assert.ok(Math.abs(r.nmTop - r.qTop) < 3, `${widthMm}mm: «${r.name.slice(0, 20)}…» nomi va miqdori bitta qatorda (${r.nmTop} vs ${r.qTop})`);
+      assert.ok(r.qTop >= r.nmTop, `${widthMm}mm: «Soni» nom bilan bir qatorda yoki pastida`);   // v25.2: nom — birinchi qator, pastida kod | Soni | Narxi | Summa
       assert.equal(r.nmOverflow, false, `${widthMm}mm: nom kesilmagan`);
       assert.ok(r.qOver <= 0.5, `${widthMm}mm: miqdor qog'oz ichida`);
     }

@@ -1723,10 +1723,10 @@ const FW_RC_DEF = {
   logoOn: true, logo: '', name: '', slogan: null, activity: 'Arra • Asboblar • Tig‘lar',
   address: '', phone: '',
   bannersOn: true, topOn: true, bottomOn: true, top: '', bottom: '',
+  tgOn: true, tg: 't.me/Powerfulfreza',
   mottoOn: true, motto1: 'BUGUNGI QADAM —', motto2: 'ERTANGI MUVAFFAQIYAT',
-  tgOn: true, tg: 't.me/forwardtowardsdreams',
   addressOn: true, phoneOn: true, dateOn: true, timeOn: true, cashierOn: true, customerOn: true, codeOn: true, discountOn: true, changeOn: true, uzsOn: false,
-  cBlack: '#000000', cWhite: '#FFFFFF', cMetal: '#BDBDBD', cText: '#111111',
+  cBlack: '#000000', cWhite: '#FFFFFF', cMetal: '#BDBDBD', cText: '#111111', cDark: '#0B2A5B', cAccent: '#1E8FDD', cRed: '#E31E24',
 };
 const FW_RC_SHOP = { address: 'Lola jahon bozori 47B', phone: '+998883490888' };   // do'kon manzili/telefoni hech qayerda berilmagan bo'lsa
 const FW_RC_ASSETS = { logo: 'assets/chek/pg-mark.png', logoBw: 'assets/chek/pg-mark-bw.png', top: 'assets/chek/banner-top.jpg', bottom: 'assets/chek/banner-bottom.jpg' };
@@ -1785,8 +1785,8 @@ const FW_RC_IC = {
   rcp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6" stroke-linecap="round"/></svg>',
   usr: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="7.5" r="4.2"/><path d="M3.5 21c0-4.6 3.8-7.5 8.5-7.5s8.5 2.9 8.5 7.5z"/></svg>',
   clk: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>',
-  tg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.5 3.2 2.7 10.6c-1.3.5-1.2 1.2-.2 1.5l4.8 1.5 1.8 5.6c.2.6.4.8.8.8s.6-.2.9-.5l2.3-2.2 4.8 3.5c.9.5 1.5.2 1.7-.8l3.1-14.9c.3-1.2-.4-1.8-1.4-1.4z"/></svg>',
 };
+FW_RC_IC.tg = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.5 3.2 2.7 10.6c-1.3.5-1.2 1.2-.2 1.5l4.8 1.5 1.8 5.6c.2.6.4.8.8.8s.6-.2.9-.5l2.3-2.2 4.8 3.5c.9.5 1.5.2 1.7-.8l3.1-14.9c.3-1.2-.4-1.8-1.4-1.4z"/></svg>';
 const FW_RC_PAYNAME = { cash_uzs: 'Naqd', cash: 'Naqd', card: 'Karta', usd: 'Dollar', mixed: 'Aralash', debt: 'Qarzga' };
 function fwRcNum(v) {   // son: «12,5», «1 200», «12.50» matnlari ham — noto'g'ri qiymat 0 bo'ladi, NaN emas
   if (typeof v === 'number') return isFinite(v) ? v : 0;
@@ -1842,8 +1842,8 @@ function fwReceiptHtml(sale, o) {
   const roundD = uzs ? Math.min(c.disc, rf ? rf.yaxlitlash_chegirmasi : (sale.discountReason === 'rounding' ? c.disc : 0)) : 0;
   const manualD = Math.max(0, c.disc - roundD);
 
-  const K = rc.cBlack, W = rc.cWhite, M = rc.cMetal, T = rc.cText;
-  const band = fwRcMix(M, .55), zeb = fwRcMix(M, .8);
+  const K = rc.cBlack, W = rc.cWhite, M = rc.cMetal, T = rc.cText, D = rc.cDark, A = rc.cAccent, R = rc.cRed;
+  const zeb = fwRcMix(A, .9);
   const ttl = fwRcTitle(rc.name || o.brand || 'Doʻkon', rc.slogan);
   const addr = rc.address.trim() || o.address || FW_RC_SHOP.address, phone = rc.phone.trim() || o.phone || FW_RC_SHOP.phone;
   const cashier = String(sale.staffName || o.cashier || '').trim();
@@ -1860,25 +1860,25 @@ function fwReceiptHtml(sale, o) {
   // — ustunli jadval: Mahsulot | Soni | Narxi | Summa (qator ichidagi nom o'raladi; raqamlar o'z ustunida)
   const head = `<div class="c h h1">Mahsulot</div><div class="c h hq">Soni</div><div class="c h hp">Narxi</div><div class="c h hs">Summa</div>`;
   const rows = c.lines.map((l, i) => {
-    const z = 'z' + (i % 2), cd = rc.codeOn && l.sku ? esc(l.sku) : '';
-    return `<div class="c n ${z}"><b>${esc(l.name)}</b>${cd ? `<small class="cd1">${cd}</small>` : ''}</div>${cd ? `<div class="c cd2 ${z}"><small>${cd}</small></div>` : `<div class="c cd2 ${z}"></div>`}<div class="c q ${z}">${esc(qn(l.qty)).replace(/ /g, '\u00a0')}x</div><div class="c p ${z}">${cell(l.unit)}</div><div class="c s ${z}">${cell(l.line)}</div>`;
+    const z = 'z' + (i % 2), cd = rc.codeOn && l.sku ? esc(l.sku) : '', nb = (t) => t.replace(/ /g, '\u00a0');
+    return `<div class="c n ${z}"><span class="no">${i + 1}.</span> <b>${esc(l.name)}</b>${cd ? `<small class="cd1">${cd}</small>` : ''}</div><div class="c cd2 ${z}">${cd ? `<small>${cd}</small>` : ''}</div><div class="c q ${z}">${nb(esc(qn(l.qty)))}\u00a0x</div><div class="c p ${z}">${cell(l.unit)}</div><div class="c s ${z}">${cell(l.line)}</div>`;
   }).join('');
 
   // Ustunlar sig'masa (tor qog'oz yoki juda katta summalar) — «ixcham» ko'rinish: nom butun kenglikda, pastida «Soni | Narxi | Summa»
   const wEm = (a) => Math.max(4, ...a.map((x) => String(x).length)) * .64 + .7;
-  const need = wEm(['Soni', ...c.lines.map((l) => qn(l.qty) + 'x')]) + wEm(['Narxi', ...c.lines.map((l) => cell(l.unit))]) + wEm(['Summa', ...c.lines.map((l) => cell(l.line))]);
+  const need = wEm(['Soni', ...c.lines.map((l) => qn(l.qty) + ' x')]) + wEm(['Narxi', ...c.lines.map((l) => cell(l.unit))]) + wEm(['Summa', ...c.lines.map((l) => cell(l.line))]);
   const cpT = need > (mm * 3.7795 / fsT) * .94 - 6.5, cpC = need > (cw * 3.7795 / fsC) * .94 - 6.5;
   const big = (label, amt, base, cls) => `<div class="r big ${cls || ''}" style="font-size:${fit(label.length + 2 + amt.length, base)}em"><span>${label}</span><span>${amt}</span></div>`;
+  const showDisc = rc.discountOn && c.disc > 0;
   const totalHtml = `<div class="tot">
-    <div class="r sm"><span>${c.lines.length} xil</span><span>${esc(qn(c.units))} dona</span></div>
-    ${c.disc > 0 && rc.discountOn ? `<div class="r"><span>Mahsulotlar:</span><span>${f(c.sum)} ${cu}</span></div>` : ''}${manualD > 0 && rc.discountOn ? `<div class="r"><span>Chegirma:</span><span>−${f(manualD)} ${cu}</span></div>` : ''}${roundD > 0 && rc.discountOn ? `<div class="r"><span>Yaxlitlash chegirmasi:</span><span>−${f(roundD)} ${cu}</span></div>` : ''}
+    <div class="r"><span>Mahsulotlar:</span><span>${c.lines.length} xil, ${esc(qn(c.units))} dona</span></div>
+    ${showDisc ? `<div class="r"><span>Summa:</span><span>${f(c.sum)} ${cu}</span></div>` : ''}${manualD > 0 && rc.discountOn ? `<div class="r red"><span>Chegirma:</span><span>−${f(manualD)} ${cu}</span></div>` : ''}${roundD > 0 && rc.discountOn ? `<div class="r red"><span>Yaxlitlash chegirmasi:</span><span>−${f(roundD)} ${cu}</span></div>` : ''}
     <div class="jm" style="font-size:${fit(('JAMI:').length + 2 + mny(c.total).length, 1.9)}em"><span>JAMI:</span><span>${mny(c.total)}</span></div>
     ${rc.uzsOn && !uzs && rate > 0 ? `<div class="r sm"><span>Soʻmda:</span><span>≈ ${fwNum(c.total * rate)} soʻm</span></div>` : ''}
     ${c.credit > 0 ? `<div class="r"><span>Mijoz haqidan:</span><span>${f(c.credit)} ${cu}</span></div>` : ''}
-    ${big('Toʻlandi:', mny(c.debt > 0 ? c.paid : (c.change > 0 ? c.given : c.paid)), 1.9)}
-    ${payName && (c.paid > 0 || c.given > 0) ? `<div class="r sm"><span>Toʻlov turi:</span><span class="up">${esc(payName)}</span></div>` : ''}
-    ${c.debt > 0 ? big('Qarz:', mny(c.debt), 1.5, 'dbt') + (sale.dueDate ? `<div class="r sm"><span>Toʻlov sanasi:</span><span>${esc(fwDmy(sale.dueDate))}</span></div>` : '')
-      : (c.change > 0 && rc.changeOn ? big('Qaytim:', mny(c.change), 1.5) : '')}
+    ${big('Toʻlandi' + (payName ? ' (' + payName.toLowerCase() + ')' : '') + ':', mny(c.debt > 0 ? c.paid : (c.change > 0 ? c.given : c.paid)), 1.6)}
+    ${c.debt > 0 ? big('Qarz:', mny(c.debt), 1.4, 'chg') + (sale.dueDate ? `<div class="r sm"><span>Toʻlov sanasi:</span><span>${esc(fwDmy(sale.dueDate))}</span></div>` : '')
+      : (c.change > 0 && rc.changeOn ? big('Qaytim:', mny(c.change), 1.4, 'chg') : '')}
     ${sale.pending ? '<div class="ctr sm">(oflayn — serverga yuborilmoqda)</div>' : ''}
   </div>`;
 
@@ -1891,16 +1891,16 @@ function fwReceiptHtml(sale, o) {
     ${sec(join([rc.addressOn && addr ? it('pin', esc(addr)) : '', rc.phoneOn && phone ? it('phone', esc(phone)) : '']))}
     ${sec(join([rc.dateOn && sale.date ? it('cal', 'SANA: ' + esc(fwDmy(sale.date))) : '', it('rcp', esc(sale.inv || ''))]))}
     ${rc.customerOn ? sec(it('usr', 'MIJOZ: ' + esc(fwCustLabel(sale.custName)))) : ''}
-    ${sec(join([rc.cashierOn && cashier ? it('usr', 'KASSIR: ' + esc(cashier)) : '', rc.timeOn && sale.time ? it('clk', 'VAQT: ' + esc(sale.time)) : '']))}
+    ${(rc.cashierOn && cashier) || (rc.timeOn && sale.time) ? `<div class="kv"><span>${rc.cashierOn && cashier ? 'Kassir: ' + esc(cashier) : ''}</span><span>${rc.timeOn && sale.time ? 'Vaqt: ' + esc(sale.time) : ''}</span></div>` : ''}
     <div class="tb${cpT ? ' cpt' : ''}${cpC ? ' cpc' : ''}">${head}${rows}</div>
     ${totalHtml}
-    ${rc.mottoOn && (rc.motto1.trim() || rc.motto2.trim()) ? `<div class="mo"><i></i><b>${esc(rc.motto1.trim())}${rc.motto1.trim() && rc.motto2.trim() ? '<br>' : ''}${esc(rc.motto2.trim())}</b><i></i></div>` : ''}
+    ${rc.mottoOn && (rc.motto1.trim() || rc.motto2.trim()) ? `<div class="mo"><i></i><b><span class="m1">${esc(rc.motto1.trim())}</span>${rc.motto1.trim() && rc.motto2.trim() ? '<br>' : ''}<span class="m2">${esc(rc.motto2.trim())}</span></b><i></i></div>` : ''}
     ${o.footer ? `<div class="ft">${esc(o.footer)}</div>` : ''}
     ${showBn && rc.bottomOn ? `<img class="bn bnb" src="${esc(bottom)}" alt="">` : ''}
     ${rc.tgOn && tgTxt ? `<div class="tgl">${FW_RC_IC.tg}<span>${esc(tgTxt)}</span></div>` : ''}
   </div>`;
 
-  const compact = (S) => `${S}{display:flex;flex-wrap:wrap}${S} .c.h1{flex:0 0 100%;text-align:center;border-radius:.5em}${S} .c.h1::after{content:" · Soni · Narxi · Summa"}${S} .c.hq,${S} .c.hp,${S} .c.hs,${S} .c.cd2{display:none}
+  const compact = (S) => `${S}{display:flex;flex-wrap:wrap}${S} .c.h1{flex:0 0 100%;text-align:center;border-radius:.5em}${S} .c.h1::after{content:" · Soni · Narxi · Summa"}${S} .c.hq,${S} .c.hp,${S} .c.hs,${S} .c.cd2{display:none}${S} .cd1{display:block}
     ${S} .c.n{flex:0 0 100%;padding-bottom:0}${S} .c.q,${S} .c.p,${S} .c.s{flex:1 1 auto;padding:.1em .5em .45em}${S} .c.q{text-align:left}${S} .c.p{text-align:center}${S} .c.s{text-align:right}`;
   // Termoprinter qoidalari (chop etish yoki mode:'thermal'): p — selektor old qo'shimchasi
   const thermal = (p) => `
@@ -1913,11 +1913,12 @@ function fwReceiptHtml(sale, o) {
     ${p}.hd .vl{background:#000}${p}.hd .g u{background:#000}
     ${p}.sec{border-top:.09em dashed #000;color:#000}
     ${p}.tb{padding:0 2%}
-    ${p}.c.h{background:none;border-top:.1em solid #000;border-bottom:.1em solid #000;border-radius:0}
-    ${p}.c.z0,${p}.c.z1{background:none;border-bottom:.06em dashed #000}
+    ${p}.rc *{color:#000!important}
+    ${p}.c.h{background:none;border:.1em solid #000;border-radius:0}
+    ${p}.c.z0,${p}.c.z1{background:none;border-bottom:.06em dashed #000}${p}.c.n.z0,${p}.c.n.z1{border-bottom:0}${p}.tot{border-top-color:#000}${p}.tb{border-top-color:#000}
     ${p}small,${p}.sm,${p}.cd1,${p}.cd2{color:#000}
     ${p}.jm{background:#fff;color:#000;border-radius:0;border-top:.14em solid #000;border-bottom:.14em solid #000;padding:.25em 0;margin:.5em 2%}
-    ${p}.mo i{background:#000}${p}.tgl{color:#000}
+    ${p}.mo i{background:#000}${p}.sp{background:#000}
     ${compact(p + '.tb.cpt')}${p}.tb.cpt .c.n{border-top:.06em dashed #000}${p}.tb.cpt .c.z0,${p}.tb.cpt .c.z1{border-bottom:0}`;
 
   return `<!DOCTYPE html><html${o.mode === 'thermal' ? ' class="th"' : ''}><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Chek ${esc(sale.inv || '')}</title><style>
@@ -1936,24 +1937,25 @@ function fwReceiptHtml(sale, o) {
     .hd .g{display:flex;align-items:center;gap:.5em;margin-top:.35em;font-weight:600;letter-spacing:.6em;font-size:.82em;color:${K}}.hd .g u{flex:1;height:.12em;background:${K}}.hd .g span{padding-left:.6em}
     .act{text-align:center;font-style:italic;padding:.25em 5% .55em;overflow-wrap:anywhere}
     .bn{display:block;width:100%;height:auto}
-    .sec{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:.35em .8em;border-top:.09em dashed ${M};padding:.5em 5%;font-weight:500}
+    .sec{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:.35em .8em;border-top:.09em dashed ${D};padding:.5em 5%;font-weight:500;color:${D}}
     .sec .it{display:inline-flex;align-items:center;gap:.4em;min-width:0}.sec .it>span{overflow-wrap:anywhere}.sec svg{width:1.35em;height:1.35em;flex:none}
-    .sp{width:.1em;height:1.35em;background:${K};flex:none}
-    .tb{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;column-gap:0;padding:0 3%;border-top:.09em dashed ${M};padding-top:.5em}
-    .c{padding:.4em 0;min-width:0}.c.h{background:${band};font-weight:600;padding:.4em .5em}.c.h1{border-radius:.5em 0 0 .5em}.c.hs{border-radius:0 .5em .5em 0}
+    .sp{width:.1em;height:1.35em;background:${D};flex:none}
+    .kv{display:flex;justify-content:space-between;gap:.6em;padding:.35em 5% .5em;font-size:.88em;color:${D}}
+    .tb{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;column-gap:0;padding:0 3%;border-top:.09em dashed ${D};padding-top:.5em}
+    .c{padding:.4em 0;min-width:0}.c.h{background:${A};color:${W};font-weight:700;padding:.4em .5em}.c.h1{border-radius:.5em 0 0 .5em}.c.hs{border-radius:0 .5em .5em 0}
     .c.hq,.c.hp,.c.hs,.c.q,.c.p,.c.s{text-align:right;overflow-wrap:anywhere;padding-left:.7em}.c.q,.c.p{padding-right:.1em}
-    .c.n{padding-left:.5em;overflow-wrap:anywhere;word-break:break-word}.c.n b{font-weight:700;display:block}.c.s{padding-right:.5em;font-weight:700}
-    .c.z1{background:${zeb}}.cd1,.cd2 small{color:#666;font-size:.82em;display:block}.cd2{display:none}
-    .tot{padding:.5em 4% 0;border-top:.09em dashed ${M};margin-top:.5em}
+    .c.n{grid-column:1/-1;padding:.4em .5em 0;overflow-wrap:anywhere;word-break:break-word;color:${D}}.c.n b,.c.n .no{font-weight:700}.c.cd2{padding-left:1.4em}.c.q,.c.p,.c.s{color:${D}}.c.q,.c.p,.c.s,.c.cd2{padding-top:.1em;padding-bottom:.45em}.c.s{padding-right:.5em;font-weight:700}
+    .c.z1{background:${zeb}}.cd1,.cd2 small{color:#667;font-size:.82em;display:block}.cd1{display:none}
+    .tot{padding:.5em 4% 0;border-top:.09em dashed ${A};margin-top:.5em}
     .r{display:flex;justify-content:space-between;align-items:baseline;gap:.6em;padding:.12em 0}.r>span:first-child{min-width:0;overflow-wrap:anywhere}.r>span:last-child{margin-left:auto;text-align:right;white-space:nowrap}
     .r.sm,.ctr.sm{font-size:.88em;color:#555}.ctr{text-align:center}.up{text-transform:uppercase}
-    .r.big{font-weight:900;text-transform:uppercase;line-height:1.15;padding:.18em 0}
-    .jm{display:flex;justify-content:space-between;align-items:center;gap:.6em;margin:.45em 0;padding:.4em .6em;background:${K};color:${W};border-radius:.5em;font-weight:900;line-height:1.1}.jm>span:last-child{margin-left:auto;white-space:nowrap}
-    .mo{display:flex;align-items:flex-start;gap:.6em;padding:.8em 3% .5em}.mo i{flex:1;height:.14em;background:${K};margin-top:.75em;min-width:.8em}
-    .mo b{font-style:italic;font-weight:800;font-size:1.2em;text-align:center;line-height:1.15;text-transform:uppercase;overflow-wrap:anywhere;max-width:78%}
+    .r.big{font-weight:800;text-transform:uppercase;line-height:1.15;padding:.18em 0;color:${D}}.r.big.chg{color:${A}}.r.red{color:${R}}
+    .jm{display:flex;justify-content:space-between;align-items:center;gap:.6em;margin:.45em 0;padding:.4em .6em;background:${D};color:${W};border-radius:.5em;font-weight:900;line-height:1.1}.jm>span:last-child{margin-left:auto;white-space:nowrap}
+    .mo{display:flex;align-items:flex-start;gap:.6em;padding:.8em 3% .5em}.mo i{flex:1;height:.14em;background:${D};margin-top:.75em;min-width:.8em}
+    .mo .m2{color:${R}}.mo b{color:${D};font-style:italic;font-weight:800;font-size:1.2em;text-align:center;line-height:1.15;text-transform:uppercase;overflow-wrap:anywhere;max-width:78%}
     .ft{text-align:center;font-size:.88em;color:#555;padding:0 5% .4em;overflow-wrap:anywhere}
     .bnb{margin-top:.2em}
-    .tgl{display:flex;justify-content:center;align-items:center;gap:.4em;padding:.5em 5% .1em;font-weight:600;color:${K}}.tgl svg{width:1.2em;height:1.2em;flex:none}
+    .tgl{display:flex;justify-content:center;align-items:center;gap:.4em;padding:.5em 5% .1em;font-weight:600;color:${D}}.tgl svg{width:1.2em;height:1.2em;flex:none}
     @media screen{${compact('html:not(.th) .tb.cpc')}}
     ${o.mode === 'color' ? '' : `@media print{${thermal('')}}`}
     ${o.mode === 'color' ? '' : thermal('html.th ')}

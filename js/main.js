@@ -12980,11 +12980,11 @@ function stReceiptDesign() {
       ${sw('bottomOn', 'Pastki banner')}${imgRow('bottom', 'Pastki banner rasmi', 'bottomOn')}
       ${sw('mottoOn', 'Pastki shior')}
       <div class="bs-card">${inp('motto1', '1-qator', 'BUGUNGI QADAM —', 50)}${inp('motto2', '2-qator', 'ERTANGI MUVAFFAQIYAT', 50)}</div>
-      ${sw('tgOn', 'Telegram havolasi')}<div class="bs-card">${inp('tg', 'Havola', 't.me/forwardtowardsdreams', 100)}</div>
       <div class="bs-card"><b class="bs-t">Chekda koʻrsatish</b></div>
+      ${sw('tgOn', 'Telegram havolasi', 'Oʻchirib qoʻysangiz chekda chiqmaydi')}<div class="bs-card">${inp('tg', 'Havola', 't.me/Powerfulfreza', 100)}</div>
       ${ST_RC_TOGGLES.map(([k, l]) => sw(k, l)).join('')}
       <div class="bs-card"><b class="bs-t">Ranglar</b></div>
-      ${col('cBlack', 'Asosiy (qora)')}${col('cWhite', 'Ikkinchi darajali (oq)')}${col('cMetal', 'Metall-kulrang')}${col('cText', 'Matn')}`,
+      ${col('cBlack', 'Asosiy (qora)')}${col('cDark', 'Toʻq koʻk (JAMI, matn)')}${col('cAccent', 'Koʻk (sarlavha, qaytim)')}${col('cRed', 'Qizil (chegirma, shior)')}${col('cWhite', 'Ikkinchi darajali (oq)')}${col('cMetal', 'Metall-kulrang')}${col('cText', 'Matn')}`,
     foot: `<button class="bs-btn ghost" onclick="stRcReset()">Standart</button><button class="bs-btn" onclick="stRcSave()">Saqlash</button>` });
   setTimeout(stRcRender, 0);
 }

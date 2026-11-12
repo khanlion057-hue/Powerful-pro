@@ -29,8 +29,8 @@ module.exports = {
         assert.deepEqual([r.chg.given, r.chg.change, r.chg.total], [1320000, 7000, 1313000], 'Naqd − Qaytim = JAMI');
         assert.deepEqual([r.usd.sum, r.usd.total, r.usd.disc], [30.99, 30.99, 0], '$ chek');
         assert.ok(r.old, 'eski chek ochiladi (so\'mda)');
-        assert.match(r.html, /Yaxlitlash chegirmasi:/); assert.match(r.html, /1\u00a0250x/); assert.match(r.html, /0,25x/);   // v25.1: alohida qator nomi; v25.2: «Soni» ustuni — «2x»
-        assert.match(r.html, /Qaytim:<\/span><span>1 800 soʻm/); assert.match(r.html, /Toʻlandi:<\/span><span>5 330 000 soʻm/); assert.match(r.html, /Toʻlov turi:<\/span><span class="up">Naqd/);   // v25.2: TOʻLANDI = olingan summa, toʻlov turi alohida
+        assert.match(r.html, /Yaxlitlash chegirmasi:/); assert.match(r.html, /1\u00a0250\u00a0x/); assert.match(r.html, /0,25\u00a0x/);   // v25.1: alohida qator nomi; v25.2: «Soni» ustuni — «2x»
+        assert.match(r.html, /Qaytim:<\/span><span>1 800 soʻm/); assert.match(r.html, /Toʻlandi \(naqd\):<\/span><span>5 330 000 soʻm/);   // v25.2: TOʻLANDI = olingan summa, toʻlov turi alohida
         assert.match(r.html, /14:20/);
         assert.deepEqual(errors, []);
       } finally { await browser.close(); }

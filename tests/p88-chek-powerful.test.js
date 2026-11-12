@@ -39,10 +39,10 @@ module.exports = {
         });
         const b = body(r.base);
         assert.match(b, /POWERFUL/); assert.match(b, /Lola jahon bozori 47B/); assert.match(b, /\+998883490888/); assert.match(b, /Arra • Asboblar • Tig‘lar/);
-        assert.match(b, /BUGUNGI QADAM —<br>ERTANGI MUVAFFAQIYAT/); assert.match(b, /t\.me\/forwardtowardsdreams/); assert.match(b, /banner-top\.jpg/); assert.match(b, /banner-bottom\.jpg/);
-        assert.match(b, /JAMI:<\/span><span>25\.00 \$/); assert.match(b, /2x/); assert.match(b, /12\.50 \$/); assert.match(b, /25\.00 \$/);
+        assert.match(b, /BUGUNGI QADAM —<\/span><br><span class="m2">ERTANGI MUVAFFAQIYAT/); assert.match(b, /t\.me\/Powerfulfreza/); assert.match(b, /banner-top\.jpg/); assert.match(b, /banner-bottom\.jpg/);
+        assert.match(b, /JAMI:<\/span><span>25\.00 \$/); assert.match(b, /2\u00a0x/); assert.match(b, /12\.50 \$/); assert.match(b, /25\.00 \$/);
         const c = body(r.ch);
-        assert.match(c, /ABC SAVDO/); assert.match(c, /\+998901112233/); assert.match(c, /Yangi yoʻnalish/); assert.doesNotMatch(c, /banner-/); assert.match(c, /YANGI 1<br>YANGI 2/); assert.match(c, /t\.me\/yangi/);
+        assert.match(c, /ABC SAVDO/); assert.match(c, /\+998901112233/); assert.match(c, /Yangi yoʻnalish/); assert.doesNotMatch(c, /banner-/); assert.match(c, /YANGI 1<\/span><br><span class="m2">YANGI 2/); assert.match(c, /t\.me\/yangi/);
         assert.doesNotMatch(body(r.noTg), /t\.me\//, 'Telegram havolasi oʻchiriladi'); assert.doesNotMatch(body(r.noBn), /banner-/); assert.doesNotMatch(body(r.noMotto), /BUGUNGI QADAM/);
         assert.equal(r.thBn, false, 'termoda banner yoʻq'); assert.equal(r.thLgc, false, 'termoda rangli logo yoʻq'); assert.equal(r.thLgt, true, 'termoda oq-qora logo');
         assert.match(r.thBg, /255, 255, 255/, 'termoda JAMI qora blok emas'); assert.match(r.thTxt, /JAMI/);

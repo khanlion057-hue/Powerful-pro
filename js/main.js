@@ -2217,7 +2217,7 @@ const NAMES = {
 const LOGO_GLYPH = `<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 3 7.5l9 4.5 9-4.5z"/><path d="M3 12l9 4.5 9-4.5"/><path d="M3 16.5l9 4.5 9-4.5"/></svg>`;
 const BRAND_MARK_SVG = `<svg viewBox="0 0 48 48" width="48" height="48" xmlns="http://www.w3.org/2000/svg"><rect width="48" height="48" rx="12" fill="#B8700C"/><g fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M24 11 12 17l12 6 12-6z"/><path d="M12 24l12 6 12-6"/><path d="M12 31l12 6 12-6"/></g></svg>`;
 // v23.6: logotip — brenddan (Sozlamalar / js/brand.js), qattiq yozilmagan
-function brandLoginLogo(){ return fwBrandLockup('lg on-light'); }
+function brandLoginLogo(){ return fwBrandLockup('lg on-light') + '<span class="fw-app-tag"><b>POWERFUL</b> PRO</span>'; }
 
 function injectIcons() {
   const g = document.querySelector('[data-glyph="logo"]'); if (g) g.innerHTML = LOGO_GLYPH;

@@ -206,7 +206,76 @@ function makeScoring(N){
   x.strokeStyle='rgba(30,30,34,.55)';x.lineWidth=.6;x.stroke();
   return c;
 }
-var blade=makeRover(96),bladeS=makeScoring(24);
+// Egasi namunasi (sxema): ochiq kumush-ko'kish disk, to'q ko'kish uchburchak tishlar, qizil ilonizi (meandr) kesiklar,
+// ilgakli tirqishlar, gardishda kalitsimon kesiklar, olti qirrali o'q teshigi.
+function makeSample(N,big){
+  var sz=Math.ceil((BR*2+8)*BK),c=document.createElement('canvas');c.width=c.height=sz;
+  var x=c.getContext('2d');x.translate(sz/2,sz/2);x.scale(BK,BK);
+  var Rt=BR,Rg=BR-(big?5:8),i;
+  function P(a,r){return [Math.cos(a)*r,Math.sin(a)*r]}
+  var step=Math.PI*2/N;
+  // tishlar (to'q ko'kish)
+  x.beginPath();
+  for(i=0;i<N;i++){
+    var a=i*step,g0=P(a,Rg),tip=P(a+step*.62,Rt),g1=P(a+step*.80,Rg+.3);
+    i?x.lineTo(g0[0],g0[1]):x.moveTo(g0[0],g0[1]);x.lineTo(tip[0],tip[1]);x.lineTo(g1[0],g1[1]);
+  }
+  x.closePath();
+  var tg=x.createRadialGradient(0,0,Rg-2,0,0,Rt);tg.addColorStop(0,'#7f9ea2');tg.addColorStop(1,'#4c7277');
+  x.fillStyle=tg;x.fill();x.strokeStyle='rgba(30,50,54,.5)';x.lineWidth=.3;x.stroke();
+  // disk tanasi
+  x.beginPath();x.arc(0,0,Rg+.2,0,6.283);
+  var bg=x.createRadialGradient(-Rg*.3,-Rg*.35,Rg*.1,0,0,Rg);
+  bg.addColorStop(0,'#e7ecec');bg.addColorStop(.6,'#c9d2d3');bg.addColorStop(1,'#aebabc');
+  x.fillStyle=bg;x.fill();x.strokeStyle='rgba(60,80,84,.35)';x.lineWidth=.4;x.stroke();
+  // gardishdagi kalitsimon kesiklar
+  var nk=big?8:4;
+  for(i=0;i<nk;i++){
+    var ak=i*Math.PI*2/nk+(big?.2:.6),k1=P(ak,Rg+.2),k2=P(ak,Rg-(big?4:6)),kc=P(ak+(big?.035:.07),Rg-(big?5:7.2));
+    x.beginPath();x.moveTo(k1[0],k1[1]);x.lineTo(k2[0],k2[1]);x.strokeStyle='#4a5a5d';x.lineWidth=.55;x.stroke();
+    x.beginPath();x.arc(kc[0],kc[1],big?1.1:1.8,ak,ak+Math.PI*1.6);x.stroke();
+  }
+  if(big){
+    // ilgakli tirqishlar (ichkarida, qiya)
+    for(i=0;i<8;i++){
+      var ah=i*Math.PI/4+.4,h1=P(ah,BR*.70),h2=P(ah+.24,BR*.52),hc=P(ah+.27,BR*.48);
+      x.beginPath();x.moveTo(h1[0],h1[1]);x.lineTo(h2[0],h2[1]);x.strokeStyle='#2f3a3c';x.lineWidth=.5;x.stroke();
+      x.beginPath();x.arc(hc[0],hc[1],1.3,0,6.283);x.stroke();
+      x.beginPath();x.arc(h1[0],h1[1],.9,0,6.283);x.fillStyle='#2f3a3c';x.fill();
+    }
+    // qizil ilonizi (meandr) kesiklar
+    for(i=0;i<6;i++){
+      var am=i*Math.PI/3+.1;
+      x.save();x.rotate(am);x.translate(BR*.78,0);
+      x.beginPath();var w=2.1,hgt=5.2,n=4,j;
+      x.moveTo(-w*n/2,0);
+      for(j=0;j<n;j++){var xx=-w*n/2+j*w,yy=(j%2?1:-1)*hgt/2;x.lineTo(xx,yy);x.lineTo(xx+w,yy)}
+      x.lineTo(w*n/2,0);
+      x.strokeStyle='#d6332b';x.lineWidth=.8;x.lineJoin='round';x.stroke();x.restore();
+    }
+  }
+  // gupchak: to'q halqa, yorug' flanets, olti qirrali teshik
+  var hr=big?BR*.33:BR*.42;
+  x.beginPath();x.arc(0,0,hr,0,6.283);
+  var hg=x.createRadialGradient(0,0,hr*.2,0,0,hr);hg.addColorStop(0,'#eef2f2');hg.addColorStop(.55,'#9fb0b2');hg.addColorStop(1,'#c3cdce');
+  x.fillStyle=hg;x.fill();x.strokeStyle='rgba(40,56,60,.55)';x.lineWidth=.45;x.stroke();
+  x.beginPath();x.arc(0,0,hr*.55,0,6.283);x.fillStyle='#d9e0e0';x.fill();x.strokeStyle='rgba(40,56,60,.4)';x.lineWidth=.4;x.stroke();
+  x.beginPath();x.arc(0,0,hr*.38,0,6.283);x.fillStyle='#6d7c7f';x.fill();
+  x.beginPath();for(i=0;i<6;i++){var hx=P(i*Math.PI/3,hr*.26);i?x.lineTo(hx[0],hx[1]):x.moveTo(hx[0],hx[1])}x.closePath();
+  x.fillStyle='#1d2224';x.fill();
+  // brend: POWERFUL PRO (gupchak atrofida, yoy bo'ylab)
+  if(big){
+    x.font='900 4.6px Arial';x.textAlign='center';x.textBaseline='middle';
+    var txt='POWERFUL PRO',R0=hr+3.4,ws=[],tot=0;
+    for(i=0;i<txt.length;i++){ws[i]=x.measureText(txt[i]).width+.4;tot+=ws[i]}
+    var aa=-Math.PI/2-tot/R0/2;
+    for(i=0;i<txt.length;i++){var da=ws[i]/R0,mid=aa+da/2;
+      x.save();x.translate(Math.cos(mid)*R0,Math.sin(mid)*R0);x.rotate(mid+Math.PI/2);
+      x.fillStyle=i>=9?'#c2720c':'#3a4648';x.fillText(txt[i],0,0);x.restore();aa+=da}
+  }
+  return c;
+}
+var blade=makeSample(64,true),bladeS=makeSample(28,false);
 
 /* ---------- yog'och taxta (usti, uzunasiga tolali) ---------- */
 function makeTop(L,Hh,k){

@@ -11,6 +11,7 @@ const { buildDailyReport, tashkentNow } = require('./_lib/dailyReport');
 const { TOKEN_RE, CHAT_RE, hourOf, loadAll, dealerPayToday, tgSend } = require('./_lib/dailyReportRun');
 const { evtOn, chatsFor, dueList, dueByBranch, remindText, monthDealerReports, mapChat, brandOf } = require('./_lib/tgEvents');
 const tc = require('./_lib/tgCustomers');
+const ops = require('./_lib/opsGuard');
 
 // v25.1: nasiya eslatmasi (har kuni, Toshkent soati tgRemindHour — standart 9), oy yakuni dillerlar hisoboti (oyning 1-kuni,
 // o'tgan oy uchun) va filial guruhlariga kunlik hisobot (faqat o'z filiali). Har qabul qiluvchiga alohida kalit bilan
@@ -88,6 +89,12 @@ exports.handler = async (event) => {
     const { data: row } = await admin.from('app_data').select('data').eq('id', 'main').maybeSingle();
     const st = (row && row.data && row.data.settings) || {};
     try { await runEvents(admin, st, now); } catch (e) { if (!_isMissingRelation(e)) console.error('[telegram-events]', e && e.message); }
+    // v25.2 (48): Telegram navbatidagi (vaqtincha yuborilmagan) xabarlar + eski jurnal yozuvlarini tozalash
+    if (ops.opsOn()) {
+      try { const f = await ops.flushOutbox(admin, st.tgBotToken); if (f.sent || f.failed || f.retry) console.log('[tg-outbox]', JSON.stringify(f)); }
+      catch (e) { if (!_isMissingRelation(e)) console.error('[tg-outbox]', e && e.message); }
+      try { await ops.within(admin.rpc('ops_cleanup'), 5000, null); } catch (_) { /* 48 qo'llanmagan */ }
+    }
     if (!st.tgDaily) return json({ ok: true, skipped: 'off' }, 200);
     if (now.hour < hourOf(st)) return json({ ok: true, skipped: 'early' }, 200);
     if (!TOKEN_RE.test(String(st.tgBotToken || '')) || !CHAT_RE.test(String(st.tgChatId || ''))) return json({ ok: true, skipped: 'no-bot' }, 200);
@@ -103,6 +110,8 @@ exports.handler = async (event) => {
         const r = await tgSend(st.tgBotToken, st.tgChatId, m);
         if (!r.ok) throw Object.assign(new Error('Telegram: ' + (r.description || 'xato')), { tg: true });
       }
+      // v25.2: «Tizim holati» — bepul tarif chegaralari, xatolar, navbat (kuniga bir marta, hisobot bilan birga)
+      if (ops.opsOn()) { try { const u = await ops.usageText(admin); if (u) await tgSend(st.tgBotToken, st.tgChatId, u); } catch (_) { /* ixtiyoriy */ } }
       await completeIdempotent(admin, claim, { sent: msgs.length, at: new Date().toISOString() });
       return json({ ok: true, sent: msgs.length }, 200);
     } catch (e) {
@@ -115,3 +124,6 @@ exports.handler = async (event) => {
     return serverError(e, 'telegram-daily-report', 'Hisobot tayyorlanmadi');
   }
 };
+
+// v25.2: kuzatuv — so'rovlar cheklovi, xato va sekinlik haqida egasiga xabar (_lib/monitor.js)
+exports.handler = require('./_lib/monitor').wrap('telegram-daily-report', exports.handler);

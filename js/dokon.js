@@ -751,7 +751,7 @@ async function dkUploadBanner(dataUrl) {
     const bin = atob(m[1]); const bytes = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
     const path = `shop/${String(S.branch).replace(/[^a-z0-9]/gi, '')}-b${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}.jpg`;
-    const { error } = await _db.storage.from('product-images').upload(path, bytes, { contentType: 'image/jpeg', upsert: false });
+    const { error } = await _db.storage.from('product-images').upload(path, bytes, { contentType: 'image/jpeg', upsert: false, cacheControl: '31536000' });   // v25.2: noyob nom — 1 yil kesh
     if (error) { console.warn('Banner yuklanmadi:', error); return null; }
     const { data: pub } = _db.storage.from('product-images').getPublicUrl(path);
     return pub?.publicUrl || null;

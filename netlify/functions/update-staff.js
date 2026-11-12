@@ -77,3 +77,6 @@ exports.handler = async (event) => {
     return json({ error: e.message === 'Bu login allaqachon band' || e.message === 'Xodim topilmadi' ? e.message : "Yangilashda xatolik" }, 500);
   }
 };
+
+// v25.2: kuzatuv — so'rovlar cheklovi, xato va sekinlik haqida egasiga xabar (_lib/monitor.js)
+exports.handler = require('./_lib/monitor').wrap('update-staff', exports.handler);

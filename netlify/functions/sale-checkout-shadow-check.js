@@ -38,3 +38,6 @@ exports.handler = async (event) => {
     return serverError(e, 'sale-checkout-shadow-check', "Solishtirishda xatolik");
   }
 };
+
+// v25.2: kuzatuv — so'rovlar cheklovi, xato va sekinlik haqida egasiga xabar (_lib/monitor.js)
+exports.handler = require('./_lib/monitor').wrap('sale-checkout-shadow-check', exports.handler);

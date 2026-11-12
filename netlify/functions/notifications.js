@@ -261,3 +261,6 @@ function stripCost(v) {
   for (const [k, x] of Object.entries(v)) { if (/^(cost|costUsd|cost_usd|profitUsd|profit_usd|lossUsd)$/.test(k)) continue; o[k] = stripCost(x); }
   return o;
 }
+
+// v25.2: kuzatuv — so'rovlar cheklovi, xato va sekinlik haqida egasiga xabar (_lib/monitor.js)
+exports.handler = require('./_lib/monitor').wrap('notifications', exports.handler);

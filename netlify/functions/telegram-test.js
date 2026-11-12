@@ -84,3 +84,6 @@ exports.handler = async (event) => {
     return serverError(e, 'telegram-test', "Telegramga ulanib bo'lmadi");
   }
 };
+
+// v25.2: kuzatuv — so'rovlar cheklovi, xato va sekinlik haqida egasiga xabar (_lib/monitor.js)
+exports.handler = require('./_lib/monitor').wrap('telegram-test', exports.handler);

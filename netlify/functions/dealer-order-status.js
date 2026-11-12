@@ -64,3 +64,6 @@ exports.handler = async (event) => {
     return serverError(e, 'dealer-order-status', "Saqlashda xatolik");
   }
 };
+
+// v25.2: kuzatuv — so'rovlar cheklovi, xato va sekinlik haqida egasiga xabar (_lib/monitor.js)
+exports.handler = require('./_lib/monitor').wrap('dealer-order-status', exports.handler);

@@ -95,3 +95,6 @@ exports.handler = async (event) => {
     return serverError(e, 'telegram-file', 'Amal bajarilmadi');
   }
 };
+
+// v25.2: kuzatuv — so'rovlar cheklovi, xato va sekinlik haqida egasiga xabar (_lib/monitor.js)
+exports.handler = require('./_lib/monitor').wrap('telegram-file', exports.handler);

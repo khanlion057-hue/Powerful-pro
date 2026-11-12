@@ -13,7 +13,7 @@ const path = require('path');
 const { spawnSync, execFileSync } = require('child_process');
 const { ROOT } = require('./helpers/load-app');
 
-const N_FUNCS = 64;   // v24.6: + branch-transfer; v24.9: + pw-reset, staff-login; v25: − b2b, b2b-inbound; v25.1: + tg-customer
+const N_FUNCS = 65;   // v25.2: + client-error; v24.6: + branch-transfer; v24.9: + pw-reset, staff-login; v25: − b2b, b2b-inbound; v25.1: + tg-customer
 const TOML = '[build]\n  command = "node scripts/build.js"\n  publish = "dist"\n[build.environment]\n  NODE_VERSION = "22"\n';
 const git = (d, ...a) => execFileSync('git', ['-c', 'user.email=t@t', '-c', 'user.name=t', ...a], { cwd: d, stdio: 'pipe' });
 

@@ -48,3 +48,6 @@ exports.handler = async (event) => {
     return serverError(e, 'batches-shadow-check', "Solishtirishda xatolik");
   }
 };
+
+// v25.2: kuzatuv — so'rovlar cheklovi, xato va sekinlik haqida egasiga xabar (_lib/monitor.js)
+exports.handler = require('./_lib/monitor').wrap('batches-shadow-check', exports.handler);

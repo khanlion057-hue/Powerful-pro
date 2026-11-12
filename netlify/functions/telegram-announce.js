@@ -153,3 +153,6 @@ exports.handler = async (event) => {
     return serverError(e, ENDPOINT, "E'lon yuborilmadi");
   }
 };
+
+// v25.2: kuzatuv — so'rovlar cheklovi, xato va sekinlik haqida egasiga xabar (_lib/monitor.js)
+exports.handler = require('./_lib/monitor').wrap('telegram-announce', exports.handler);

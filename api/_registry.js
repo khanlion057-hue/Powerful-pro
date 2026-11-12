@@ -13,6 +13,7 @@ module.exports = {
   'catalog-full-sync': () => require('../netlify/functions/catalog-full-sync.js'),
   'catalog-sync': () => require('../netlify/functions/catalog-sync.js'),
   'cleanup-duplicate-images': () => require('../netlify/functions/cleanup-duplicate-images.js'),
+  'client-error': () => require('../netlify/functions/client-error.js'),
   'create-dealer': () => require('../netlify/functions/create-dealer.js'),
   'create-staff': () => require('../netlify/functions/create-staff.js'),
   'customer-debt-payment-add': () => require('../netlify/functions/customer-debt-payment-add.js'),

@@ -1,3 +1,14 @@
+# POWERFUL GROUP — v25.2: yuklama va nazoratga tayyorlik (48-migratsiya), yangi yuklanish oynasi va logo (2026-11-12)
+- **48-migratsiya (yangi, QO'LLANMAGAN — deploydan oldin):** `ops_rate` (so'rovlar cheklovi), `ops_events` (xatolar jurnali, 30 kun), `ops_alerts` (ogohlantirish takrorlanmasin), `tg_outbox` (Telegram navbati) + `ops_rate_hit`, `ops_alert`, `ops_usage`, `ops_cleanup`. Faqat server (RLS, brauzer rollariga ruxsat yo'q). Takror ishga tushirish xavfsiz; migratsiyasiz ham sayt avvalgidek ishlaydi.
+- **Kuzatuvchi (`_lib/monitor.js`) — 65 funksiyaning hammasida:** IP bo'yicha so'rovlar cheklovi (429 + Retry-After; cron cheklanmaydi), server xatosi / kutilmagan xato / 8 s dan sekin javob → jurnal + egasiga Telegram (bir xil xato — 10 daqiqada bitta). Kutilmagan xato endi 502 emas, toza 500 JSON. Hammasi fail-open; `FW_OPS_ON=0` — o'chirish.
+- **Brauzer xatolari:** `js/fw-err.js` → yangi `client-error` funksiyasi (jami 65) — xodim sahifasida xato bo'lsa egasi biladi.
+- **Telegram navbati:** hodisa xabari vaqtincha yuborilmasa — navbatga, soatlik ish qayta yuboradi (10/20/40/80 daqiqa, 5 urinish).
+- **Kunlik «Tizim holati»:** baza va rasmlar hajmi bepul chegaraga nisbatan, xatolar, sekin javoblar, navbat.
+- **Kesh:** build JS/CSS'ning xeshli nusxalarini `dist/h/` ga qo'yadi (1 yil immutable), HTML va service worker shu nomlarda; noyob nomli rasmlar — 1 yil.
+- **k6 yuklama testlari** (`tests/load/`: o'qish, savdo, himoya) — ishlayotgan saytda ishga tushmaydi. Yo'riqnoma: `docs/YUKLAMAGA-TAYYORLIK.md` (xarajat, UptimeRobot, AI limitlari).
+- **Yuklanish oynasi:** yon ko'rinish — taxta stanok ustida, ostida katta va kichik arra (egasi namunasidagi kabi), yozuv faqat «POWERFUL PRO»; kompyuter/planshet/telefon uchun alohida o'lchamlar. **Kirish:** faqat katta logo, ostida login/parol. **Logo:** to'liq (qirqilmagan). **APK 1.0.3.**
+- Testlar: yangi p88; p8 (sxema sonlari), p11 (48 zanjirda), p48/p49 (65 funksiya).
+
 # POWERFUL GROUP — v25.1: yaxlitlash va foyda (47-migratsiya), mijozga bot eslatmalari, yuklanish animatsiyasi (2026-11-12)
 - **47-migratsiya (yangi, QO'LLANMAGAN — deploydan oldin):** `sales` jadvaliga `asl_jami_uzs`, `yaxlitlash_chegirmasi_uzs`, `tolangan_jami_uzs` (bigint) va tekshiruv cheklovi (`asl = to'langan + farq`). Faqat ustun qo'shiladi — mavjud savdolar o'zgarmaydi. Takror ishga tushirish xavfsiz. Migratsiyasiz ham ilova ishlaydi (maydonlar ilova ma'lumotida qoladi, server yo'q ustunni e'tiborsiz qoldiradi).
 - **So'm yaxlitlash — yagona modul `js/fw-round.js`** (brauzer, server, testlar): narx — eng yaqin 1 000 (yarmi tepaga); savat jami — chegirma/foizdan KEYIN, har doim PASTGA, 100 ga; hammasi butun so'm; qadamlar sozlamada (Sozlamalar → «Yaxlitlash qadamlari»). Avvalgi «zarar bo'lsa yaxlitlanmaydi» istisnosi olib tashlandi (egasi: har doim pastga).

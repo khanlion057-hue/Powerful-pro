@@ -55,3 +55,6 @@ exports.handler = async (event) => {
     return json({ error: "Diller yaratishda xatolik" }, 500);
   }
 };
+
+// v25.2: kuzatuv — so'rovlar cheklovi, xato va sekinlik haqida egasiga xabar (_lib/monitor.js)
+exports.handler = require('./_lib/monitor').wrap('create-dealer', exports.handler);

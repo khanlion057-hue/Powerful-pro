@@ -1,7 +1,7 @@
 {
   "name": "biznes-pro",
   "private": true,
-  "version": "25.1.0",
+  "version": "25.2.0",
   "scripts": {
     "setup": "node scripts/setup.js",
     "brand": "node scripts/brand.js",

@@ -17,6 +17,7 @@
 'use strict';
 const { TOKEN_RE, CHAT_RE, tgSend } = require('./dailyReportRun');
 const tc = require('./tgCustomers');
+const ops = require('./opsGuard');
 const brandOf = (st) => String(st.company || process.env.FW_BRAND_NAME || 'POWERFUL GROUP').slice(0, 60);
 
 const num = (v) => { const x = Number(v); return Number.isFinite(x) ? x : 0; };
@@ -67,16 +68,22 @@ async function loadBranch(admin, main, filial) {
 }
 const branchName = (st, k) => (st.branchNames && st.branchNames[k]) || (k === 'baza' ? 'Baza' : k);
 
-// Yuborish — hech qachon xato tashlamaydi; 6 soniyadan ortiq kutmaydi
+// Yuborish — hech qachon xato tashlamaydi; 6 soniyadan ortiq kutmaydi.
+// v25.2: har chat alohida; vaqtinchalik xato (tarmoq, 429, 5xx) bo'lsa — xabar yo'qolmaydi, tg_outbox navbatiga tushadi
+// (soatlik ish qayta yuboradi). ctx.admin — navbat uchun (48-migratsiya; yo'q bo'lsa — avvalgidek faqat log).
 async function send(st, kind, text, ctx = {}) {
   try {
     if (!TOKEN_RE.test(String(st.tgBotToken || '')) || !evtOn(st, kind)) return { ok: false, skipped: true };
     const chats = chatsFor(st, kind, ctx); if (!chats.length) return { ok: false, skipped: true };
-    const res = await Promise.race([
-      Promise.all(chats.map((c) => tgSend(st.tgBotToken, c, text))),
-      new Promise((r) => setTimeout(() => r([{ ok: false, description: 'timeout' }]), 6000)),
-    ]);
-    const bad = res.filter((r) => !r.ok); if (bad.length) console.warn('[tgEvents]', kind, bad.map((b) => b.description).join('; '));
+    const res = await Promise.all(chats.map((c) => ops.within(tgSend(st.tgBotToken, c, text), 6000, { ok: false, description: 'timeout' })
+      .then((r) => Object.assign({ chat: c }, r || { ok: false, description: 'xato' }))));
+    const bad = res.filter((r) => !r.ok);
+    if (bad.length) {
+      console.warn('[tgEvents]', kind, bad.map((b) => b.description).join('; '));
+      if (ctx.admin && ops.opsOn()) {
+        for (const b of bad) if (ops.RETRYABLE(b.description)) await ops.enqueue(ctx.admin, b.chat, text, kind, b.description);
+      }
+    }
     return { ok: !bad.length };
   } catch (e) { console.warn('[tgEvents]', kind, e && e.message); return { ok: false }; }
 }
@@ -120,7 +127,7 @@ async function notifyCreditSale(admin, args) {
     } catch (_) {}
     const { text, debt } = creditSaleText({ ...args, st, cust, rate: num(st.usdUzs), custDebtUzs });
     if (!(debt >= 0.005)) return;   // qarz yo'q — nasiya emas
-    await send(st, 'credit', text, { filial: args.filial });
+    await send(st, 'credit', text, { filial: args.filial, admin });
     // Mijozning o'ziga (botga ulangan bo'lsa) — faqat o'z xaridi
     if (evtOn(st, 'customer')) await tc.sendToCustomer(admin, st.tgBotToken, args.filial, args.custId,
       tc.custCreditText({ brand: brandOf(st), custName: cust.name, items: args.items, discPct: args.discPct, debtUsd: debt, rate: num(st.usdUzs), dueDate: args.dueDate }));
@@ -141,7 +148,7 @@ async function notifyCustomerPayment(admin, { filial, customerId, amount, curren
       `🏢 ${esc(branchName(st, filial))}${staffName ? ' · ' + esc(staffName) : ''}`,
       pre([row('Toʻlandi', currency === 'USD' ? usd(amount) : uzs(amount)), row('Qolgan qarz', debtAfterUzs != null ? uzs(Math.max(0, debtAfterUzs)) : '—')]),
     ].join('\n');
-    await send(st, 'pay', text, { filial });
+    await send(st, 'pay', text, { filial, admin });
     if (evtOn(st, 'customer')) await tc.sendToCustomer(admin, st.tgBotToken, filial, customerId,
       tc.custPayText({ brand: brandOf(st), amountText: currency === 'USD' ? usd(amount) : uzs(amount), debtAfterUzs }));
   } catch (e) { console.warn('[tgEvents] pay', e && e.message); }
@@ -170,7 +177,7 @@ async function notifyDealerOp(admin, { kind, mode, dealerId, items, filial, staf
     const text = [title, `👤 <b>${esc(d.name)}</b>${d.phone ? ' · ' + esc(d.phone) : ''}${d.region ? ' · ' + esc(d.region) : ''}`,
       `🏢 ${esc(branchName(st, filial))}${staffName ? ' · ' + esc(staffName) : ''}`, pre(R),
       `📒 Diller qarzi: <b>${esc(usd(d.debt_usd))}</b>`].join('\n');
-    await send(st, 'dealer', text, { dealerId });
+    await send(st, 'dealer', text, { dealerId, admin });
   } catch (e) { console.warn('[tgEvents] dealer', e && e.message); }
 }
 async function notifyDealerPayment(admin, { dealerId, amountUsd, debtAfterUsd, via, filial, staffName }) {
@@ -184,7 +191,7 @@ async function notifyDealerPayment(admin, { dealerId, amountUsd, debtAfterUsd, v
       `👤 <b>${esc(d.name)}</b>${d.phone ? ' · ' + esc(d.phone) : ''}`,
       `🏢 ${esc(branchName(st, filial))}${staffName ? ' · ' + esc(staffName) : ''}${via ? ' · ' + esc(via) : ''}`,
       pre([row('Toʻlandi', usd(amountUsd)), row('Qolgan qarz', usd(Math.max(0, after)))])].join('\n');
-    await send(st, 'dealer', text, { dealerId });
+    await send(st, 'dealer', text, { dealerId, admin });
   } catch (e) { console.warn('[tgEvents] dealer-pay', e && e.message); }
 }
 

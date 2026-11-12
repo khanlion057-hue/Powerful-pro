@@ -72,6 +72,13 @@
   [headers.values]
     Cache-Control = "no-cache"
 
+# v25.2: build'dagi XESHLI nusxalar (scripts/build.js → dist/h/) — nomi mazmunga bog'liq, shuning uchun 1 yil o'zgarmas kesh:
+# qayta ochilganda JS/CSS serverdan umuman so'ralmaydi; yangi deployda fayl nomi o'zgaradi va yangisi yuklanadi.
+[[headers]]
+  for = "/h/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
 # v25: service worker — har ochilishda yangisi tekshiriladi (eski versiya keshda qolib ketmasin)
 [[headers]]
   for = "/sw.js"

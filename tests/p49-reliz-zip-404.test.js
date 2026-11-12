@@ -13,7 +13,7 @@ const http = require('http');
 const { execFileSync, spawnSync } = require('child_process');
 const { ROOT } = require('./helpers/load-app');
 
-const N_FUNCS = 64;   // v24.6: + branch-transfer; v24.9: + pw-reset, staff-login; v25: − b2b, b2b-inbound; v25.1: + tg-customer
+const N_FUNCS = 65;   // v25.2: + client-error; v24.6: + branch-transfer; v24.9: + pw-reset, staff-login; v25: − b2b, b2b-inbound; v25.1: + tg-customer
 const RDIR = 'powerful-pro-v24.5';
 function cloneHead() {
   const d = fs.mkdtempSync(path.join(os.tmpdir(), 'fw-rel-'));

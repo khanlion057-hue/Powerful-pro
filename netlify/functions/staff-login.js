@@ -85,3 +85,6 @@ exports.handler = async (event) => {
   const left = rule.limit - fails;
   return json({ error: `Login yoki parol notoʻgʻri${left <= 2 ? ` — yana ${left} ta urinishdan keyin ${rule.minutes} daqiqaga bloklanadi` : ''}`, left }, 401);
 };
+
+// v25.2: kuzatuv — so'rovlar cheklovi, xato va sekinlik haqida egasiga xabar (_lib/monitor.js)
+exports.handler = require('./_lib/monitor').wrap('staff-login', exports.handler);

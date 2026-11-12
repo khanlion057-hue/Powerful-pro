@@ -149,3 +149,6 @@ exports.handler = async (event) => {
     return serverError(e, 'supplier-advance', 'Server xatosi');
   }
 };
+
+// v25.2: kuzatuv — so'rovlar cheklovi, xato va sekinlik haqida egasiga xabar (_lib/monitor.js)
+exports.handler = require('./_lib/monitor').wrap('supplier-advance', exports.handler);

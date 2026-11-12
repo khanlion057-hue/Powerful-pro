@@ -134,3 +134,6 @@ exports.handler = async (event) => {
     return serverError(e, 'cleanup-duplicate-images', "Noma'lum xatolik");
   }
 };
+
+// v25.2: kuzatuv — so'rovlar cheklovi, xato va sekinlik haqida egasiga xabar (_lib/monitor.js)
+exports.handler = require('./_lib/monitor').wrap('cleanup-duplicate-images', exports.handler);

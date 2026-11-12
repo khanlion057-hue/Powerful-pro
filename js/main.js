@@ -876,7 +876,7 @@ async function uploadGalleryImage(dataUrl, pid) {
     for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
     const safePid = String(pid).replace(/[^0-9a-zA-Z]/g, '');
     const path = `p${safePid}-g${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}.jpg`;
-    const { error } = await _db.storage.from('product-images').upload(path, bytes, { contentType:'image/jpeg', upsert:false });
+    const { error } = await _db.storage.from('product-images').upload(path, bytes, { contentType:'image/jpeg', upsert:false, cacheControl:'31536000' });   // v25.2: noyob nom — 1 yil kesh
     if (error) { console.warn('Galereya rasmi yuklanmadi:', error); return null; }
     const { data: pub } = _db.storage.from('product-images').getPublicUrl(path);
     return pub?.publicUrl || null;
@@ -12900,7 +12900,7 @@ async function stBrandLogoPick(inp) {
     const m = /^data:(image\/(?:jpeg|png));base64,(.+)$/.exec(small); if (!m) throw new Error('format');
     const bin = atob(m[2]); const bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
     const path = `brand/logo-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}.${m[1] === 'image/png' ? 'png' : 'jpg'}`;
-    const { error } = await _db.storage.from('product-images').upload(path, bytes, { contentType: m[1], upsert: false });
+    const { error } = await _db.storage.from('product-images').upload(path, bytes, { contentType: m[1], upsert: false, cacheControl: '31536000' });   // v25.2: noyob nom — 1 yil kesh
     if (error) throw error;
     const { data: pub } = _db.storage.from('product-images').getPublicUrl(path);
     if (!fwBrandLogoOk(pub?.publicUrl)) throw new Error('havola');
@@ -13620,7 +13620,7 @@ async function fwOwnerConfirm(message, opts) {
 const FW_BACKUP_SECRET = ['tgBotToken', 'shopBotToken', 'appPin', 'branchPin'];
 function _fwIsOwner() { return !CURRENT_USER || CURRENT_USER.kind === 'owner' || hasPerm('rollar.manage'); }
 const FW_APP_VERSION = '24.5';   // zaxira fayl formati versiyasi (ilova versiyasi emas)
-const FW_RELEASE = '25.1';       // v25: Sozlamalar → Versiya (avval qo'lda «v24.7» yozilgan, yangilanmay qolardi)
+const FW_RELEASE = '25.2';       // v25: Sozlamalar → Versiya (avval qo'lda «v24.7» yozilgan, yangilanmay qolardi)
 // v24.5 audit: zaxira yaxlitligi — sha256 (hex). Server ham aynan shu qoida bilan hisoblaydi (_lib/backupBuild.js).
 async function _fwSha256Hex(str) {
   if (!(window.crypto && crypto.subtle)) return null;

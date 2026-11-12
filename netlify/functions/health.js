@@ -22,3 +22,6 @@ exports.handler = async (event) => {
     : "Rollar bo'sh — supabase/schema.sql oxiridagi boshlang'ich ma'lumot qo'shilmagan";
   return json({ ok, checks, hint }, ok ? 200 : 503);
 };
+
+// v25.2: kuzatuv — so'rovlar cheklovi, xato va sekinlik haqida egasiga xabar (_lib/monitor.js)
+exports.handler = require('./_lib/monitor').wrap('health', exports.handler);

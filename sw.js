@@ -8,7 +8,7 @@ const CACHE = 'powerful-v25-12';
 const SHELL = [
   './', './index.html', './sotuvchi.html', './diller.html', './manifest.json',
   './css/style.css', './css/design-system.css',
-  './js/config.js', './js/brand.js', './js/fw-saw-loader.js', './js/fw-round.js', './js/shared.js', './js/pos.js', './js/main.js', './js/sotuvchi.js', './js/diller.js',
+  './js/config.js', './js/brand.js', './js/fw-err.js', './js/fw-saw-loader.js', './js/fw-round.js', './js/shared.js', './js/pos.js', './js/main.js', './js/sotuvchi.js', './js/diller.js',
   './js/firma-kassa.js', './js/dokon.js', './js/writeoff.js', './js/dealer-pay.js', './js/notifications.js', './js/zaklad.js', './js/shell.js',
   './assets/brand-logo.png', './assets/brand-logo-dark.png', './assets/brand-mark.png', './assets/chek/pg-mark.png', './assets/chek/pg-mark-bw.png', './assets/chek/banner-top.jpg', './assets/chek/banner-bottom.jpg', './assets/saw-blade.svg', './assets/tile-pattern.svg', './icon-192.png', './icon-180.png',
 ];

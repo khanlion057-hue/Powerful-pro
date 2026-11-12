@@ -39,3 +39,6 @@ exports.handler = async (event) => {
 
   return json({ ok: true, matched: diffs.length === 0, diffs }, 200);
 };
+
+// v25.2: kuzatuv — so'rovlar cheklovi, xato va sekinlik haqida egasiga xabar (_lib/monitor.js)
+exports.handler = require('./_lib/monitor').wrap('sale-return-shadow-check', exports.handler);

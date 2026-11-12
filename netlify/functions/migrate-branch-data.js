@@ -99,3 +99,6 @@ exports.handler = async (event) => {
     { const r = serverError(e, 'migrate-branch-data', "Noma'lum xatolik"); const b = JSON.parse(r.body); b.oldTableUntouched = true; r.body = JSON.stringify(b); return r; }
   }
 };
+
+// v25.2: kuzatuv — so'rovlar cheklovi, xato va sekinlik haqida egasiga xabar (_lib/monitor.js)
+exports.handler = require('./_lib/monitor').wrap('migrate-branch-data', exports.handler);

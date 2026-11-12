@@ -3745,5 +3745,19 @@ html[data-theme="dark"]{ --fw-pat:#e6c58f; --fw-pat-o:.045; }
 .fw-load .fw-load-in.has-saw .fw-load-bar{ display:none !important; }   /* aylanuvchi tig' o'rniga — kesish animatsiyasi */
 .fw-load canvas.fw-saw{ display:block; width:100%; height:clamp(150px,34vh,300px); border-radius:14px; box-shadow:0 14px 40px rgba(0,0,0,.45); }
 .fw-load .fw-saw-pct{ font-variant-numeric:tabular-nums; color:#f1b24a; font-weight:700; font-size:14px; order:9; }
-.fw-load .fw-load-in.has-saw .fw-lock.xl{ --lk:210px; }
-@media (max-width:480px){ .fw-load canvas.fw-saw{ height:clamp(140px,28vh,220px); } .fw-load .fw-load-in.has-saw .fw-lock.xl{ --lk:170px; } }
+/* Qurilmaga qarab alohida: kompyuter / planshet / telefon */
+.fw-load .fw-load-in.has-saw .fw-lock.xl{ --lk:280px; }                                    /* kompyuter */
+@media (max-width:1023px){                                                                    /* planshet */
+  .fw-load .fw-load-in.has-saw{ width:min(92vw,720px); gap:14px; }
+  .fw-load canvas.fw-saw{ height:clamp(220px,28vh,340px); }
+  .fw-load .fw-load-in.has-saw .fw-lock.xl{ --lk:300px; }
+  .fw-load .fw-saw-pct{ font-size:16px; }
+}
+@media (max-width:1023px) and (orientation:landscape){ .fw-load canvas.fw-saw{ height:clamp(200px,36vh,300px); } .fw-load .fw-load-in.has-saw .fw-lock.xl{ --lk:240px; } }
+@media (max-width:600px){                                                                     /* telefon */
+  .fw-load .fw-load-in.has-saw{ width:calc(100vw - 32px); gap:10px; }
+  .fw-load canvas.fw-saw{ height:clamp(190px,30vh,250px); border-radius:12px; }
+  .fw-load .fw-load-in.has-saw .fw-lock.xl{ --lk:230px; }
+  .fw-load .fw-saw-pct{ font-size:15px; }
+}
+@media (max-width:380px){ .fw-load .fw-load-in.has-saw .fw-lock.xl{ --lk:200px; } }

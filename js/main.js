@@ -3246,7 +3246,7 @@ async function _savdoCommitInner(ctx) {
   const ledgerSale = !!(atomicResult && atomicResult.ledger);
   const sale = {
     id: saleId, date: td(), time: new Date().toTimeString().slice(0, 5), inv,
-    custId, custName: cust?.name || 'Anonim',
+    custId, custName: cust?.name || 'Anonim', staffName: (typeof CURRENT_USER !== 'undefined' && CURRENT_USER && CURRENT_USER.name) || (S.settings && S.settings.ownerName) || undefined,
     items,
     subtotalUsd: ctx.subtotalUsd, disc: Math.round((+ctx.discPct || 0) * 10000) / 10000, discUsd: ctx.subtotalUsd - totalUsd, totalUsd,
     paidUsd: Math.min(ctx.paidUsd, totalUsd), debtUsd,
@@ -3919,13 +3919,12 @@ async function saveEditSale(sid) {
   toast('✅ Savdo yangilandi!');
 }
 
-function printReceipt(saleId, opts) {
+async function printReceipt(saleId, opts) {
   const sale = typeof saleId==='object' ? saleId : S.sales.find(s=>s.id===saleId); if(!sale) return;
-  const st = S.settings||{}, bs = S.branchSettings || {};
   const mm = [58,72,80].includes(+fwPrintCfg('receiptWidth')) ? +fwPrintCfg('receiptWidth') : 72;
-  // v24.5: chek — ilova ichidagi oynada (PDF, yuborish, chop etish); filial chek matni/telefon/manzili — ustun
-  fwDoc({ title: 'Chek ' + (sale.inv || ''), kind: 'receipt', widthMm: mm,
-    html: fwReceiptHtml(sale, { brand: fwBrand().name, phone: bs.phone || st.shopPhone, address: bs.address || st.shopAddress, footer: bs.receipt || st.receipt, widthMm: mm, rate: CUR.usdUzs }) });
+  // v24.5: chek — ilova ichidagi oynada (PDF, yuborish, chop etish); filial chek matni/telefon/manzili — ustun.
+  // v25.2: POWERFUL GROUP dizayni (fwReceiptHtml): PDF — rangli, chop etish — termoprinter (qora-oq, bannersiz)
+  await fwReceiptShow(sale, { widthMm: mm });
   if (opts && opts.auto) { const fr = document.getElementById('fw-doc-frame'); if (fr) fr.addEventListener('load', () => setTimeout(fwDocPrint, 150), { once: true }); }
 }
 
@@ -12713,6 +12712,7 @@ function pgSozlamalar() {
       ro({ic:'calc', c:'indigo', t:'Savdoda soʻm yaxlitlash', sub:`Narx ${fwNum(FWRound.steps({ ...st, roundingEnabled: true }).price)} soʻmga, jami summa ${fwNum(FWRound.steps({ ...st, roundingEnabled: true }).total)} soʻmga yaxlitlanadi (mijoz foydasiga)`, toggle:true, id:'st-rounding', checked: st.roundingEnabled!==false, on:"stSetRounding(this.checked)"}),
       ro({ic:'calc', c:'sky', t:'Yaxlitlash qadamlari', sub:'Narx — eng yaqin qadamga (yarmi tepaga); jami — har doim pastga', val:`${fwNum(FWRound.steps({ ...st, roundingEnabled: true }).price)} / ${fwNum(FWRound.steps({ ...st, roundingEnabled: true }).total)}`, on:"stRoundStepsSheet()"}),
       ro({ic:'warning', c:'amber', t:'\u00abOmborda kam\u00bb chegarasi', sub:'Yangi mahsulotlar uchun', val:`${n(st.lowStockDefault??5)} dona`, on:"stLowStockSheet()"}),
+      ro({ic:'receipt', c:'indigo', t:'Chek dizayni', sub:'Logo, bannerlar, shior, ranglar, koʻrsatiladigan maʼlumotlar — jonli koʻrinish (PDF va termoprinter)', on:"stReceiptDesign()"}),
       ro({ic:'edit', c:'indigo', t:'Chek yozuvi (standart)', sub: esc(st.receipt||'Xaridingiz uchun rahmat!') + ' · filial oʻz matnini bersa — oʻshanisi', on:"stEditReceipt()"}),
     ]) : group('Butun firma', [
       static_({ic:'swap', c:'emerald', t:'Valyuta kursi', sub:'Kunlik kurs oynasi orqali tasdiqlanadi', val:`1$ = ${n(CUR.usdUzs)} soʻm`}),
@@ -12848,8 +12848,8 @@ function stPrinterSheet() {
 }
 function stSetWidth(v){ stSetBranch('receiptWidth', v); if(S.page==='sozlamalar') pgSozlamalar(); }
 function stTestPrint() {
-  printReceipt({ date: td(), inv:'SINOV-0001', custName:'Sinov', disc:0, discUsd:0, debtUsd:0, totalUsd:12.5,
-    items:[{sku:'PG-0001', name:'Sinov mahsulot', qty:1, lineUsd:12.5}] });
+  // v25.2: sinov cheki — mahsulot narxi (sellUsd) bilan; avval faqat lineUsd berilgani uchun narx va summa «0» chiqardi
+  printReceipt(fwRcSample(1));
 }
 
 // ── Do'kon va profil ──
@@ -12938,6 +12938,103 @@ function stEditReceipt() {
   openSheet({ic:'edit', c:'indigo', title:'Chek yozuvi', sub:'Chek oxirida chiqadigan matn',
     body:`<div class="bs-card"><label class="bs-lbl" for="st-rec">Matn</label><input class="bs-in" id="st-rec" value="${esc(S.settings.receipt||'Xaridingiz uchun rahmat!')}"></div>`,
     foot:`<button class="bs-btn" onclick="S.settings.receipt=document.getElementById('st-rec').value.trim();closeSheet();pgSozlamalar();fwSaveToast('Saqlandi')">Saqlash</button>`});
+}
+// ═══ v25.2: CHEK DIZAYNI (POWERFUL GROUP) — Sozlamalar → Chek dizayni ═══
+// Hamma matn, rasm, rang va yoqish/o'chirish — S.settings.rc da (kodga qattiq yozilmagan). Har o'zgarishda ko'rinish darhol yangilanadi.
+// Ko'rinish: rangli (PDF / Telegram) yoki termoprinter 80 / 72 / 58 mm (qora-oq, bannersiz).
+const ST_RC_TOGGLES = [['addressOn', 'Manzil'], ['phoneOn', 'Telefon'], ['dateOn', 'Sana'], ['timeOn', 'Vaqt'], ['cashierOn', 'Kassir'], ['customerOn', 'Mijoz'],
+  ['codeOn', 'Mahsulot kodi'], ['discountOn', 'Chegirma'], ['changeOn', 'Qaytim'], ['uzsOn', 'Dollar savdoda soʻmdagi jami']];
+let _rcMode = 'color', _rcSample = 1;
+// Namuna savdolar: 1 — bitta mahsulot (Test 1), 4 — to'rtta mahsulot, chegirma va qaytim bilan (Test 2)
+function fwRcSample(n) {
+  const base = { date: td(), time: '14:20', cur: 'USD', rateUsdUzs: (typeof CUR !== 'undefined' && CUR.usdUzs) || 12500, payType: 'cash', staffName: 'Kassir', debtUsd: 0 };
+  if (+n === 4) return { ...base, inv: 'SINOV-0002', custName: 'Karimov Aziz',
+    items: [{ sku: 'DA-250-40', name: 'Diskli arra 250×32 mm, 40 tishli', qty: 3, sellUsd: 18.75 }, { sku: 'RT-0012', name: 'Arra tigʻi (Rover uchun)', qty: 12, sellUsd: 1.25 },
+      { sku: 'LT-3350', name: 'Yogʻoch kesish stanogi uchun lenta arra 3350 mm', qty: 2, sellUsd: 42.9 }, { sku: 'KD-125', name: 'Kesuvchi disk 125 mm', qty: 25, sellUsd: 0.8 }],
+    subtotalUsd: 177.05, discUsd: 2.05, totalUsd: 175, paidUsd: 175, paidN: 180, changeN: 5 };
+  return { ...base, inv: 'SINOV-0001', custName: 'Sinov', items: [{ sku: 'PG-0001', name: 'Arra tigʻi (Rover uchun)', qty: 2, sellUsd: 12.5 }], subtotalUsd: 25, totalUsd: 25, paidUsd: 25 };
+}
+function stReceiptDesign() {
+  if (typeof hasPerm === 'function' && !(hasPerm('sozlamalar.edit') && _fwIsOwner())) { toast('Chek dizaynini faqat egasi oʻzgartiradi', 'error'); return; }
+  S._rcDraft = JSON.parse(JSON.stringify((S.settings || {}).rc || {}));
+  const d = fwRcMerge(S._rcDraft), shopA = (S.branchSettings || {}).address || S.settings.shopAddress || FW_RC_SHOP.address, shopP = (S.branchSettings || {}).phone || S.settings.shopPhone || FW_RC_SHOP.phone;
+  const inp = (k, lbl, ph, max) => `<label class="bs-lbl" for="rc-${k}">${lbl}</label><input class="bs-in" id="rc-${k}" maxlength="${max || 80}" placeholder="${esc(ph || '')}" value="${esc(S._rcDraft[k] != null ? S._rcDraft[k] : '')}" oninput="stRcSet('${k}',this.value)">`;
+  const sw = (k, lbl, sub) => `<label class="bs-card bs-rowc" style="padding:10px 14px"><span><b class="bs-t">${lbl}</b>${sub ? `<small class="bs-note">${sub}</small>` : ''}</span><span class="st-sw"><input type="checkbox" id="rc-${k}" ${d[k] ? 'checked' : ''} onchange="stRcSet('${k}',this.checked)"><i></i></span></label>`;
+  const imgRow = (k, lbl, onK) => `<div class="bs-card"><b class="bs-t">${lbl}</b><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+      <label class="bs-btn ghost" style="min-height:36px;padding:0 12px;cursor:pointer">${ICONF.upload}<span>Yuklash / almashtirish</span><input type="file" accept="image/png,image/jpeg,image/webp" hidden onchange="stRcPickImage('${k}',this)"></label>
+      <button type="button" class="bs-btn ghost" style="min-height:36px;padding:0 12px" onclick="stRcSet('${k}','')">Standart</button>
+      ${onK ? `<button type="button" class="bs-btn ghost" style="min-height:36px;padding:0 12px" onclick="stRcSet('${onK}',false);document.getElementById('rc-${onK}').checked=false">Oʻchirish</button>` : ''}</div></div>`;
+  const col = (k, lbl) => `<label class="bs-card bs-rowc" style="padding:8px 14px"><span><b class="bs-t">${lbl}</b></span><input type="color" id="rc-${k}" value="${esc(d[k])}" oninput="stRcSet('${k}',this.value)" style="width:48px;height:32px;border:0;background:none;padding:0"></label>`;
+  openSheet({ ic: 'receipt', c: 'indigo', title: 'Chek dizayni', sub: 'POWERFUL GROUP korporativ cheki — oʻzgarish darhol koʻrinadi',
+    body: `<div class="bs-card" style="position:sticky;top:-1px;z-index:3;gap:8px">
+        ${segCtl([['color', 'PDF · rangli'], [80, '80 mm'], [72, '72 mm'], [58, '58 mm']].map(([v, l]) => [`'${v}'`, l]), `'${_rcMode}'`, 'stRcMode')}
+        ${segCtl([[1, '1 mahsulot'], [4, '4 mahsulot']], _rcSample, 'stRcSample')}
+        <iframe id="rc-prev" title="Chek koʻrinishi" sandbox="allow-same-origin" style="display:block;margin:0 auto;border:1px solid var(--border);border-radius:10px;background:#fff;height:min(46vh,520px)"></iframe></div>
+      <div class="bs-card"><b class="bs-t">Kompaniya</b>
+        ${inp('name', 'Doʻkon nomi', fwBrand().name, 60)}${inp('slogan', 'Shior (nomning ikkinchi qismi)', 'GROUP', 30)}${inp('activity', 'Faoliyat yoʻnalishi', 'Arra • Asboblar • Tigʻlar', 80)}
+        ${inp('address', 'Manzil', shopA, 100)}${inp('phone', 'Telefon', shopP, 30)}
+        <small class="bs-note">Bosh qoldirilsa — Sozlamalardagi (filial) manzil/telefon ishlatiladi. Shior bosh boʻlsa — nomning oxirgi soʻzi.</small></div>
+      ${sw('logoOn', 'Logotip')}${imgRow('logo', 'Logotip rasmi (termoprinterda oq-qora boʻladi)')}
+      ${sw('bannersOn', 'Bannerlar', 'Rangli PDFda; termoprinterda bannerlar chiqmaydi')}
+      ${sw('topOn', 'Yuqori banner')}${imgRow('top', 'Yuqori banner rasmi', 'topOn')}
+      ${sw('bottomOn', 'Pastki banner')}${imgRow('bottom', 'Pastki banner rasmi', 'bottomOn')}
+      ${sw('mottoOn', 'Pastki shior')}
+      <div class="bs-card">${inp('motto1', '1-qator', 'BUGUNGI QADAM —', 50)}${inp('motto2', '2-qator', 'ERTANGI MUVAFFAQIYAT', 50)}</div>
+      ${sw('tgOn', 'Telegram havolasi')}<div class="bs-card">${inp('tg', 'Havola', 't.me/forwardtowardsdreams', 100)}</div>
+      <div class="bs-card"><b class="bs-t">Chekda koʻrsatish</b></div>
+      ${ST_RC_TOGGLES.map(([k, l]) => sw(k, l)).join('')}
+      <div class="bs-card"><b class="bs-t">Ranglar</b></div>
+      ${col('cBlack', 'Asosiy (qora)')}${col('cWhite', 'Ikkinchi darajali (oq)')}${col('cMetal', 'Metall-kulrang')}${col('cText', 'Matn')}`,
+    foot: `<button class="bs-btn ghost" onclick="stRcReset()">Standart</button><button class="bs-btn" onclick="stRcSave()">Saqlash</button>` });
+  setTimeout(stRcRender, 0);
+}
+function stRcRender() {
+  const fr = document.getElementById('rc-prev'); if (!fr) return;
+  const raw = S._rcDraft || {}, rc = fwRcMerge(raw), st = S.settings || {}, bs = S.branchSettings || {};
+  const color = _rcMode === 'color', w = color ? 80 : +_rcMode;
+  fr.style.width = Math.round(w * 96 / 25.4) + 'px'; fr.style.maxWidth = '100%';
+  const my = ++stRcRender._n;
+  fwRcBwLogo(fwRcImg(rc.logo, '') || FW_RC_ASSETS.logo).then((bw) => {
+    if (my !== stRcRender._n) return;
+    fr.srcdoc = fwReceiptHtml(fwRcSample(_rcSample), { brand: fwBrand().name, phone: bs.phone || st.shopPhone, address: bs.address || st.shopAddress, footer: bs.receipt || st.receipt,
+      widthMm: w, pdfMm: 80, rate: CUR.usdUzs, rc: raw, logoBw: bw, mode: color ? 'color' : 'thermal' });
+  });
+}
+stRcRender._n = 0;
+function stRcSet(k, v) { S._rcDraft = S._rcDraft || {}; S._rcDraft[k] = v; stRcRender(); }
+function stRcMode(v) { _rcMode = v === 'color' ? 'color' : (+v || 80); stRcRender(); }
+function stRcSample(v) { _rcSample = +v === 4 ? 4 : 1; stRcRender(); }
+function stRcReset() { S._rcDraft = {}; closeSheet(); setTimeout(() => { S.settings.rc = {}; stReceiptDesign(); }, 220); }
+function stRcSave() {
+  S.settings.rc = fwRcMerge(S._rcDraft || {});
+  save(); auditLog('Chek dizayni saqlandi'); closeSheet(); if (S.page === 'sozlamalar') pgSozlamalar(); fwSaveToast('Saqlandi');
+}
+// Rasm tanlash: logotip — shaffof PNG (≤512 px), banner — JPG (≤1024 px, ~120 KB). Bulutda Storage'ga yuklanadi (sozlamaga faqat https havola)
+async function stRcPickImage(k, inp) {
+  const f = inp.files && inp.files[0]; inp.value = ''; if (!f) return;
+  if (!/^image\/(png|jpe?g|webp)$/.test(f.type)) { toast('PNG, JPG yoki WEBP rasm tanlang', 'error'); return; }
+  if (f.size > 8 * 1024 * 1024) { toast('Rasm juda katta (8 MB dan oshmasin)', 'error'); return; }
+  const raw = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.onerror = () => r(null); fr.readAsDataURL(f); });
+  let out = null;
+  if (raw && k === 'logo') {
+    out = await new Promise(res => { const im = new Image(); im.onload = () => { try { const sc = Math.min(1, 512 / Math.max(im.width, im.height)), cv = document.createElement('canvas');
+      cv.width = Math.max(1, Math.round(im.width * sc)); cv.height = Math.max(1, Math.round(im.height * sc)); cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height); res(cv.toDataURL('image/png')); } catch (e) { res(null); } }; im.onerror = () => res(null); im.src = raw; });
+    if (out && out.length > 245000) out = await compressImageDataUrl(raw, 80, 512);
+  } else if (raw) out = await compressImageDataUrl(raw, 120, 1024);
+  if (!out) { toast("Rasmni o'qib bo'lmadi", 'error'); return; }
+  if (_cloudEnabled && _db && _db.storage) {
+    try {
+      const m = /^data:(image\/(?:jpeg|png));base64,(.+)$/.exec(out); if (!m) throw new Error('format');
+      const bin = atob(m[2]), bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const path = `brand/chek-${k}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}.${m[1] === 'image/png' ? 'png' : 'jpg'}`;
+      const { error } = await _db.storage.from('product-images').upload(path, bytes, { contentType: m[1], upsert: false });
+      if (error) throw error;
+      const { data: pub } = _db.storage.from('product-images').getPublicUrl(path);
+      if (!fwRcImg(pub && pub.publicUrl, '')) throw new Error('havola');
+      out = pub.publicUrl;
+    } catch (e) { console.warn('Chek rasmi yuklanmadi:', e); toast('Rasm yuklanmadi', 'error'); return; }
+  }
+  stRcSet(k, out); toast('Rasm tanlandi — «Saqlash»ni bosing');
 }
 // v24.8 (37): chegirma chegarasi — server (sale_checkout_v37) shu sozlamani o'qiydi; o'zgartirish — «sozlamalar.edit»
 function stMaxDiscPct() { const v = Number(S.settings && S.settings.maxDiscountPct); return Number.isFinite(v) && S.settings.maxDiscountPct !== '' && S.settings.maxDiscountPct != null ? Math.min(100, Math.max(0, v)) : 10; }

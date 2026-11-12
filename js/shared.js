@@ -1595,7 +1595,7 @@ async function ptChangePw(btn) {
 // sifatida joylanadi — oʻzbek harflari (ʻ ʼ) va kirill har qanday qurilmada to'g'ri chiqadi.
 // ════════════════════════════════════════════════════════════
 // (v24.5 audit: kutubxona endi fwDocBlob'dagi yashirin iframe ichida yuklanadi — asosiy oynaga yuklanmaydi)
-const FWD = { html: '', title: '', file: '', kind: 'a4', widthMm: 80, bot: null, blob: null };
+const FWD = { html: '', title: '', file: '', kind: 'a4', widthMm: 80, pdfWidthMm: 0, bot: null, blob: null };
 function fwDocName(t) { return String(t || 'hujjat').replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80) || 'hujjat'; }
 // Eski «window.open + document.write» chop etish kodlari uchun mos o'rinbosar: yozilgan HTML ilova ichidagi oynada ochiladi
 function fwDocWin(kind) {
@@ -1608,7 +1608,7 @@ function fwDocWin(kind) {
 }
 function fwDoc(o) {
   Object.assign(FWD, { html: String(o.html || ''), title: o.title || 'Hujjat', file: fwDocName(o.file || o.title) + '.pdf', kind: o.kind === 'receipt' ? 'receipt' : 'a4',
-    widthMm: +o.widthMm || 80, bot: typeof o.bot === 'function' ? o.bot : (typeof fwDocBotDefault === 'function' ? fwDocBotDefault() : null), botLabel: o.botLabel || null, blob: null });
+    widthMm: +o.widthMm || 80, pdfWidthMm: +o.pdfWidthMm || 0, bot: typeof o.bot === 'function' ? o.bot : (typeof fwDocBotDefault === 'function' ? fwDocBotDefault() : null), botLabel: o.botLabel || null, blob: null });
   let ov = document.getElementById('fw-doc-ov');
   if (!ov) { ov = document.createElement('div'); ov.id = 'fw-doc-ov'; ov.className = 'pos-ov fw-doc-ov'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); document.body.appendChild(ov);
     if (typeof fwBackPush === 'function') fwBackPush('fwdoc', _fwDocCloseUi); }
@@ -1651,7 +1651,7 @@ function _fwDocSafeHtml(h) {
 }
 async function fwDocBlob() {
   if (FWD.blob) return FWD.blob;
-  const pxW = FWD.kind === 'receipt' ? Math.round(FWD.widthMm * 96 / 25.4) : 794;
+  const pdfMm = FWD.pdfWidthMm || FWD.widthMm, pxW = FWD.kind === 'receipt' ? Math.round(pdfMm * 96 / 25.4) : 794;
   const ifr = document.createElement('iframe');
   ifr.setAttribute('aria-hidden', 'true'); ifr.tabIndex = -1;
   ifr.style.cssText = `position:fixed;left:-20000px;top:0;width:${pxW}px;height:200px;border:0;opacity:0;pointer-events:none`;
@@ -1665,14 +1665,14 @@ async function fwDocBlob() {
     const el = d.body, lib = w.html2pdf;
     const inRealm = (o) => w.JSON.parse(JSON.stringify(o));   // kutubxona iframe'da — massivlar o'sha oynaniki bo'lsin (instanceof Array)
     const opt = { margin: FWD.kind === 'receipt' ? [0, 0, 0, 0] : [10, 10, 12, 10], filename: FWD.file, image: { type: 'jpeg', quality: 0.95 },
-      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', windowWidth: pxW }, pagebreak: { mode: ['css', 'legacy'] },
-      jsPDF: FWD.kind === 'receipt' ? { unit: 'mm', format: [FWD.widthMm, 60], orientation: 'portrait' } : { unit: 'mm', format: 'a4', orientation: 'portrait' } };
+      html2canvas: Object.assign({ scale: FWD.kind === 'receipt' ? 3 : 2, useCORS: true, backgroundColor: '#ffffff', windowWidth: pxW }, FWD.kind === 'receipt' ? { height: el.offsetHeight, windowHeight: el.offsetHeight, scrollY: 0 } : {}), pagebreak: { mode: ['css', 'legacy'] },
+      jsPDF: FWD.kind === 'receipt' ? { unit: 'mm', format: [pdfMm, 60], orientation: 'portrait' } : { unit: 'mm', format: 'a4', orientation: 'portrait' } };
     // Chek — bitta uzun sahifa: balandlik html2pdf'ning o'z rasmidan o'lchanadi (taxmin emas)
     if (FWD.kind === 'receipt') {
-      const c = await lib().set(inRealm({ ...opt, jsPDF: { unit: 'mm', format: [FWD.widthMm, 200], orientation: 'portrait' } })).from(el).toCanvas().get('canvas');
+      const c = await lib().set(inRealm({ ...opt, jsPDF: { unit: 'mm', format: [pdfMm, 200], orientation: 'portrait' } })).from(el).toCanvas().get('canvas');
       // v25: balandlik — chekning o'zidan (body), ortiqcha bo'sh joy va 2-sahifa yo'q
-      const hMm = Math.max(c && c.width ? c.height / c.width * FWD.widthMm : 0, el.offsetHeight * 25.4 / 96);
-      opt.jsPDF = { unit: 'mm', format: [FWD.widthMm, Math.max(40, Math.ceil(hMm) + 1)], orientation: 'portrait' };
+      const hMm = c && c.width ? c.height / c.width * pdfMm : el.offsetHeight * 25.4 / 96;
+      opt.jsPDF = { unit: 'mm', format: [pdfMm, Math.max(40, Math.ceil(hMm) + 1)], orientation: 'portrait' };
     }
     const b = await lib().set(inRealm(opt)).from(el).outputPdf('blob');
     // iframe olib tashlangach uning obyektlari ishlamaydi — PDF asosiy oynaga ko'chiriladi
@@ -1714,20 +1714,102 @@ function fwDocBot(btn) {
 }
 function fwBlobToB64(b) { return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1] || ''); r.onerror = () => rej(new Error('Fayl oʻqilmadi')); r.readAsDataURL(b); }); }
 
-// Chek (savdo) — admin va sotuvchi uchun bitta ko'rinish. v24.5 audit: mahsulot nomi va miqdori BITTA qatorda; nom
-// hech qachon kesilmaydi (uzun bo'lsa o'raladi), summa keyingi qatorda — 58/72/80 mm da gorizontal toshish yo'q.
-// So'mdagi savdo — so'mda (yaxlit), $ dagi — $ da.
-// v25: chek hisobi bitta joyda — qator = miqdor × (yaxlitlangan) narx; chegirma = qatorlar yig'indisi − JAMI
-// (shunda chekdagi raqamlar har doim bir-biriga teng chiqadi); to'landi = JAMI − mijoz haqidan − qarz.
-function fwReceiptCalc(sale, rate, uzs) {
-  const r2 = (n) => Math.round((+n || 0) * 100) / 100;
-  const N = (usd) => uzs ? Math.round((+usd || 0) * rate) : r2(usd);
-  const lines = (sale.items || []).map(i => {
-    const qty = +i.qty || 0, unit = N(i.sellUsd);
-    return { name: String(i.name || ''), sku: i.sku || '', qty, unit, line: uzs ? Math.round(qty * unit) : r2(qty * unit) };
+// ═══ CHEK (savdo) — POWERFUL GROUP korporativ dizayni (admin va sotuvchi uchun bitta ko'rinish) ═══
+// Bitta HTML ikki ko'rinishda: EKRAN / PDF / Telegram — rangli (logo, bannerlar, kulrang qatorlar, qora JAMI bloki);
+// CHOP ETISH (@media print) — termoprinter: faqat qora-oq, rasm-bannersiz, logo oq-qora, matn haqiqiy matn, @page margin 0.
+// Hisob bitta joyda (fwReceiptCalc): qator = miqdor × narx; JAMI = qatorlar − chegirma ± yaxlitlash. So'mdagi savdo — so'mda, $ dagi — $ da.
+// Sozlamalar S.settings.rc da (Sozlamalar → Chek dizayni); hech narsa kodga qattiq yozilmagan (standartlar FW_RC_DEF da).
+const FW_RC_DEF = {
+  logoOn: true, logo: '', name: '', slogan: null, activity: 'Arra • Asboblar • Tig‘lar',
+  address: '', phone: '',
+  bannersOn: true, topOn: true, bottomOn: true, top: '', bottom: '',
+  mottoOn: true, motto1: 'BUGUNGI QADAM —', motto2: 'ERTANGI MUVAFFAQIYAT',
+  tgOn: true, tg: 't.me/forwardtowardsdreams',
+  addressOn: true, phoneOn: true, dateOn: true, timeOn: true, cashierOn: true, customerOn: true, codeOn: true, discountOn: true, changeOn: true, uzsOn: false,
+  cBlack: '#000000', cWhite: '#FFFFFF', cMetal: '#BDBDBD', cText: '#111111',
+};
+const FW_RC_SHOP = { address: 'Lola jahon bozori 47B', phone: '+998883490888' };   // do'kon manzili/telefoni hech qayerda berilmagan bo'lsa
+const FW_RC_ASSETS = { logo: 'assets/chek/pg-mark.png', logoBw: 'assets/chek/pg-mark-bw.png', top: 'assets/chek/banner-top.jpg', bottom: 'assets/chek/banner-bottom.jpg' };
+const FW_RC_IMG_RE = /^(https:\/\/[^\s"'<>]{4,600}|assets\/[\w\-.\/]{1,100}|data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+\/=]+)$/;
+function fwRcImg(u, def) { u = String(u || '').trim(); return FW_RC_IMG_RE.test(u) ? u : (def || ''); }
+// Sozlamani tozalab to'liq obyektga aylantiradi (noto'g'ri tur/rang/rasm — standart qiymat)
+function fwRcMerge(raw) {
+  const o = Object.assign({}, FW_RC_DEF); raw = raw && typeof raw === 'object' ? raw : {};
+  Object.keys(FW_RC_DEF).forEach((k) => {
+    if (!(k in raw)) return; const d = FW_RC_DEF[k], v = raw[k];
+    if (typeof d === 'boolean') o[k] = !!v;
+    else if (k === 'slogan') o[k] = v == null ? null : String(v).slice(0, 40);
+    else if (k === 'logo' || k === 'top' || k === 'bottom') o[k] = fwRcImg(v, '');
+    else if (/^c[A-Z]/.test(k)) o[k] = /^#[0-9a-f]{6}$/i.test(String(v)) ? String(v) : d;
+    else o[k] = String(v == null ? '' : v).slice(0, 120);
   });
+  return o;
+}
+function fwRcMix(hex, pct) {   // rangni oq bilan aralashtiradi (pct — oq ulushi, 0..1)
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || '')); const v = m ? m[1] : 'bdbdbd';
+  return '#' + [0, 2, 4].map((i) => { const x = parseInt(v.substr(i, 2), 16); return Math.round(x + (255 - x) * pct).toString(16).padStart(2, '0'); }).join('');
+}
+// «POWERFUL GROUP» → katta «POWERFUL» + keng harfli «GROUP». Shior berilmasa (null) — oxirgi so'z (ikki va undan ortiq so'zli nomda)
+function fwRcTitle(name, slogan) {
+  let t = String(name || '').replace(/\s+/g, ' ').trim(), s = slogan;
+  if (s == null) { const w = t.split(' '); if (w.length >= 2) { s = w.pop(); t = w.join(' '); } else s = ''; }
+  else { s = String(s).trim(); if (s && t.length > s.length && t.toUpperCase().endsWith(s.toUpperCase())) t = t.slice(0, t.length - s.length).trim(); }
+  return { title: t, sub: s };
+}
+// Termoprinter uchun logo: har bir qoplangan piksel — qora, shaffof/oq — oq (logo detallaridagi oq chiziqlar saqlanadi).
+// Standart logotipning oq-qora nusxasi tayyor fayl; yuklangan logotip brauzerda aylantiriladi (chop etishdan oldin).
+const _fwRcBw = {};
+function fwRcBwLogo(url) {
+  if (!url || url === FW_RC_ASSETS.logo) return Promise.resolve(FW_RC_ASSETS.logoBw);
+  if (_fwRcBw[url] !== undefined) return Promise.resolve(_fwRcBw[url]);
+  return new Promise((res) => {
+    const im = new Image(); im.crossOrigin = 'anonymous';
+    im.onload = () => {
+      try {
+        const w = Math.min(512, im.naturalWidth || 512), h = Math.max(1, Math.round(w * (im.naturalHeight || 1) / (im.naturalWidth || 1)));
+        const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const cx = cv.getContext('2d'); cx.drawImage(im, 0, 0, w, h);
+        const d = cx.getImageData(0, 0, w, h), p = d.data;
+        for (let i = 0; i < p.length; i += 4) { const lum = .299 * p[i] + .587 * p[i + 1] + .114 * p[i + 2], white = p[i + 3] < 110 || lum > 235; p[i] = p[i + 1] = p[i + 2] = white ? 255 : 0; p[i + 3] = 255; }
+        cx.putImageData(d, 0, 0); _fwRcBw[url] = cv.toDataURL('image/png');
+      } catch (e) { _fwRcBw[url] = ''; }
+      res(_fwRcBw[url]);
+    };
+    im.onerror = () => { _fwRcBw[url] = ''; res(''); };
+    im.src = url;
+  });
+}
+const FW_RC_IC = {
+  pin: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>',
+  phone: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1z"/></svg>',
+  cal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M8 14h2M12 14h2M16 14h.01M8 17.5h2M12 17.5h2" stroke-linecap="round"/></svg>',
+  rcp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6" stroke-linecap="round"/></svg>',
+  usr: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="7.5" r="4.2"/><path d="M3.5 21c0-4.6 3.8-7.5 8.5-7.5s8.5 2.9 8.5 7.5z"/></svg>',
+  clk: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>',
+  tg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.5 3.2 2.7 10.6c-1.3.5-1.2 1.2-.2 1.5l4.8 1.5 1.8 5.6c.2.6.4.8.8.8s.6-.2.9-.5l2.3-2.2 4.8 3.5c.9.5 1.5.2 1.7-.8l3.1-14.9c.3-1.2-.4-1.8-1.4-1.4z"/></svg>',
+};
+const FW_RC_PAYNAME = { cash_uzs: 'Naqd', cash: 'Naqd', card: 'Karta', usd: 'Dollar', mixed: 'Aralash', debt: 'Qarzga' };
+function fwRcNum(v) {   // son: «12,5», «1 200», «12.50» matnlari ham — noto'g'ri qiymat 0 bo'ladi, NaN emas
+  if (typeof v === 'number') return isFinite(v) ? v : 0;
+  const n = parseFloat(String(v == null ? '' : v).replace(/[\s ]/g, '').replace(',', '.')); return isFinite(n) ? n : 0;
+}
+function fwReceiptCalc(sale, rate, uzs) {
+  const r2 = (n) => Math.round((+n || 0) * 100) / 100, num = fwRcNum;
+  const N = (usd) => uzs ? Math.round((+usd || 0) * rate) : r2(usd);
+  const items = Array.isArray(sale.items) ? sale.items : [];
+  // Narx 0 chiqishi tuzatildi: qatorda sellUsd bo'lmasa (masalan faqat lineUsd yoki price) — boshqa maydonlardan olinadi
+  let units = items.map((i) => {
+    const qty = num(i.qty); let u = num(i.sellUsd);
+    if (!(u > 0)) { const alt = [i.priceUsd, i.unitUsd, i.price, i.sell, i.unitPrice].map(num).find((x) => x > 0); u = alt || (qty > 0 && num(i.lineUsd) > 0 ? num(i.lineUsd) / qty : 0); }
+    return { i, qty, u };
+  });
+  // Hech bir qatorda narx topilmasa — savdo jamini miqdorga taqsimlaymiz (eski/nostandart yozuv)
+  const qSum = units.reduce((a, x) => a + x.qty, 0), base = num(sale.subtotalUsd) > 0 ? num(sale.subtotalUsd) : num(sale.totalUsd);
+  if (units.length && qSum > 0 && base > 0 && units.every((x) => !(x.u > 0))) units = units.map((x) => ({ ...x, u: base / qSum }));
+  const lines = units.map(({ i, qty, u }) => { const unit = N(u); return { name: String(i.name || ''), sku: i.sku || '', qty, unit, line: uzs ? Math.round(qty * unit) : r2(qty * unit) }; });
   const sum = uzs ? lines.reduce((a, l) => a + l.line, 0) : r2(lines.reduce((a, l) => a + l.line, 0));
-  const total = uzs ? (+sale.roundedTotalUzs > 0 ? Math.round(+sale.roundedTotalUzs) : N(sale.totalUsd)) : r2(sale.totalUsd);
+  // JAMI: savdoda saqlangan jami; u bo'lmasa (yoki 0, chegirma ham yo'q) — qatorlar yig'indisi
+  const hasTotal = sale.totalUsd != null && (num(sale.totalUsd) > 0 || num(sale.discUsd) > 0 || num(sale.disc) > 0 || !(sum > 0));
+  const total = uzs ? (+sale.roundedTotalUzs > 0 ? Math.round(+sale.roundedTotalUzs) : (hasTotal ? N(num(sale.totalUsd)) : sum)) : (hasTotal ? r2(num(sale.totalUsd)) : sum);
   const disc = Math.max(0, uzs ? sum - total : r2(sum - total));
   const credit = +sale.creditUseUzs > 0 ? (uzs ? Math.round(+sale.creditUseUzs) : r2(+sale.creditUseUzs / (rate || 1))) : 0;
   const debt = (+sale.debtUsd || 0) > 0.004 ? Math.min(total, N(sale.debtUsd)) : 0;
@@ -1736,59 +1818,166 @@ function fwReceiptCalc(sale, rate, uzs) {
   const given = change > 0 ? (uzs ? Math.round(+sale.paidN || paid + change) : r2(+sale.paidN || paid + change)) : 0;
   return { lines, sum, total, disc, credit, debt, paid, change, given, units: lines.reduce((a, l) => a + l.qty, 0) };
 }
+// o: { brand, phone, address, footer, cashier, widthMm (58|72|80 — printer), pdfMm (rangli PDF kengligi; standart — printer kengligi), rate, rc (S.settings.rc), logoBw, mode ('color'|'thermal'|undefined — ekran/PDF rangli, chop — termo) }
 function fwReceiptHtml(sale, o) {
   o = o || {};
+  const rc = fwRcMerge(o.rc), raw = o.rc && typeof o.rc === 'object' ? o.rc : {};
   const mm = [58, 72, 80].includes(+o.widthMm) ? +o.widthMm : 72;
-  const pw = mm === 58 ? 48 : mm === 72 ? 64 : 72;
+  const cw = [58, 72, 80, 100, 120].includes(+o.pdfMm) ? +o.pdfMm : mm;          // rangli (PDF / ekran) kenglik (berilmasa — printer kengligi)
+  const fsT = mm === 58 ? 10.5 : mm === 72 ? 12 : 13, fsC = cw <= 58 ? 10.5 : cw <= 72 ? 12 : 13;
   // v24.5 audit: kurs noma'lum bo'lsa qattiq 12800 ishlatilmaydi (noto'g'ri so'm summa chiqardi) — summa $ da ko'rsatiladi
   const rate = +sale.rateUsdUzs || +o.rate || 0;
   const uzs = sale.cur ? sale.cur !== 'USD' && rate > 0 : false;
   const c = fwReceiptCalc(sale, rate, uzs);
-  const f = (n) => uzs ? fwNum(n) : fwUsd(n).replace('$', '');
+  const usdN = (n) => { n = Math.round((+n || 0) * 100) / 100; const p = Math.abs(n).toFixed(2).split('.'); return (n < 0 ? '−' : '') + p[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + '.' + p[1]; };
+  const f = (n) => uzs ? fwNum(n) : usdN(n);
   const cu = uzs ? 'soʻm' : '$';
+  const mny = (n) => `${f(n)} ${cu}`;
+  const cell = (n) => (uzs ? fwNum(n) : usdN(n) + ' $').replace(/ /g, ' ');
   const qn = (q) => Number.isInteger(q) ? fwNum(q) : String(Math.round(q * 1000) / 1000).replace('.', ',');
-  const payName = { cash_uzs: 'Naqd', cash: 'Naqd', card: 'Karta', usd: 'Dollar', mixed: 'Aralash', debt: 'Qarzga' }[sale.payType] || 'Toʻlandi';
+  const fit = (len, base) => Math.max(.95, Math.min(base, Math.round(28 / Math.max(1, len) * 100) / 100));   // uzun summa — shrift kichrayadi, ustundan chiqmaydi
+  const payName = FW_RC_PAYNAME[sale.payType] || '';
   // v25.1: chegirma va «Yaxlitlash chegirmasi» — alohida qatorlar (so'm savdosida saqlangan maydondan; eski savdoda — sababidan)
-  // Yangi savdo — saqlangan maydondan; eski savdo (maydonsiz) — avvalgidek: sababi «rounding» bo'lsa butun chegirma
   const rf = uzs && sale.tolangan_jami != null && typeof FWRound !== 'undefined' ? FWRound.saleFields(sale) : null;
   const roundD = uzs ? Math.min(c.disc, rf ? rf.yaxlitlash_chegirmasi : (sale.discountReason === 'rounding' ? c.disc : 0)) : 0;
   const manualD = Math.max(0, c.disc - roundD);
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Chek ${esc(sale.inv || '')}</title><style>
-    @page{ size:${mm}mm 297mm; margin:0 }
-    html,body{background:#fff;color:#000} body{font-family:'Courier New',monospace;font-size:${mm === 58 ? 11 : 12.5}px;margin:0 auto;padding:4mm 0;width:${pw}mm}
-    h3{text-align:center;margin:0 0 2px;font-size:1.25em;overflow-wrap:anywhere}.ctr{text-align:center;overflow-wrap:anywhere}
-    .div{border-top:1px dashed #777;margin:6px 0}.row{display:flex;flex-wrap:wrap;justify-content:space-between;gap:0 6px;margin:2px 0}
-    .row>span{min-width:0;overflow-wrap:anywhere}.row>span:last-child{margin-left:auto;text-align:right;white-space:nowrap}
-    .it{display:flex;justify-content:space-between;align-items:flex-start;gap:6px;margin:3px 0 0}
-    .it .nm{flex:1 1 auto;min-width:0;overflow-wrap:anywhere;word-break:break-word}.it .q{flex:none;white-space:nowrap;font-weight:bold}
-    .sub{font-size:.88em;color:#333}.tot{font-weight:bold;font-size:1.2em}.foot{text-align:center;margin-top:10px;font-size:.9em;color:#333}
-  </style></head><body>
-    <h3>${esc(o.brand || 'Doʻkon')}</h3>
-    ${o.phone ? `<div class="ctr">${esc(o.phone)}</div>` : ''}${o.address ? `<div class="ctr">${esc(o.address)}</div>` : ''}
-    <div class="ctr">${esc(fwDmy(sale.date))}${sale.time ? ' ' + esc(sale.time) : ''} | ${esc(sale.inv || '')}</div>
-    <div class="ctr">Mijoz: ${esc(fwCustLabel(sale.custName))}</div>
-    ${sale.staffName ? `<div class="ctr sub">Sotuvchi: ${esc(sale.staffName)}</div>` : ''}
-    <div class="div"></div>
-    ${c.lines.map(l => `<div class="it"><span class="nm">${esc(l.name)}</span><span class="q">× ${esc(qn(l.qty))}</span></div>
-      <div class="row sub"><span>${f(l.unit)}${l.sku ? ' · ' + esc(l.sku) : ''}</span><span>${f(l.line)}</span></div>`).join('')}
-    <div class="div"></div>
-    <div class="row sub"><span>${c.lines.length} xil</span><span>${esc(qn(c.units))} dona</span></div>
-    ${c.disc > 0 ? `<div class="row"><span>Jami:</span><span>${f(c.sum)} ${cu}</span></div>` : ''}${manualD > 0 ? `<div class="row"><span>Chegirma:</span><span>−${f(manualD)} ${cu}</span></div>` : ''}${roundD > 0 ? `<div class="row"><span>Yaxlitlash chegirmasi:</span><span>−${f(roundD)} ${cu}</span></div>` : ''}
-    <div class="row tot"><span>JAMI:</span><span>${f(c.total)} ${cu}</span></div>
-    ${c.credit > 0 ? `<div class="row"><span>Mijoz haqidan:</span><span>${f(c.credit)} ${cu}</span></div>` : ''}
-    ${c.debt > 0 ? `<div class="row"><span>Toʻlandi:</span><span>${f(c.paid)} ${cu}</span></div><div class="row"><span>Qarz:</span><span>${f(c.debt)} ${cu}</span></div>${sale.dueDate ? `<div class="row sub"><span>Toʻlov sanasi:</span><span>${esc(fwDmy(sale.dueDate))}</span></div>` : ''}`
-      : c.change > 0 ? `<div class="row"><span>${payName}:</span><span>${f(c.given)} ${cu}</span></div><div class="row"><span>Qaytim:</span><span>${f(c.change)} ${cu}</span></div>`
-      : c.paid > 0 ? `<div class="row sub"><span>${payName}:</span><span>${f(c.paid)} ${cu}</span></div>` : ''}
-    ${sale.pending ? '<div class="ctr sub">(oflayn — serverga yuborilmoqda)</div>' : ''}
-    <div class="div"></div>
-    <div class="foot">${esc(o.footer || 'Xaridingiz uchun rahmat!')}</div>
-  </body></html>`;
+
+  const K = rc.cBlack, W = rc.cWhite, M = rc.cMetal, T = rc.cText;
+  const band = fwRcMix(M, .55), zeb = fwRcMix(M, .8);
+  const ttl = fwRcTitle(rc.name || o.brand || 'Doʻkon', rc.slogan);
+  const addr = rc.address.trim() || o.address || FW_RC_SHOP.address, phone = rc.phone.trim() || o.phone || FW_RC_SHOP.phone;
+  const cashier = String(sale.staffName || o.cashier || '').trim();
+  const logoSrc = fwRcImg(rc.logo, FW_RC_ASSETS.logo), logoBw = fwRcImg(o.logoBw, '') || (logoSrc === FW_RC_ASSETS.logo ? FW_RC_ASSETS.logoBw : '');
+  const top = fwRcImg(rc.top, FW_RC_ASSETS.top), bottom = fwRcImg(rc.bottom, FW_RC_ASSETS.bottom);
+  const tgTxt = String(rc.tg || '').trim().replace(/^https?:\/\//i, '');
+  const sec = (inner) => inner ? `<div class="sec">${inner}</div>` : '';
+  const it = (ic, txt) => `<span class="it">${FW_RC_IC[ic]}<span>${txt}</span></span>`;
+  const sep = '<i class="sp"></i>';
+  const join = (a) => a.filter(Boolean).join(sep);
+  const tl = ttl.title.length;
+  const tSize = tl <= 8 ? 1.7 : tl <= 11 ? 1.45 : tl <= 15 ? 1.2 : 1;
+
+  // — ustunli jadval: Mahsulot | Soni | Narxi | Summa (qator ichidagi nom o'raladi; raqamlar o'z ustunida)
+  const head = `<div class="c h h1">Mahsulot</div><div class="c h hq">Soni</div><div class="c h hp">Narxi</div><div class="c h hs">Summa</div>`;
+  const rows = c.lines.map((l, i) => {
+    const z = 'z' + (i % 2), cd = rc.codeOn && l.sku ? esc(l.sku) : '';
+    return `<div class="c n ${z}"><b>${esc(l.name)}</b>${cd ? `<small class="cd1">${cd}</small>` : ''}</div>${cd ? `<div class="c cd2 ${z}"><small>${cd}</small></div>` : `<div class="c cd2 ${z}"></div>`}<div class="c q ${z}">${esc(qn(l.qty)).replace(/ /g, '\u00a0')}x</div><div class="c p ${z}">${cell(l.unit)}</div><div class="c s ${z}">${cell(l.line)}</div>`;
+  }).join('');
+
+  // Ustunlar sig'masa (tor qog'oz yoki juda katta summalar) — «ixcham» ko'rinish: nom butun kenglikda, pastida «Soni | Narxi | Summa»
+  const wEm = (a) => Math.max(4, ...a.map((x) => String(x).length)) * .64 + .7;
+  const need = wEm(['Soni', ...c.lines.map((l) => qn(l.qty) + 'x')]) + wEm(['Narxi', ...c.lines.map((l) => cell(l.unit))]) + wEm(['Summa', ...c.lines.map((l) => cell(l.line))]);
+  const cpT = need > (mm * 3.7795 / fsT) * .94 - 6.5, cpC = need > (cw * 3.7795 / fsC) * .94 - 6.5;
+  const big = (label, amt, base, cls) => `<div class="r big ${cls || ''}" style="font-size:${fit(label.length + 2 + amt.length, base)}em"><span>${label}</span><span>${amt}</span></div>`;
+  const totalHtml = `<div class="tot">
+    <div class="r sm"><span>${c.lines.length} xil</span><span>${esc(qn(c.units))} dona</span></div>
+    ${c.disc > 0 && rc.discountOn ? `<div class="r"><span>Mahsulotlar:</span><span>${f(c.sum)} ${cu}</span></div>` : ''}${manualD > 0 && rc.discountOn ? `<div class="r"><span>Chegirma:</span><span>−${f(manualD)} ${cu}</span></div>` : ''}${roundD > 0 && rc.discountOn ? `<div class="r"><span>Yaxlitlash chegirmasi:</span><span>−${f(roundD)} ${cu}</span></div>` : ''}
+    <div class="jm" style="font-size:${fit(('JAMI:').length + 2 + mny(c.total).length, 1.9)}em"><span>JAMI:</span><span>${mny(c.total)}</span></div>
+    ${rc.uzsOn && !uzs && rate > 0 ? `<div class="r sm"><span>Soʻmda:</span><span>≈ ${fwNum(c.total * rate)} soʻm</span></div>` : ''}
+    ${c.credit > 0 ? `<div class="r"><span>Mijoz haqidan:</span><span>${f(c.credit)} ${cu}</span></div>` : ''}
+    ${big('Toʻlandi:', mny(c.debt > 0 ? c.paid : (c.change > 0 ? c.given : c.paid)), 1.9)}
+    ${payName && (c.paid > 0 || c.given > 0) ? `<div class="r sm"><span>Toʻlov turi:</span><span class="up">${esc(payName)}</span></div>` : ''}
+    ${c.debt > 0 ? big('Qarz:', mny(c.debt), 1.5, 'dbt') + (sale.dueDate ? `<div class="r sm"><span>Toʻlov sanasi:</span><span>${esc(fwDmy(sale.dueDate))}</span></div>` : '')
+      : (c.change > 0 && rc.changeOn ? big('Qaytim:', mny(c.change), 1.5) : '')}
+    ${sale.pending ? '<div class="ctr sm">(oflayn — serverga yuborilmoqda)</div>' : ''}
+  </div>`;
+
+  const showBn = rc.bannersOn, hdr = `<div class="hd">${rc.logoOn ? `<img class="lg lgc" src="${esc(logoSrc)}" alt="">${logoBw ? `<img class="lg lgt" src="${esc(logoBw)}" alt="">` : `<img class="lg lgt lgf" src="${esc(logoSrc)}" alt="">`}<i class="vl"></i>` : ''}
+    <div class="nm"><b class="t" style="font-size:calc(${tSize}em * var(--kt,1))">${esc(ttl.title)}</b>${ttl.sub ? `<div class="g"><u></u><span>${esc(ttl.sub)}</span><u></u></div>` : ''}</div></div>`;
+  const body = `<div class="rc">
+    ${hdr}
+    ${rc.activity.trim() ? `<div class="act">${esc(rc.activity.trim())}</div>` : ''}
+    ${showBn && rc.topOn ? `<img class="bn" src="${esc(top)}" alt="">` : ''}
+    ${sec(join([rc.addressOn && addr ? it('pin', esc(addr)) : '', rc.phoneOn && phone ? it('phone', esc(phone)) : '']))}
+    ${sec(join([rc.dateOn && sale.date ? it('cal', 'SANA: ' + esc(fwDmy(sale.date))) : '', it('rcp', esc(sale.inv || ''))]))}
+    ${rc.customerOn ? sec(it('usr', 'MIJOZ: ' + esc(fwCustLabel(sale.custName)))) : ''}
+    ${sec(join([rc.cashierOn && cashier ? it('usr', 'KASSIR: ' + esc(cashier)) : '', rc.timeOn && sale.time ? it('clk', 'VAQT: ' + esc(sale.time)) : '']))}
+    <div class="tb${cpT ? ' cpt' : ''}${cpC ? ' cpc' : ''}">${head}${rows}</div>
+    ${totalHtml}
+    ${rc.mottoOn && (rc.motto1.trim() || rc.motto2.trim()) ? `<div class="mo"><i></i><b>${esc(rc.motto1.trim())}${rc.motto1.trim() && rc.motto2.trim() ? '<br>' : ''}${esc(rc.motto2.trim())}</b><i></i></div>` : ''}
+    ${o.footer ? `<div class="ft">${esc(o.footer)}</div>` : ''}
+    ${showBn && rc.bottomOn ? `<img class="bn bnb" src="${esc(bottom)}" alt="">` : ''}
+    ${rc.tgOn && tgTxt ? `<div class="tgl">${FW_RC_IC.tg}<span>${esc(tgTxt)}</span></div>` : ''}
+  </div>`;
+
+  const compact = (S) => `${S}{display:flex;flex-wrap:wrap}${S} .c.h1{flex:0 0 100%;text-align:center;border-radius:.5em}${S} .c.h1::after{content:" · Soni · Narxi · Summa"}${S} .c.hq,${S} .c.hp,${S} .c.hs,${S} .c.cd2{display:none}
+    ${S} .c.n{flex:0 0 100%;padding-bottom:0}${S} .c.q,${S} .c.p,${S} .c.s{flex:1 1 auto;padding:.1em .5em .45em}${S} .c.q{text-align:left}${S} .c.p{text-align:center}${S} .c.s{text-align:right}`;
+  // Termoprinter qoidalari (chop etish yoki mode:'thermal'): p — selektor old qo'shimchasi
+  const thermal = (p) => `
+    ${p}body{width:${mm}mm;margin:0;padding:3mm 3mm .6em;font-size:${fsT}px;color:#000;background:#fff}
+    ${p}.hd{flex-direction:column;gap:.35em;padding:.2em 0 .1em}${p}.hd .vl{display:none}${p}.hd .lg{width:70%;max-width:70%;height:auto;margin:0 auto}
+    ${p}.bn,${p}.lgc{display:none!important}
+    ${p}.lgt{display:block!important}
+    ${p}.lgt.lgf{filter:grayscale(1) contrast(100)}
+    ${p}.hd{--kt:${mm === 58 ? .72 : mm === 72 ? .86 : 1}}
+    ${p}.hd .vl{background:#000}${p}.hd .g u{background:#000}
+    ${p}.sec{border-top:.09em dashed #000;color:#000}
+    ${p}.tb{padding:0 2%}
+    ${p}.c.h{background:none;border-top:.1em solid #000;border-bottom:.1em solid #000;border-radius:0}
+    ${p}.c.z0,${p}.c.z1{background:none;border-bottom:.06em dashed #000}
+    ${p}small,${p}.sm,${p}.cd1,${p}.cd2{color:#000}
+    ${p}.jm{background:#fff;color:#000;border-radius:0;border-top:.14em solid #000;border-bottom:.14em solid #000;padding:.25em 0;margin:.5em 2%}
+    ${p}.mo i{background:#000}${p}.tgl{color:#000}
+    ${compact(p + '.tb.cpt')}${p}.tb.cpt .c.n{border-top:.06em dashed #000}${p}.tb.cpt .c.z0,${p}.tb.cpt .c.z1{border-bottom:0}`;
+
+  return `<!DOCTYPE html><html${o.mode === 'thermal' ? ' class="th"' : ''}><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Chek ${esc(sale.inv || '')}</title><style>
+    @page{ size:${o.mode === 'color' ? cw : mm}mm 297mm; margin:0 }
+    *{box-sizing:border-box}
+    html,body{margin:0;background:#fff;color:${T}}
+    body{font-family:Inter,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;font-size:${fsC}px;line-height:1.25;width:${cw}mm;margin:0 auto;padding:0 0 .6em;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .rc{position:relative;overflow:hidden}
+    .rc,.rc *{break-inside:avoid;page-break-inside:avoid;break-before:avoid;break-after:avoid;page-break-before:avoid;page-break-after:avoid}
+    html,body{height:auto}
+    .hd{display:flex;align-items:center;justify-content:center;gap:.8em;padding:.9em 5% .15em;--kt:${cw === 58 ? .72 : cw === 72 ? .86 : 1}}
+    .hd .lg{height:4.3em;width:auto;max-width:42%;object-fit:contain;display:block;flex:none}.hd .lgt{display:none}
+    .hd .vl{width:.16em;align-self:stretch;background:${K};flex:none;margin:.15em 0}
+    .hd .nm{min-width:0;text-align:center}
+    .hd .t{display:block;font-weight:900;font-style:italic;line-height:1;text-transform:uppercase;overflow-wrap:anywhere;color:${K}}
+    .hd .g{display:flex;align-items:center;gap:.5em;margin-top:.35em;font-weight:600;letter-spacing:.6em;font-size:.82em;color:${K}}.hd .g u{flex:1;height:.12em;background:${K}}.hd .g span{padding-left:.6em}
+    .act{text-align:center;font-style:italic;padding:.25em 5% .55em;overflow-wrap:anywhere}
+    .bn{display:block;width:100%;height:auto}
+    .sec{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:.35em .8em;border-top:.09em dashed ${M};padding:.5em 5%;font-weight:500}
+    .sec .it{display:inline-flex;align-items:center;gap:.4em;min-width:0}.sec .it>span{overflow-wrap:anywhere}.sec svg{width:1.35em;height:1.35em;flex:none}
+    .sp{width:.1em;height:1.35em;background:${K};flex:none}
+    .tb{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;column-gap:0;padding:0 3%;border-top:.09em dashed ${M};padding-top:.5em}
+    .c{padding:.4em 0;min-width:0}.c.h{background:${band};font-weight:600;padding:.4em .5em}.c.h1{border-radius:.5em 0 0 .5em}.c.hs{border-radius:0 .5em .5em 0}
+    .c.hq,.c.hp,.c.hs,.c.q,.c.p,.c.s{text-align:right;overflow-wrap:anywhere;padding-left:.7em}.c.q,.c.p{padding-right:.1em}
+    .c.n{padding-left:.5em;overflow-wrap:anywhere;word-break:break-word}.c.n b{font-weight:700;display:block}.c.s{padding-right:.5em;font-weight:700}
+    .c.z1{background:${zeb}}.cd1,.cd2 small{color:#666;font-size:.82em;display:block}.cd2{display:none}
+    .tot{padding:.5em 4% 0;border-top:.09em dashed ${M};margin-top:.5em}
+    .r{display:flex;justify-content:space-between;align-items:baseline;gap:.6em;padding:.12em 0}.r>span:first-child{min-width:0;overflow-wrap:anywhere}.r>span:last-child{margin-left:auto;text-align:right;white-space:nowrap}
+    .r.sm,.ctr.sm{font-size:.88em;color:#555}.ctr{text-align:center}.up{text-transform:uppercase}
+    .r.big{font-weight:900;text-transform:uppercase;line-height:1.15;padding:.18em 0}
+    .jm{display:flex;justify-content:space-between;align-items:center;gap:.6em;margin:.45em 0;padding:.4em .6em;background:${K};color:${W};border-radius:.5em;font-weight:900;line-height:1.1}.jm>span:last-child{margin-left:auto;white-space:nowrap}
+    .mo{display:flex;align-items:flex-start;gap:.6em;padding:.8em 3% .5em}.mo i{flex:1;height:.14em;background:${K};margin-top:.75em;min-width:.8em}
+    .mo b{font-style:italic;font-weight:800;font-size:1.2em;text-align:center;line-height:1.15;text-transform:uppercase;overflow-wrap:anywhere;max-width:78%}
+    .ft{text-align:center;font-size:.88em;color:#555;padding:0 5% .4em;overflow-wrap:anywhere}
+    .bnb{margin-top:.2em}
+    .tgl{display:flex;justify-content:center;align-items:center;gap:.4em;padding:.5em 5% .1em;font-weight:600;color:${K}}.tgl svg{width:1.2em;height:1.2em;flex:none}
+    @media screen{${compact('html:not(.th) .tb.cpc')}}
+    ${o.mode === 'color' ? '' : `@media print{${thermal('')}}`}
+    ${o.mode === 'color' ? '' : thermal('html.th ')}
+  </style></head><body>${body}</body></html>`;
 }
-// v25: chek chop etilganda qog'oz balandligi chek uzunligiga teng (avval «auto» — brauzer rad etib, A4/Letter'ga chiqarardi)
+// Chekni ilova ichidagi oynada ochadi (PDF yuklash, yuborish, chop etish, Telegram) — admin va sotuvchi uchun bitta joy.
+// PDF/ekran — rangli (kamida 80 mm), chop etish — termo (58/72/80 mm, filial sozlamasi).
+async function fwReceiptShow(sale, opt) {
+  opt = opt || {};
+  const st = (typeof S !== 'undefined' && S.settings) || {}, bs = (typeof S !== 'undefined' && S.branchSettings) || {}, rcRaw = st.rc || {};
+  const w = [58, 72, 80].includes(+opt.widthMm) ? +opt.widthMm : 72, pdfMm = Math.max(w, 80);
+  let logoBw = ''; try { logoBw = await fwRcBwLogo(fwRcImg(fwRcMerge(rcRaw).logo, '') || FW_RC_ASSETS.logo); } catch (_) {}
+  const html = fwReceiptHtml(sale, { brand: fwBrand().name, phone: bs.phone || st.shopPhone, address: bs.address || st.shopAddress, footer: bs.receipt || st.receipt,
+    widthMm: w, pdfMm, rate: CUR.usdUzs, rc: rcRaw, logoBw, cashier: opt.cashier });
+  fwDoc({ title: 'Chek ' + (sale.inv || ''), kind: 'receipt', widthMm: w, pdfWidthMm: pdfMm, html, file: 'Chek_' + (sale.inv || 'chek') + (sale.date ? '_' + fwDmy(sale.date) : '') });
+}
+// v25: chek chop etilganda qog'oz balandligi chek uzunligiga teng (avval «auto» — brauzer rad etib, A4/Letter'ga chiqarardi).
+// Chop etishda chek termo ko'rinishda (bannersiz) bo'ladi — balandlik ham shu ko'rinishda o'lchanadi.
 function fwReceiptFitPage(doc, widthMm) {
   try {
     const b = doc.body; if (!b) return;
-    const hMm = Math.max(40, Math.ceil(b.offsetHeight * 25.4 / 96) + 3);
+    const de = doc.documentElement, had = de.classList.contains('th'); de.classList.add('th');
+    const h = b.offsetHeight; if (!had) de.classList.remove('th');
+    const hMm = Math.max(40, Math.ceil(h * 25.4 / 96) + 3);
     let st = doc.getElementById('fw-page-fit');
     if (!st) { st = doc.createElement('style'); st.id = 'fw-page-fit'; doc.head.appendChild(st); }
     st.textContent = `@page{size:${widthMm}mm ${hMm}mm;margin:0}`;

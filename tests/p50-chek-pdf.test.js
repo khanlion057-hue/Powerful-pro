@@ -38,29 +38,30 @@ async function renderAndCheck(browser, html, widthMm, tmp) {
     await page.setContent(html, { waitUntil: 'load' });
     const m = await page.evaluate(() => {
       const de = document.documentElement;
-      const rows = [...document.querySelectorAll('.it')].map(r => {
-        const nm = r.querySelector('.nm'), q = r.querySelector('.q');
-        const nr = nm.getClientRects()[0], qr = q.getBoundingClientRect();
-        return { name: nm.textContent, q: q.textContent, nmTop: nr.top, qTop: qr.top, nmBottom: nr.bottom, qOver: qr.right - de.clientWidth, nmOverflow: nm.scrollWidth > nm.clientWidth + 1 };
+      const rows = [...document.querySelectorAll('.c.n')].map(n => {
+        const q = n.parentNode.querySelectorAll('.c.q'); const row = [...document.querySelectorAll('.c.n')].indexOf(n);
+        const qq = document.querySelectorAll('.c.q')[row], nm = n.querySelector('b'), nr = nm.getClientRects()[0], qr = qq.getBoundingClientRect();
+        return { name: nm.textContent, q: qq.textContent, nmTop: n.getBoundingClientRect().top, qTop: qr.top, qOver: qr.right - de.clientWidth, nmOverflow: n.scrollWidth > n.clientWidth + 1 };
       });
-      return { sw: de.scrollWidth, cw: de.clientWidth, bodySw: document.body.scrollWidth, bodyCw: document.body.clientWidth, h: de.scrollHeight, rows };
+      const cellOver = [...document.querySelectorAll('.c.q,.c.p,.c.s')].filter(e => e.getBoundingClientRect().right > de.clientWidth + 0.5).length;
+      return { compact: !!document.querySelector('.tb.cpt'), sw: de.scrollWidth, cw: de.clientWidth, bodySw: document.body.scrollWidth, bodyCw: document.body.clientWidth, h: de.scrollHeight, rows, cellOver };
     });
     assert.ok(m.sw <= m.cw && m.bodySw <= m.bodyCw + 1, `${widthMm}mm: gorizontal toshish yo'q (${m.bodySw} > ${m.bodyCw})`);
+    assert.equal(m.cellOver, 0, `${widthMm}mm: Soni/Narxi/Summa o'z ustunidan chiqmaydi`);
     for (const r of m.rows) {
-      assert.ok(Math.abs(r.nmTop - r.qTop) < 3, `${widthMm}mm: «${r.name.slice(0, 20)}…» nomi va miqdori bitta qatorda (${r.nmTop} vs ${r.qTop})`);
+      // v25.2: ustunlar sig'sa — nom va «Soni» bitta qatorda; sig'masa (tor qog'oz / katta summa) — «ixcham»: nom to'liq kenglikda, «Soni | Narxi | Summa» pastki qatorda
+      if (!m.compact) assert.ok(Math.abs(r.nmTop - r.qTop) < 3, `${widthMm}mm: «${r.name.slice(0, 20)}…» nomi va miqdori bitta qatorda (${r.nmTop} vs ${r.qTop})`);
       assert.equal(r.nmOverflow, false, `${widthMm}mm: nom kesilmagan`);
       assert.ok(r.qOver <= 0.5, `${widthMm}mm: miqdor qog'oz ichida`);
     }
     assert.deepEqual(m.rows.map(r => r.name), SALE.items.map(i => i.name), `${widthMm}mm: nomlar to'liq (DOM)`);
     const file = path.join(tmp, `chek-${widthMm}.pdf`);
     await page.pdf({ path: file, width: `${widthMm}mm`, height: `${Math.ceil(m.h * 25.4 / 96) + 10}mm`, printBackground: true, margin: { top: 0, bottom: 0, left: 0, right: 0 } });
-    const txt = pdfText(file), raw = pdfText(file, false).replace(/×\s*\d[\d ,.]*/g, '');   // «× son» nom bilan bir qatorda — nom matnidan ajratiladi
+    const txt = pdfText(file), raw = pdfText(file, false);
     if (process.env.P50_DEBUG) console.log(raw, '\n-----\n', txt);
     for (const it of SALE.items) {
       assert.ok(norm(raw).includes(norm(it.name)), `${widthMm}mm PDF: «${it.name.slice(0, 25)}…» to'liq`);
-      // nomning boshi va «× son» PDF matnida ham BITTA qatorda
-      const line = txt.split('\n').find(l => norm(l).startsWith(norm(it.name).slice(0, 6)));
-      assert.ok(line && line.includes('× ' + String(it.qty).replace(/\B(?=(\d{3})+(?!\d))/g, ' '))   /* v25: guruhlangan «× 1 250» */, `${widthMm}mm PDF: nom va miqdor bitta qatorda: ${JSON.stringify(line)}`);
+      assert.ok(norm(raw).includes(norm(String(it.qty).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + 'x')), `${widthMm}mm PDF: miqdor «${it.qty}x» (Soni ustuni)`);
     }
     assert.ok(/JAMI/.test(txt) && norm(raw).includes('BSH') && norm(raw).includes('GBH228FPRO'), `${widthMm}mm PDF: JAMI va SKU bor (58 mm da SKU o'ralishi mumkin)`);
     assert.ok(norm(raw).includes('2000000'), `${widthMm}mm PDF: qator summasi (2 × 80$ × 12 500)`);
@@ -74,13 +75,13 @@ async function testReceipts() {
   try {
     const out = [];
     for (const mm of [58, 72, 80]) {
-      const html = await page.evaluate(([s, w]) => fwReceiptHtml(s, { brand: 'Powerful PRO', widthMm: w, rate: 12500 }), [SALE, mm]);
+      const html = await page.evaluate(([s, w]) => fwReceiptHtml(s, { brand: 'Powerful PRO', widthMm: w, rate: 12500, mode: 'thermal' }), [SALE, mm]);
       assert.ok(!/\.slice\(/.test(html));
       out.push(await renderAndCheck(browser, html, mm, tmp));
     }
     // kurs noma'lum: qattiq 12 800 emas — $ da
     const noRate = await page.evaluate((s) => fwReceiptHtml({ ...s, rateUsdUzs: 0 }, { widthMm: 58 }), SALE);
-    assert.ok(!/soʻm/.test(noRate.split('<div class="div"></div>')[1] || ''), "kurs yo'q — so'm summasi to'qilmaydi");
+    assert.ok(!/soʻm/.test(noRate.replace(/<style[\s\S]*?<\/style>/, '')), "kurs yo'q — so'm summasi to'qilmaydi");
     assert.ok(/\$/.test(noRate), "kurs yo'q — $ da");
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); await browser.close(); }
 }

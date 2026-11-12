@@ -29,8 +29,8 @@ module.exports = {
         assert.deepEqual([r.chg.given, r.chg.change, r.chg.total], [1320000, 7000, 1313000], 'Naqd − Qaytim = JAMI');
         assert.deepEqual([r.usd.sum, r.usd.total, r.usd.disc], [30.99, 30.99, 0], '$ chek');
         assert.ok(r.old, 'eski chek ochiladi (so\'mda)');
-        assert.match(r.html, /Yaxlitlash chegirmasi:/); assert.match(r.html, /× 1 250/); assert.match(r.html, /× 0,25/);   // v25.1: alohida qator nomi
-        assert.match(r.html, /Qaytim:<\/span><span>1 800 soʻm/); assert.match(r.html, /Naqd:<\/span><span>5 330 000 soʻm/);
+        assert.match(r.html, /Yaxlitlash chegirmasi:/); assert.match(r.html, /1\u00a0250x/); assert.match(r.html, /0,25x/);   // v25.1: alohida qator nomi; v25.2: «Soni» ustuni — «2x»
+        assert.match(r.html, /Qaytim:<\/span><span>1 800 soʻm/); assert.match(r.html, /Toʻlandi:<\/span><span>5 330 000 soʻm/); assert.match(r.html, /Toʻlov turi:<\/span><span class="up">Naqd/);   // v25.2: TOʻLANDI = olingan summa, toʻlov turi alohida
         assert.match(r.html, /14:20/);
         assert.deepEqual(errors, []);
       } finally { await browser.close(); }
@@ -46,10 +46,16 @@ module.exports = {
               totalUsd: 1250 * 999.99 + 42, roundedTotalUzs: Math.round((1250 * 999.99 + 42) * 12500 / 100) * 100, debtUsd: 100000, dueDate: '2026-11-18' };
             const ifr = document.createElement('iframe'); ifr.style.cssText = `position:fixed;left:0;top:0;width:${Math.round(mm * 96 / 25.4)}px;height:900px;border:0`;
             document.body.appendChild(ifr);
+            const over = [];
+            for (const mode of ['color', 'thermal']) {   // v25.2: rangli (PDF) va termo — ikkalasida ham toshish yo'q
+              await new Promise(res => { ifr.onload = res; ifr.srcdoc = fwReceiptHtml(sale, { widthMm: mm, brand: 'POWERFUL', mode }); });
+              const d0 = ifr.contentDocument;
+              over.push(...[...d0.querySelectorAll('body *')].filter(e => e.getBoundingClientRect().right > d0.body.getBoundingClientRect().right + 1).map(e => mode + ':' + e.className + ':' + e.textContent.slice(0, 30)));
+            }
             await new Promise(res => { ifr.onload = res; ifr.srcdoc = fwReceiptHtml(sale, { widthMm: mm, brand: 'POWERFUL' }); });
             const d = ifr.contentDocument;
-            const over = [...d.querySelectorAll('body *')].filter(e => e.getBoundingClientRect().right > d.body.getBoundingClientRect().right + 1).map(e => e.className + ':' + e.textContent.slice(0, 30));
-            fwReceiptFitPage(d, mm);
+            fwReceiptFitPage(d, mm);   // chop etishda chek termo ko'rinishda — balandlik ham shunda o'lchanadi
+            d.documentElement.classList.add('th');
             const page = d.getElementById('fw-page-fit').textContent, hPx = d.body.offsetHeight;
             ifr.remove();
             return { over, page, hPx, hScroll: d.documentElement.scrollWidth > d.documentElement.clientWidth };

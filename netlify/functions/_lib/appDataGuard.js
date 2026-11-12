@@ -339,6 +339,17 @@ function normalizeIncomingSettings(ex, nv) {
     const v = Number(out[k]);
     if (![1, 10, 50, 100, 200, 500, 1000, 5000, 10000].includes(v)) { if (prev[k] !== undefined) out[k] = prev[k]; else delete out[k]; } else out[k] = v;
   });
+  // v25.2: chek dizayni (S.settings.rc) — faqat ruxsat etilgan kalitlar; matn qisqartiriladi, rang #rrggbb, rasm faqat https (yoki o'zimizning assets/)
+  if (Object.prototype.hasOwnProperty.call(out, 'rc')) {
+    const src = out.rc && typeof out.rc === 'object' && !Array.isArray(out.rc) ? out.rc : {}, pr = prev.rc && typeof prev.rc === 'object' ? prev.rc : {}, rc = {};
+    const bools = ['logoOn', 'bannersOn', 'topOn', 'bottomOn', 'mottoOn', 'tgOn', 'addressOn', 'phoneOn', 'dateOn', 'timeOn', 'cashierOn', 'customerOn', 'codeOn', 'discountOn', 'changeOn', 'uzsOn'];
+    const txt = { name: 60, slogan: 40, activity: 80, address: 100, phone: 30, motto1: 50, motto2: 50, tg: 100 };
+    bools.forEach((k) => { if (k in src) rc[k] = !!src[k]; });
+    Object.keys(txt).forEach((k) => { if (k in src) rc[k] = (k === 'slogan' && src[k] == null) ? null : String(src[k] == null ? '' : src[k]).slice(0, txt[k]); });
+    ['cBlack', 'cWhite', 'cMetal', 'cText'].forEach((k) => { if (k in src) rc[k] = /^#[0-9a-f]{6}$/i.test(String(src[k])) ? String(src[k]) : (pr[k] || undefined); if (rc[k] === undefined) delete rc[k]; });
+    ['logo', 'top', 'bottom'].forEach((k) => { if (k in src) { const u = String(src[k] || ''); if (u === '' || /^https:\/\/[^\s"'<>]{4,600}$/i.test(u) || /^assets\/[\w\-.\/]{1,100}$/.test(u)) rc[k] = u; else if (pr[k] !== undefined) rc[k] = pr[k]; } });
+    out.rc = rc;
+  }
   if (out.tgRemindHour != null) { const h = parseInt(out.tgRemindHour, 10); out.tgRemindHour = h >= 6 && h <= 22 ? h : 9; }
   return out;
 }

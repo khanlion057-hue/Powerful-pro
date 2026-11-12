@@ -17,81 +17,69 @@ function ease(q){q=clamp(q,0,1);return q<.5?2*q*q:1-Math.pow(-2*q+2,2)/2}
 /* ---------- arra diski (egasi namunasi: mayda o'tkir tishlar, kumush disk, qizil to'lqinsimon kesiklar) ---------- */
 var BK=3;
 function makeBlade(N,big){
+  // Haqiqiy POWERFUL PRO arrasi (egasi surati): ko'zgudek tashqi halqa, cho'tkalangan kumush markaz,
+  // karbid plastinkali tishlar, ilgaksimon kengayish tirqishlari, markazda to'g'ri yozuv.
   var sz=Math.ceil((BR*2+8)*BK),c=document.createElement('canvas');c.width=c.height=sz;
   var x=c.getContext('2d');x.translate(sz/2,sz/2);x.scale(BK,BK);
-  var Rt=BR,Rg=BR-(big?6:10),i;          // tish uchi va tish tubi radiusi
+  var Rt=BR,Rg=BR-(big?6.5:10),Rb=Rg-2.2,Rc=BR*(big?.70:.62),i;
   function P(a,r){return [Math.cos(a)*r,Math.sin(a)*r]}
-  // tishlar — tabiiy shakl: yumaloq tub (gullet), qiya orqa, oldinga egilgan tik yuz, uchida qattiq qotishma plastinka
-  var step=Math.PI*2/N,Rb=Rg-2.4;
+  function conic(st,rot){
+    if(!x.createConicGradient){var r=x.createRadialGradient(-20,-20,5,0,0,BR);r.addColorStop(0,st[0]);r.addColorStop(1,st[1]);return r}
+    var g=x.createConicGradient(rot,0,0);for(var k=0;k<=st.length;k++)g.addColorStop(k/st.length,st[k%st.length]);return g;
+  }
+  // 1) tishli plastinka (tashqi halqa) — ko'zgudek to'q po'lat
+  var step=Math.PI*2/N;
   x.beginPath();
   for(i=0;i<N;i++){
-    var a=i*step,
-        s0=P(a,Rg-.6),                         // tish orqasining boshlanishi
-        cb=P(a+step*.5,Rt-1.6),                // orqa qismi (qavariq)
-        tip=P(a+step*.80,Rt),                  // tish uchi
-        f1=P(a+step*.84,Rg+(Rt-Rg)*.35),       // yuzi (biroz oldinga egilgan)
-        gc=P(a+step*.93,Rb-1.2),               // yumaloq tub
-        e0=P(a+step,Rg-.6);
+    var a=i*step,s0=P(a,Rg-.4),cb=P(a+step*.45,Rt-2.2),tip=P(a+step*.80,Rt-1.2),
+        f1=P(a+step*.82,Rg+(Rt-Rg)*.25),gc=P(a+step*.93,Rb-1.6),e0=P(a+step,Rg-.4);
     i?x.lineTo(s0[0],s0[1]):x.moveTo(s0[0],s0[1]);
-    x.quadraticCurveTo(cb[0],cb[1],tip[0],tip[1]);
-    x.lineTo(f1[0],f1[1]);
-    x.quadraticCurveTo(gc[0],gc[1],e0[0],e0[1]);
+    x.quadraticCurveTo(cb[0],cb[1],tip[0],tip[1]);x.lineTo(f1[0],f1[1]);x.quadraticCurveTo(gc[0],gc[1],e0[0],e0[1]);
   }
   x.closePath();
-  var tg=x.createRadialGradient(0,0,Rb,0,0,Rt);tg.addColorStop(0,'#bfc4c9');tg.addColorStop(1,'#9ca2a9');
-  x.fillStyle=tg;x.fill();x.strokeStyle='rgba(40,44,50,.45)';x.lineWidth=.3;x.stroke();
-  // qattiq qotishma (karbid) uchliklari — to'qroq, yaltiroq qirrali
-  var th=Math.min(2.6,(Rt-Rg)*.55);
+  x.fillStyle=conic(['#3a3f45','#8d949c','#2b2f34','#5d646c','#c7ccd1','#3d4248','#70777f','#24282c'],.3);x.fill();
+  x.strokeStyle='rgba(10,12,14,.6)';x.lineWidth=.35;x.stroke();
+  // 2) karbid plastinkalar — tish yuzida yaltiroq kumush to'rtburchak
+  var th=Math.min(4.2,(Rt-Rg)*.75);
   for(i=0;i<N;i++){
-    var a1=i*step,t1=P(a1+step*.80,Rt),t2=P(a1+step*.83,Rt-th),t3=P(a1+step*.66,Rt-th*.9),t4=P(a1+step*.68,Rt-.5);
+    var a1=i*step,t1=P(a1+step*.80,Rt),t2=P(a1+step*.84,Rt-th),t3=P(a1+step*.70,Rt-th),t4=P(a1+step*.68,Rt-.4);
     x.beginPath();x.moveTo(t1[0],t1[1]);x.lineTo(t2[0],t2[1]);x.lineTo(t3[0],t3[1]);x.lineTo(t4[0],t4[1]);x.closePath();
-    x.fillStyle='#5b6168';x.fill();
-    x.beginPath();x.moveTo(t4[0],t4[1]);x.lineTo(t1[0],t1[1]);x.strokeStyle='rgba(255,255,255,.75)';x.lineWidth=.35;x.stroke();
+    var cg=x.createLinearGradient(t4[0],t4[1],t2[0],t2[1]);cg.addColorStop(0,'#fbfcfd');cg.addColorStop(1,'#a9afb6');
+    x.fillStyle=cg;x.fill();x.strokeStyle='rgba(20,22,26,.7)';x.lineWidth=.3;x.stroke();
   }
-  // disk tanasi — kumush
-  x.beginPath();x.arc(0,0,Rb,0,6.283);
-  var bg=x.createRadialGradient(-Rg*.35,-Rg*.4,Rg*.1,0,0,Rg);
-  bg.addColorStop(0,'#f4f5f6');bg.addColorStop(.55,'#d3d6da');bg.addColorStop(1,'#b4b9bf');
-  x.fillStyle=bg;x.fill();
-  // ichki (to'qroq) doira va gupchak
-  x.beginPath();x.arc(0,0,Rg*.44,0,6.283);
-  var ig=x.createRadialGradient(-6,-6,2,0,0,Rg*.44);ig.addColorStop(0,'#c9ccd0');ig.addColorStop(1,'#a2a7ad');
-  x.fillStyle=ig;x.fill();x.strokeStyle='rgba(60,64,70,.35)';x.lineWidth=.6;x.stroke();
-  x.beginPath();x.arc(0,0,Rg*.2,0,6.283);x.fillStyle='#8e9399';x.fill();
-  x.beginPath();x.arc(0,0,Rg*.11,0,6.283);x.fillStyle='#16181b';x.fill();
-  // gardishdagi kalitsimon tirqishlar (issiqlik kengayishi uchun)
-  var ns=big?6:4;
+  // 3) ilgaksimon kengayish tirqishlari (gardishdan ichkariga, uchi buralgan)
+  var ns=big?4:3;
   for(i=0;i<ns;i++){
-    var a2=i*Math.PI*2/ns+.2,p1=P(a2,Rg+.5),p2=P(a2+.05,Rg-(big?9:7)),p3=P(a2+.05,Rg-(big?10.5:8.2));
-    x.beginPath();x.moveTo(p1[0],p1[1]);x.lineTo(p2[0],p2[1]);x.strokeStyle='#4a4f56';x.lineWidth=.9;x.stroke();
-    x.beginPath();x.arc(p3[0],p3[1],big?1.5:1.3,0,6.283);x.fillStyle='#4a4f56';x.fill();
+    var a2=i*Math.PI*2/ns+.55,p1=P(a2,Rg-.5),p2=P(a2+.02,Rc+3),cx=P(a2+.06,Rc+1.2);
+    x.beginPath();x.moveTo(p1[0],p1[1]);x.lineTo(p2[0],p2[1]);
+    x.arc(cx[0],cx[1],1.8,a2+Math.PI*.9,a2+Math.PI*2.4);
+    x.strokeStyle='#0d0f11';x.lineWidth=big?.8:.7;x.lineCap='round';x.stroke();
   }
-  // qizil to'lqinsimon (shovqinni pasaytiruvchi) lazer kesiklari
+  // 4) markaz — cho'tkalangan kumush (yorug' nur chiziqlari bilan)
+  x.beginPath();x.arc(0,0,Rc,0,6.283);
+  x.fillStyle=conic(['#c3c8cd','#eef1f3','#aeb4ba','#dfe3e6','#b5bbc1','#f7f8f9','#a7adb4','#d6dade'],1.1);x.fill();
+  x.save();x.clip();
+  for(i=0;i<70;i++){var ra=Math.random()*6.283;x.beginPath();x.moveTo(0,0);x.lineTo(Math.cos(ra)*Rc,Math.sin(ra)*Rc);
+    x.strokeStyle='rgba(255,255,255,'+rnd(.05,.18)+')';x.lineWidth=rnd(.3,1.4);x.stroke()}
+  var hl=x.createRadialGradient(0,-Rc*.35,0,0,-Rc*.35,Rc*.9);hl.addColorStop(0,'rgba(255,255,255,.35)');hl.addColorStop(1,'rgba(255,255,255,0)');
+  x.fillStyle=hl;x.fillRect(-Rc,-Rc,Rc*2,Rc*2);
+  x.restore();
+  x.beginPath();x.arc(0,0,Rc,0,6.283);x.strokeStyle='rgba(30,34,38,.35)';x.lineWidth=.5;x.stroke();
+  // 5) yozuv (o'yib yozilgandek): Powerful Pro / FOR WOOD / o'lcham
   if(big){
-    for(i=0;i<6;i++){
-      var a3=i*Math.PI/3+.72,cx=Math.cos(a3)*Rg*.7,cy=Math.sin(a3)*Rg*.7;
-      x.save();x.translate(cx,cy);x.rotate(a3);
-      x.beginPath();
-      for(var k=0;k<=16;k++){var tt=k/16,yy=(tt-.5)*12,xx=Math.sin(tt*Math.PI*3)*2.2;k?x.lineTo(xx,yy):x.moveTo(xx,yy)}
-      x.strokeStyle='#d0312d';x.lineWidth=1.25;x.lineCap='round';x.stroke();x.restore();
-    }
-    // yozuv: POWERFUL PRO
-    x.save();x.font='900 5.6px Arial';x.textAlign='center';x.textBaseline='middle';
-    var txt='POWERFUL PRO',R0=Rg*.31,ws=[],tot=0;
-    for(i=0;i<txt.length;i++){ws[i]=x.measureText(txt[i]).width+.5;tot+=ws[i]}
-    var aa=-Math.PI/2-tot/R0/2;
-    for(i=0;i<txt.length;i++){var da=ws[i]/R0,mid=aa+da/2;
-      x.save();x.translate(Math.cos(mid)*R0,Math.sin(mid)*R0);x.rotate(mid+Math.PI/2);
-      x.fillStyle=i>=9?'#c2720c':'#2f343b';x.fillText(txt[i],0,0);x.restore();aa+=da}
-    x.restore();
+    x.textAlign='center';x.textBaseline='middle';
+    x.font='300 9.5px "Segoe UI",Arial,sans-serif';x.lineWidth=.35;
+    x.strokeStyle='rgba(60,64,70,.85)';x.strokeText('Powerful Pro',0,-Rc*.48);
+    x.font='bold 3.6px Arial';x.fillStyle='rgba(70,74,80,.85)';x.fillText('FOR  WOOD',0,-Rc*.30);
+    x.font='bold 3.2px Arial';x.fillText('200x1.7x32x48T',0,-Rc*.19);
   }
-  // yaltiroq
-  x.beginPath();x.arc(0,0,Rb,0,6.283);
-  var sh=x.createLinearGradient(-Rg,-Rg,Rg,Rg);sh.addColorStop(0,'rgba(255,255,255,.28)');sh.addColorStop(.5,'rgba(255,255,255,0)');sh.addColorStop(1,'rgba(0,0,0,.08)');
-  x.fillStyle=sh;x.fill();
+  // 6) teshik (o'q) va gardish
+  x.beginPath();x.arc(0,0,BR*.2,0,6.283);x.fillStyle='#9aa0a7';x.fill();
+  x.beginPath();x.arc(0,0,BR*.2,0,6.283);x.strokeStyle='rgba(30,34,38,.5)';x.lineWidth=.5;x.stroke();
+  x.beginPath();x.arc(0,0,BR*.13,0,6.283);x.fillStyle='#121417';x.fill();
   return c;
 }
-var blade=makeBlade(96,true),bladeS=makeBlade(26,false);
+var blade=makeBlade(48,true),bladeS=makeBlade(24,false);
 
 /* ---------- yog'och taxta (usti, uzunasiga tolali) ---------- */
 function makeTop(L,Hh,k){

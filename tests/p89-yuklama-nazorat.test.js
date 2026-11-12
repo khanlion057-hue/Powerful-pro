@@ -1,4 +1,4 @@
-// P88 — v25.2: YUKLAMA VA NAZORATGA TAYYORLIK (bepul tarif, 20 xodim).
+// P89 — v25.2: YUKLAMA VA NAZORATGA TAYYORLIK (bepul tarif, 20 xodim).
 //  • monitor.wrap: o'chiq bo'lsa — o'zgarishsiz; yoqiq — IP bo'yicha cheklov (429 + Retry-After), cron cheklanmaydi;
 //    500 / kutilmagan xato → jurnal + Telegram (takrorlanmaydi), kutilmagan xato → toza 500 JSON; baza ishlamasa — fail-open
 //  • client-error: shovqin e'tiborsiz, haqiqiy xato — hisobot; 65 funksiyaning hammasi o'ralgan
@@ -200,7 +200,7 @@ async function testMigration48() {
 }
 
 module.exports = {
-  name: 'P88 — Yuklama va nazoratga tayyorlik (bepul tarif)',
+  name: 'P89 — Yuklama va nazoratga tayyorlik (bepul tarif)',
   cases: [
     { name: "Kuzatuvchi: o'chiq — o'zgarishsiz; IP cheklovi 429 + Retry-After, cron cheklanmaydi; 500/xato → bitta Telegram; fail-open; 65 funksiya o'ralgan", run: testMonitor },
     { name: "Brauzer xatolari: shovqin e'tiborsiz, haqiqiy xato — bitta xabar, domen qisqartiriladi; 3 sahifada ulangan", run: testClientError },

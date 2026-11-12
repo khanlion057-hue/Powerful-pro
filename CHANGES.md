@@ -7,7 +7,7 @@
 - **Kesh:** build JS/CSS'ning xeshli nusxalarini `dist/h/` ga qo'yadi (1 yil immutable), HTML va service worker shu nomlarda; noyob nomli rasmlar — 1 yil.
 - **k6 yuklama testlari** (`tests/load/`: o'qish, savdo, himoya) — ishlayotgan saytda ishga tushmaydi. Yo'riqnoma: `docs/YUKLAMAGA-TAYYORLIK.md` (xarajat, UptimeRobot, AI limitlari).
 - **Yuklanish oynasi:** yon ko'rinish — taxta stanok ustida, ostida katta va kichik arra (egasi namunasidagi kabi), yozuv faqat «POWERFUL PRO»; kompyuter/planshet/telefon uchun alohida o'lchamlar. **Kirish:** faqat katta logo, ostida login/parol. **Logo:** to'liq (qirqilmagan). **APK 1.0.3.**
-- Testlar: yangi p88; p8 (sxema sonlari), p11 (48 zanjirda), p48/p49 (65 funksiya).
+- Testlar: yangi p89; p8 (sxema sonlari), p11 (48 zanjirda), p48/p49 (65 funksiya).
 
 # POWERFUL GROUP — v25.1: yaxlitlash va foyda (47-migratsiya), mijozga bot eslatmalari, yuklanish animatsiyasi (2026-11-12)
 - **47-migratsiya (yangi, QO'LLANMAGAN — deploydan oldin):** `sales` jadvaliga `asl_jami_uzs`, `yaxlitlash_chegirmasi_uzs`, `tolangan_jami_uzs` (bigint) va tekshiruv cheklovi (`asl = to'langan + farq`). Faqat ustun qo'shiladi — mavjud savdolar o'zgarmaydi. Takror ishga tushirish xavfsiz. Migratsiyasiz ham ilova ishlaydi (maydonlar ilova ma'lumotida qoladi, server yo'q ustunni e'tiborsiz qoldiradi).

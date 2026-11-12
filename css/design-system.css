@@ -3438,17 +3438,13 @@ html[data-theme="dark"] .fw-login-card img[data-brand-logo], html[data-theme="da
 .fw-lock > img{ display:block; width:100%; height:100%; object-fit:contain; border:0; border-radius:0; box-shadow:none; background:none; }
 .fw-lock-fb{ display:none; font-size:calc(var(--lk) * .2); font-weight:800; letter-spacing:.03em; text-transform:uppercase; color:var(--text-primary); text-align:center; line-height:1.1; }
 .fw-lock.noimg{ width:auto; height:auto; } .fw-lock.noimg > img{ display:none; } .fw-lock.noimg .fw-lock-fb{ display:block; }
-.fw-lock.lg{ --lk:220px; } .fw-lock.xl{ --lk:240px; } .fw-lock.on-light .fw-lock-fb{ color:#0f172a; }
+.fw-lock.lg{ --lk:260px; max-width:100%; } .fw-lock.xl{ --lk:240px; } .fw-lock.on-light .fw-lock-fb{ color:#0f172a; }
 .sidebar-brand-img.fw-lock{ --lk:84px; height:var(--lk); }
 .sidebar-logo{ align-items:center; }
 .pt-side-logo .fw-lock{ --lk:104px; }
 .fw-load-in .fw-lock{ margin-bottom:18px; }
 .ox-brand .fw-lock{ --lk:58px; margin:-6px 0; }
-@media (max-width:380px){ .fw-lock.xl{ --lk:210px; } .fw-lock.lg{ --lk:200px; } }
-/* Kirish oynasi: logo ostida ilova nomi */
-.fw-app-tag{ display:block; margin-top:6px; font-size:13px; font-weight:800; letter-spacing:.32em; text-transform:uppercase; color:#8A5208; text-indent:.32em; }
-.fw-app-tag b{ color:#1c2433; font-weight:800; }
-html[data-theme="dark"] .dl-login-box .fw-app-tag b{ color:#f1f1f1; } html[data-theme="dark"] .dl-login-box .fw-app-tag{ color:#e0a030; }
+@media (max-width:380px){ .fw-lock.xl{ --lk:210px; } .fw-lock.lg{ --lk:236px; } }
 /* Standart logotip: yorug' fonda — asl (qora yozuv), qorong'i mavzuda — oq yozuvli nusxa; yorug' oynalarda (kirish, yuklanish) doim asl */
 html[data-theme="dark"] .fw-lock.on-light img[data-brand-logo], .fw-splash .fw-lock.on-light img[data-brand-logo]{ content:normal; }
 /* Qorong'i mavzuda yuklanish oynasi foni ham qorong'i — standart logotipning oq yozuvli nusxasi (qora yozuv ko'rinmay qolmasin) */

@@ -237,12 +237,15 @@ function Loader(frame,getScale){
     label('KATTA ARRA',BX,KY+14,KY+40);
     label('KICHIK ARRA',bS+4,KY+14,KY+40);
     // nom taxtachasi
-    ctx.fillStyle='rgba(10,11,14,.85)';ctx.fillRect(W-150,WH-36,138,26);
-    ctx.fillStyle='#e0a030';ctx.fillRect(W-150,WH-36,3,26);
-    ctx.textAlign='left';ctx.font='900 10px Arial';ctx.fillStyle='#f1f1f1';ctx.fillText('POWERFUL',W-142,WH-21);
+    // stanok ustidagi nom taxtachasi: POWERFUL GROUP, ostida — POWERFUL PRO
+    ctx.fillStyle='rgba(10,11,14,.85)';ctx.fillRect(W-150,WH-40,138,32);
+    ctx.fillStyle='#e0a030';ctx.fillRect(W-150,WH-40,3,32);
+    ctx.textAlign='left';ctx.font='900 10px Arial';ctx.fillStyle='#f1f1f1';ctx.fillText('POWERFUL',W-142,WH-26);
     var pw3=ctx.measureText('POWERFUL ').width;
-    ctx.fillStyle='#e0a030';ctx.fillText('GROUP',W-142+pw3,WH-21);
-    ctx.font='bold 5px Arial';ctx.fillStyle='#9aa0a8';ctx.fillText('PROFESSIONAL SAW BLADES',W-142,WH-13.5);
+    ctx.fillStyle='#e0a030';ctx.fillText('GROUP',W-142+pw3,WH-26);
+    ctx.font='900 8px Arial';ctx.fillStyle='#c9ced6';ctx.fillText('POWERFUL',W-142,WH-14);
+    var pw4=ctx.measureText('POWERFUL ').width;
+    ctx.fillStyle='#e0a030';ctx.fillText('PRO',W-142+pw4,WH-14);
 
     // qirindi
     if(feeding&&xB<BX&&xB+L>BX){dust(BX-4,KY,3)}

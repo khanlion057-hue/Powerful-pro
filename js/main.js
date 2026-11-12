@@ -2217,7 +2217,7 @@ const NAMES = {
 const LOGO_GLYPH = `<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 3 7.5l9 4.5 9-4.5z"/><path d="M3 12l9 4.5 9-4.5"/><path d="M3 16.5l9 4.5 9-4.5"/></svg>`;
 const BRAND_MARK_SVG = `<svg viewBox="0 0 48 48" width="48" height="48" xmlns="http://www.w3.org/2000/svg"><rect width="48" height="48" rx="12" fill="#B8700C"/><g fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M24 11 12 17l12 6 12-6z"/><path d="M12 24l12 6 12-6"/><path d="M12 31l12 6 12-6"/></g></svg>`;
 // v23.6: logotip — brenddan (Sozlamalar / js/brand.js), qattiq yozilmagan
-function brandLoginLogo(){ return fwBrandLockup('lg on-light') + '<span class="fw-app-tag"><b>POWERFUL</b> PRO</span>'; }
+function brandLoginLogo(){ return fwBrandLockup('lg on-light'); }
 
 function injectIcons() {
   const g = document.querySelector('[data-glyph="logo"]'); if (g) g.innerHTML = LOGO_GLYPH;
@@ -14752,9 +14752,7 @@ function showUnifiedLogin() {
     body.innerHTML = `
       <div class="fw-brand-bg" style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px">
         <div class="fw-login-card" style="background:#fff;border-radius:18px;padding:36px 30px;width:100%;max-width:340px;box-shadow:0 14px 36px rgba(15,23,42,0.14);text-align:center">
-          <div style="margin-bottom:16px">${brandLoginLogo()}</div>
-          <div style="font-size:18px;font-weight:800;color:#1c2433;margin-bottom:4px">Xush kelibsiz</div>
-          <div style="font-size:12.5px;color:#8b95a5;margin-bottom:20px">${esc(fwBrand().name)} tizimiga kiring</div>
+          <div style="margin-bottom:22px">${brandLoginLogo()}</div>
           <input id="ul-login" placeholder="Login" autocomplete="username"
             style="width:100%;padding:13px 14px;font-size:14px;border:1.5px solid #e1e6ed;border-radius:10px;margin-bottom:10px;outline:none;box-sizing:border-box">
           <div class="fw-pw-f" style="margin-bottom:14px"><input id="ul-pass" type="password" placeholder="Parol" autocomplete="current-password"

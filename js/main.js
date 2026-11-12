@@ -13523,7 +13523,7 @@ async function fwOwnerConfirm(message, opts) {
 const FW_BACKUP_SECRET = ['tgBotToken', 'shopBotToken', 'appPin', 'branchPin'];
 function _fwIsOwner() { return !CURRENT_USER || CURRENT_USER.kind === 'owner' || hasPerm('rollar.manage'); }
 const FW_APP_VERSION = '24.5';   // zaxira fayl formati versiyasi (ilova versiyasi emas)
-const FW_RELEASE = '25.0';       // v25: Sozlamalar → Versiya (avval qo'lda «v24.7» yozilgan, yangilanmay qolardi)
+const FW_RELEASE = '25.1';       // v25: Sozlamalar → Versiya (avval qo'lda «v24.7» yozilgan, yangilanmay qolardi)
 // v24.5 audit: zaxira yaxlitligi — sha256 (hex). Server ham aynan shu qoida bilan hisoblaydi (_lib/backupBuild.js).
 async function _fwSha256Hex(str) {
   if (!(window.crypto && crypto.subtle)) return null;

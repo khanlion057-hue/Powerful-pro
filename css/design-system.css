@@ -3739,3 +3739,11 @@ html[data-theme="dark"]{ --fw-pat:#e6c58f; --fw-pat-o:.045; }
 /* v25.1: Hisobot — «Yaxlitlash chegirmalari jami» (davr bo'yicha, alohida qator) */
 .sx-li.sx-round{ background:var(--bg-card); border:1px solid var(--border); border-radius:16px; padding:6px 14px; margin:12px 0; }
 .sx-li.sx-round b{ margin-left:auto; }
+
+/* ═══ Yuklanish animatsiyasi (egasi dizayni): formatli arra plitani uzunasiga 5 bo'lakka kesadi — js/fw-saw-loader.js ═══ */
+.fw-load .fw-load-in.has-saw{ width:min(94vw,760px); gap:10px; }
+.fw-load .fw-load-in.has-saw .fw-load-bar{ display:none !important; }   /* aylanuvchi tig' o'rniga — kesish animatsiyasi */
+.fw-load canvas.fw-saw{ display:block; width:100%; height:clamp(150px,34vh,300px); border-radius:14px; box-shadow:0 14px 40px rgba(0,0,0,.45); }
+.fw-load .fw-saw-pct{ font-variant-numeric:tabular-nums; color:#f1b24a; font-weight:700; font-size:14px; order:9; }
+.fw-load .fw-load-in.has-saw .fw-lock.xl{ --lk:150px; }
+@media (max-width:480px){ .fw-load canvas.fw-saw{ height:clamp(140px,28vh,220px); } .fw-load .fw-load-in.has-saw .fw-lock.xl{ --lk:120px; } }

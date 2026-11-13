@@ -154,7 +154,7 @@ async function testNavHistoryAndForms() {
       return { tools: ov ? [...document.querySelectorAll('.fw-doc-tools button')].map(b => b.textContent) : [], body, title: document.querySelector('#fw-doc-ov .pos-hd-t b').textContent, ran: !!window.__ran };
     });
     assert.ok(d.tools.includes('PDF yuklab olish') && d.tools.includes('Chop etish'));
-    assert.match(d.body, /26 000 soʻm/); assert.match(d.body, /× 2\s*13 000 · DK\s*26 000/);   // v25: narx va qator — raqam, valyuta JAMIda   // v24.5 audit: nom va miqdor bitta qatorda, keyin narx · SKU va summa
+    assert.match(d.body, /26 000 soʻm/); assert.match(d.body, /Disk\s*DK(?:\s*DK)?\s*2\s*x\s*13 000\s*26 000/);   // v25.2 (chek dizayni): ustunlar Mahsulot | Soni | Narxi | Summa; SKU — ustunda yoki ixcham rejimda nom ostida (bittasi CSS bilan yashirin)
     assert.equal(d.title, 'Hisobot X'); assert.equal(d.ran, false, "hujjat ichidagi skript ishlamaydi");
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }

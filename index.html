@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-brand-title="{b}">POWERFUL</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'><rect width='48' height='48' rx='12' fill='%231689C2'/><g fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='M24 11 12 17l12 6 12-6z'/><path d='M12 24l12 6 12-6'/><path d='M12 31l12 6 12-6'/></g></svg>">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0a1120">
+  <meta name="description" content="Import va ulgurji savdo uchun ERP tizimi">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Powerful">
+  <meta name="application-name" content="Powerful">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/design-system.css">
+</head>
+<body>
+
+<!-- LOADING EKRANI -->
+<div id="bp-loading" class="fw-load" style="display:none">
+  <div class="fw-load-in">
+    <span class="fw-lock xl on-light" role="img" aria-label="POWERFUL"><img src="assets/brand-logo.png" alt="POWERFUL" data-brand-logo onerror="this.parentNode.classList.add('noimg')"><b class="fw-lock-fb" data-brand-name>POWERFUL</b></span>
+    <div class="fw-load-bar" aria-hidden="true"><i></i></div>
+    <b class="fw-load-t">Yuklanmoqda…</b><small class="fw-load-s">Boshqaruv paneli</small>
+  </div>
+</div>
+
+<div id="main-content-area">
+<div class="app-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <span class="fw-lock sidebar-brand-img" role="img" aria-label="POWERFUL"><img src="assets/brand-logo.png" alt="POWERFUL" data-brand-logo onerror="this.parentNode.classList.add('noimg')"><b class="fw-lock-fb" data-brand-name>POWERFUL</b></span>
+      <button class="sidebar-toggle" onclick="toggleSidebar()" title="Menyuni yig'ish/ochish" data-ic="chevronLeft"></button>
+    </div>
+    <nav class="sidebar-nav">
+      <button class="nav-item nav-branch" onclick="openBranchSwitch()"><span class="nav-icon" data-icf="building"></span> Filialni almashtirish</button>
+      <div class="nav-section-title">Asosiy</div>
+      <button class="nav-item" data-page="dashboard"     onclick="go('dashboard')">    <span class="nav-icon">📊</span> Bosh sahifa</button>
+      <button class="nav-item" data-page="savdo"         onclick="go('savdo')">        <span class="nav-icon">🛒</span> Savdo</button>
+      <button class="nav-item" data-page="qaytarish"     onclick="go('qaytarish')">    <span class="nav-icon">↩️</span> Qaytarishlar</button>
+      <button class="nav-item" data-page="dokon"         onclick="go('dokon')">        <span class="nav-icon">🛍</span> Onlayn-do'kon</button>
+
+      <div class="nav-section-title">Ombor</div>
+      <button class="nav-item" data-page="mahsulotlar"   onclick="go('mahsulotlar')">  <span class="nav-icon">📦</span> Mahsulotlar</button>
+      <button class="nav-item" data-page="ombor"         onclick="go('ombor')">        <span class="nav-icon">🏪</span> Ombor (FIFO)</button>
+      <button class="nav-item" data-page="kirim"         onclick="go('kirim')">        <span class="nav-icon">🚛</span> Import / Kirim</button>
+
+      <div class="nav-section-title">Moliya</div>
+      <button class="nav-item" data-page="kassalar"      onclick="go('kassalar')">     <span class="nav-icon">💳</span> Kassalar</button>
+      <button class="nav-item" data-page="firmakassa"    onclick="go('firmakassa')">   <span class="nav-icon">🏛</span> Bosh kassa</button>
+      <button class="nav-item" data-page="xarajatlar"    onclick="go('xarajatlar')">   <span class="nav-icon">💸</span> Xarajatlar</button>
+
+      <div class="nav-section-title">Sheriklar</div>
+      <button class="nav-item" data-page="mijozlar"      onclick="go('mijozlar')">     <span class="nav-icon">🤝</span> Mijozlar</button>
+      <button class="nav-item" data-page="taminotchilar" onclick="go('taminotchilar')"><span class="nav-icon">🏭</span> Ta'minotchilar</button>
+      <button class="nav-item" data-page="hamkorlar"     onclick="go('hamkorlar')">    <span class="nav-icon">👥</span> Hamkorlar</button>
+
+      <div class="nav-section-title">Filiallar va dillerlar</div>
+      <button class="nav-item" data-page="filiallar"     onclick="go('filiallar')">    <span class="nav-icon">🏢</span> Filiallar</button>
+      <button class="nav-item" data-page="dillerlar"     onclick="go('dillerlar')">    <span class="nav-icon">🚚</span> Dillerlar</button>
+
+      <div class="nav-section-title">Xodimlar</div>
+      <button class="nav-item" data-page="sotuvchilar"   onclick="go('sotuvchilar')">  <span class="nav-icon">🧑‍💼</span> Xodimlar</button>
+      <button class="nav-item" data-page="rollar"        onclick="go('rollar')">       <span class="nav-icon">🔐</span> Rollar</button>
+
+      <div class="nav-section-title">Tahlil</div>
+      <button class="nav-item" data-page="hisobot"       onclick="go('hisobot')">      <span class="nav-icon">📈</span> Hisobotlar</button>
+      <button class="nav-item" data-page="sozlamalar"    onclick="go('sozlamalar')">   <span class="nav-icon">⚙️</span> Sozlamalar</button>
+    </nav>
+    <div class="sidebar-footer">
+      <button type="button" class="user-info" onclick="shellProfile()" aria-label="Profil: jurnal, kun yakuni, sozlamalar" title="Profil">
+        <div class="user-avatar" id="sidebar-avatar">A</div>
+        <div class="user-details"><h4 id="sidebar-username">Administrator</h4><span id="sidebar-userrole">Korxona egasi</span></div>
+      </button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main-content">
+    <header class="topbar">
+      <button class="hamburger" data-ic="menu">☰</button>
+      <!-- v24.2 telefon: «Mening doʻkonlarim» — filial tanlash (logo va nom) -->
+      <button class="fw-shop-sw" id="fw-shop-sw" onclick="shellShops()" aria-label="Mening doʻkonlarim — doʻkon tanlash"><span class="fw-shop-mk" data-shop-mark></span>
+        <span class="fw-shop-t"><small>Mening doʻkonlarim</small><b data-shop-name>Doʻkon</b></span><span class="fw-shop-dd" data-icf="chevron"></span></button>
+      <div class="topbar-title" id="topbar-title">📊 Dashboard</div>
+      <div style="flex:1"></div>
+      <div class="topbar-actions">
+        <button class="icon-btn" id="branch-btn" onclick="openBranchSwitch()" title="Filial almashtirish (Baza / 729)" style="width:auto;padding:0 12px;font-size:12px;font-weight:700">🏢 Baza</button>
+        <button class="icon-btn fw-bell" onclick="ntfSheet()" title="Bildirishnomalar va savdo tarixi" aria-label="Bildirishnomalar" id="topbar-bell"><span data-icf="bell">🔔</span><b class="fw-bell-n" data-ntf-n hidden>0</b></button>
+        <button class="icon-btn" data-icf="cart" data-perm="savdo.create"      onclick="go('savdo')"      title="Yangi savdo">🛒</button>
+        <button class="icon-btn" data-icf="swap" data-perm="kassalar.transact"  onclick="openExchange()"   title="Ayirboshlash">💱</button>
+        <button class="icon-btn" data-icf="kassaClose" onclick="openKunlikHisob()" title="Kassa yopish (kun yakuni)" id="topbar-kunlik-hisob">🏧</button>
+        <button class="icon-btn" data-icf="chart" data-perm="hisobot.view"     onclick="go('hisobot')"    title="Hisobot">📊</button>
+        <button class="icon-btn fw-set-btn" data-icf="settings" data-perm="sozlamalar.view" onclick="go('sozlamalar')" title="Sozlamalar">⚙️</button>
+        <button class="icon-btn fw-ava" id="fw-ava" onclick="shellProfile()" title="Profil" aria-label="Profil: jurnal, kun yakuni, sozlamalar"><b>A</b></button>
+        <button class="icon-btn fw-x" data-icf="close" onclick="shellBack()" title="Yopish" aria-label="Yopish — kirgan joyga qaytish">✕</button>
+        <div class="topbar-date" id="topbar-date"></div>
+        <div class="topbar-date" id="topbar-clock" style="color:var(--gold);font-weight:700;min-width:60px"></div>
+      </div>
+    </header>
+
+    <main class="page-content">
+      <section class="page-section" id="pg-dashboard"></section>
+      <section class="page-section" id="pg-savdo"></section>
+      <section class="page-section" id="pg-qaytarish"></section>
+      <section class="page-section" id="pg-dokon"></section>
+      <section class="page-section" id="pg-mahsulotlar"></section>
+      <section class="page-section" id="pg-ombor"></section>
+      <section class="page-section" id="pg-kirim"></section>
+      <section class="page-section" id="pg-mijozlar"></section>
+      <section class="page-section" id="pg-taminotchilar"></section>
+      <section class="page-section" id="pg-hamkorlar"></section>
+      <section class="page-section" id="pg-dillerlar"></section>
+      <section class="page-section" id="pg-filiallar"></section>
+      <section class="page-section" id="pg-sotuvchilar"></section>
+      <section class="page-section" id="pg-rollar"></section>
+      <section class="page-section" id="pg-kassalar"></section>
+      <section class="page-section" id="pg-firmakassa"></section>
+      <section class="page-section" id="pg-xarajatlar"></section>
+      <section class="page-section" id="pg-hisobot"></section>
+      <section class="page-section" id="pg-sozlamalar"></section>
+      <section class="page-section" id="pg-cheklar"></section>
+      <section class="page-section" id="pg-jurnal"></section>
+    </main>
+  </div>
+</div>
+</div>
+
+<!-- MOBIL PASTKI NAVIGATSIYA — dizayn tizimi qoidasi: position:sticky;bottom:0 -->
+<nav class="m-bottomnav" id="mobileBottomNav">
+  <button class="m-bn-item" data-page="kirim" onclick="go('kirim')"><span class="m-bn-ic" data-icf="inbox"></span><span class="m-bn-l">Kirim</span></button>
+  <button class="m-bn-item" data-page="mahsulotlar" onclick="go('mahsulotlar')"><span class="m-bn-ic" data-icf="inventory"></span><span class="m-bn-l">Mahsulotlar</span></button>
+  <button class="m-bn-item m-bn-fab" data-page="savdo" onclick="navScanSale()" aria-label="QR — Savdo oynasini ochish"><span class="m-bn-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8.5V6a2 2 0 0 1 2-2h2.5M15.5 4H18a2 2 0 0 1 2 2v2.5M20 15.5V18a2 2 0 0 1-2 2h-2.5M8.5 20H6a2 2 0 0 1-2-2v-2.5"/><g fill="currentColor" stroke="none"><rect x="7.6" y="7.6" width="3.6" height="3.6" rx=".9"/><rect x="12.8" y="7.6" width="3.6" height="3.6" rx=".9"/><rect x="7.6" y="12.8" width="3.6" height="3.6" rx=".9"/><rect x="12.8" y="12.8" width="3.6" height="3.6" rx=".9"/></g></svg></span><span class="m-bn-l">Savdo</span></button>
+  <button class="m-bn-item" data-page="hisobot" onclick="go('hisobot')"><span class="m-bn-ic" data-icf="chart"></span><span class="m-bn-l">Stat</span></button>
+  <button class="m-bn-item" data-perm="hisobot.view" onclick="dashBizSheet()" aria-label="Audit — biznes holati"><span class="m-bn-ic" data-icf="calc"></span><span class="m-bn-l">Audit</span></button>
+</nav>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-ov" onclick="if(event.target===this)closeModal()"></div>
+
+<!-- TOASTS -->
+<div id="toasts"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js" integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.4.4/build/qrcode.min.js" integrity="sha384-0RsG1yo/crf/1Qc14sho26SXXOTngNCjgJw7fuvXBt9W/OChF/Ijx+aUuBDqQwEk" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js" integrity="sha384-c9d8RFSL+u3exBOJ4Yp3HUJXS4znl9f+z66d1y54ig+ea249SpqR+w1wyvXz/lk+" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" integrity="sha384-Pqp51FUN2/qzfxZxBCtF0stpc9ONI6MYZpVqmo8m20SoaQCzf+arZvACkLkirlPz" crossorigin="anonymous"></script>
+<script src="js/config.js"></script>
+<script src="js/brand.js"></script>
+<script src="js/fw-err.js"></script>
+<script src="js/fw-saw-loader.js"></script>
+<script src="js/fw-round.js"></script>
+<script src="js/shared.js"></script>
+<script src="js/pos.js"></script>
+<script src="js/main.js"></script>
+<script src="js/firma-kassa.js"></script>
+<script src="js/dokon.js"></script>
+<script src="js/writeoff.js"></script>
+<script src="js/dealer-pay.js"></script>
+<script src="js/notifications.js"></script>
+<script src="js/zaklad.js"></script>
+<script src="js/shell.js"></script>
+</body>
+</html>

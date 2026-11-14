@@ -1,0 +1,35 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'uz.powerfulgroup.app'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'uz.powerfulgroup.app'
+        minSdk 21
+        targetSdk 35
+        versionCode 4
+        versionName '1.0.3'
+        manifestPlaceholders = [
+            hostName: 'powerful-pro.netlify.app',
+            defaultUrl: 'https://powerful-pro.netlify.app/',
+            launcherName: 'POWERFUL GROUP'
+        ]
+    }
+    signingConfigs {
+        release {
+            // Kalit fayli GitHub'ga yuklanmaydi (.gitignore). Yo'li va parollari muhit o'zgaruvchilaridan olinadi.
+            storeFile file(System.getenv('PG_KEYSTORE') ?: 'powerful-release.jks')
+            storePassword System.getenv('PG_KEYSTORE_PASS')
+            keyAlias 'powerful'
+            keyPassword System.getenv('PG_KEYSTORE_PASS')
+        }
+    }
+    buildTypes {
+        release { minifyEnabled false; signingConfig signingConfigs.release }
+    }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+}
+
+dependencies {
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.5.0'
+}

@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="360" viewBox="0 0 360 360" fill="none" stroke="#000" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- POWERFUL GROUP — arra tig'lari, frezalar va instrumentlar naqshi (fon uchun mask sifatida ishlatiladi) -->
+  <!-- Diskli arra tig'i (katta) -->
+  <path d="M88.0 62.0 L93.5 67.8 L87.0 69.8 L90.8 76.8 L84.0 77.0 L85.9 84.8 L79.2 83.2 L79.0 91.2 L73.0 88.0 L70.7 95.7 L65.8 91.0 L61.6 97.8 L58.0 92.0 L52.2 97.5 L50.2 91.0 L43.2 94.8 L43.0 88.0 L35.2 89.9 L36.8 83.2 L28.8 83.0 L32.0 77.0 L24.3 74.7 L29.0 69.8 L22.2 65.6 L28.0 62.0 L22.5 56.2 L29.0 54.2 L25.2 47.2 L32.0 47.0 L30.1 39.2 L36.8 40.8 L37.0 32.8 L43.0 36.0 L45.3 28.3 L50.2 33.0 L54.4 26.2 L58.0 32.0 L63.8 26.5 L65.8 33.0 L72.8 29.2 L73.0 36.0 L80.8 34.1 L79.2 40.8 L87.2 41.0 L84.0 47.0 L91.7 49.3 L87.0 54.2 L93.8 58.4Z"/><circle cx="58" cy="62" r="8"/><path d="M77.3 70.2L83.8 72.9"/><path d="M49.8 81.3L47.1 87.8"/><path d="M38.7 53.8L32.2 51.1"/><path d="M66.2 42.7L68.9 36.2"/>
+  <!-- Freza (spiral, quyruqli) -->
+  <g transform="translate(150 20)">
+    <rect x="0" y="0" width="14" height="34" rx="2"/><path d="M0 34h14l-2 6H2z"/>
+    <path d="M2 40c6 4 10 8 10 14M12 40c-6 4-10 8-10 14M2 54c6 4 10 8 10 14M12 54c-6 4-10 8-10 14"/><path d="M2 68l5 8 5-8"/>
+  </g>
+  <!-- Shtangensirkul -->
+  <g transform="translate(212 30)">
+    <rect x="0" y="10" width="110" height="12" rx="2"/><path d="M8 10V0h12v10M8 22v22l6 8 6-8V22"/>
+    <path d="M60 4h18v24H60z"/><path d="M64 28v16l5 8 5-8V28"/><path d="M30 13v6M40 13v4M50 13v6M90 13v6M100 13v4"/>
+  </g>
+  <!-- Parma (spiral bur) -->
+  <g transform="translate(118 116) rotate(-35)">
+    <rect x="0" y="0" width="10" height="26" rx="1.5"/><path d="M0 26l2 40 3 8 3-8 2-40"/><path d="M1 34l8 6M1 44l8 6M1 54l8 6"/>
+  </g>
+  <!-- Kichik arra tig'i -->
+  <path d="M243.0 132.0 L247.4 137.2 L241.9 138.5 L244.3 144.9 L238.6 144.2 L238.6 151.0 L233.5 148.5 L231.3 154.9 L227.3 150.7 L223.0 156.0 L220.7 150.7 L214.9 154.2 L214.5 148.5 L207.8 149.7 L209.4 144.2 L202.7 143.1 L206.1 138.5 L200.2 135.2 L205.0 132.0 L200.6 126.8 L206.1 125.5 L203.7 119.1 L209.4 119.8 L209.4 113.0 L214.5 115.5 L216.7 109.1 L220.7 113.3 L225.0 108.0 L227.3 113.3 L233.1 109.8 L233.5 115.5 L240.2 114.3 L238.6 119.8 L245.3 120.9 L241.9 125.5 L247.8 128.8Z"/><circle cx="224" cy="132" r="6"/><path d="M233.2 135.9L239.7 138.6"/><path d="M220.1 141.2L217.4 147.7"/><path d="M214.8 128.1L208.3 125.4"/><path d="M227.9 122.8L230.6 116.3"/>
+  <!-- Olti qirrali kalit (Г shaklida) -->
+  <g transform="translate(286 104)">
+    <path d="M0 0h10v44l18 0v10H0z"/><path d="M3 2l4 0M3 49h22"/>
+  </g>
+  <!-- Lenta arra (tishli tasma bo'lagi) -->
+  <g transform="translate(20 170)">
+    <path d="M0 14h96M0 26h96"/><path d="M0 14l6-8 4 8 6-8 4 8 6-8 4 8 6-8 4 8 6-8 4 8 6-8 4 8 6-8 4 8 6-8 4 8"/>
+  </g>
+  <!-- Chizg'ich / ugolnik -->
+  <g transform="translate(150 200)">
+    <path d="M0 0v62h62v-12H12V0z"/><path d="M12 10h-6M12 20h-4M12 30h-6M12 40h-4M22 50v6M32 50v4M42 50v6M52 50v4"/>
+  </g>
+  <!-- CNC shpindel (frezer boshi) -->
+  <g transform="translate(262 186)">
+    <rect x="0" y="0" width="40" height="44" rx="5"/><path d="M8 10h24M8 18h24M8 26h24"/><path d="M12 44h16l-3 10h-10z"/><path d="M20 54v14M17 68h6"/>
+  </g>
+  <!-- Diskli arra tig'i (o'rta) -->
+  <path d="M91.0 286.0 L95.4 291.8 L89.8 293.7 L92.2 300.6 L86.2 300.7 L86.4 308.0 L80.7 306.2 L78.6 313.2 L73.7 309.8 L69.6 315.8 L66.0 311.0 L60.2 315.4 L58.3 309.8 L51.4 312.2 L51.3 306.2 L44.0 306.4 L45.8 300.7 L38.8 298.6 L42.2 293.7 L36.2 289.6 L41.0 286.0 L36.6 280.2 L42.2 278.3 L39.8 271.4 L45.8 271.3 L45.6 264.0 L51.3 265.8 L53.4 258.8 L58.3 262.2 L62.4 256.2 L66.0 261.0 L71.8 256.6 L73.7 262.2 L80.6 259.8 L80.7 265.8 L88.0 265.6 L86.2 271.3 L93.2 273.4 L89.8 278.3 L95.8 282.4Z"/><circle cx="66" cy="286" r="7"/><path d="M80.7 292.2L87.2 295.0"/><path d="M59.8 300.7L57.0 307.2"/><path d="M51.3 279.8L44.8 277.0"/><path d="M72.2 271.3L75.0 264.8"/>
+  <!-- Ruletka -->
+  <g transform="translate(150 292)">
+    <rect x="0" y="0" width="40" height="40" rx="8"/><circle cx="20" cy="20" r="8"/><path d="M40 30h34v8H40"/><path d="M50 30v4M58 30v4M66 30v4"/>
+  </g>
+  <!-- Freza (to'g'ri, ikki pichoqli) -->
+  <g transform="translate(276 270) rotate(20)">
+    <rect x="0" y="0" width="12" height="28" rx="2"/><path d="M-4 28h20v22H-4z"/><path d="M-4 39h20M6 28v22"/>
+  </g>
+  <!-- Mayda belgilar: vint va gayka -->
+  <g transform="translate(330 330)"><path d="M-8-5l8-5 8 5v10l-8 5-8-5z"/><circle cx="0" cy="0" r="3.5"/></g>
+  <g transform="translate(118 248)"><circle cx="0" cy="0" r="5"/><path d="M-3.5 0h7"/></g>
+</svg>

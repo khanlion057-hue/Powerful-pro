@@ -20,7 +20,8 @@ exports.handler = async (event) => {
     : !checks.db ? "Bazaga ulanib bo'lmadi — SUPABASE_URL va SUPABASE_SERVICE_ROLE_KEY bir loyihaga tegishlimi?"
     : !checks.schema ? "Sxema o'rnatilmagan — supabase/schema.sql ni SQL Editor'da ishga tushiring"
     : "Rollar bo'sh — supabase/schema.sql oxiridagi boshlang'ich ma'lumot qo'shilmagan";
-  return json({ ok, checks, hint }, ok ? 200 : 503);
+  // v25.3: funksiya qaysi mintaqada ishlayapti (masalan us-east-2) — baza (Supabase) mintaqasi bilan solishtirish uchun; maxfiy emas
+  return json({ ok, checks, hint, region: process.env.AWS_REGION || null }, ok ? 200 : 503);
 };
 
 // v25.2: kuzatuv — so'rovlar cheklovi, xato va sekinlik haqida egasiga xabar (_lib/monitor.js)

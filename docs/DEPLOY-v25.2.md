@@ -10,9 +10,20 @@ Oxirgi deploy: `dcfe93b` (yuklanish oynasi — namunadagi arralar). Batafsil: `d
 3. **Tekshirish:**
    - `/.netlify/functions/health` → `ok: true`; 1 daqiqada 31-chi so'rov → 429 (himoya ishlayapti)
    - Sahifa manbasida skriptlar `h/js.main.<xesh>.js` ko'rinishida; ikkinchi ochilishda JS/CSS keshdan
+   - `health` javobida `region` — funksiyalar qaysi mintaqada (baza: ap-southeast-2 / Sidney); farq qilsa — pastga qarang
+   - APK: yopib, 1 daqiqadan keyin ochish → PINsiz darhol; 6 daqiqadan keyin → PIN
    - Ertasi kuni kunlik hisobotdan keyin «🖥 Tizim holati» xabari
 4. **O'zingiz (5 daqiqa):** UptimeRobot'da `health` manzilini 5 daqiqalik monitorga qo'yish (yo'riqnoma 4-bo'lim).
 
 ## Orqaga qaytarish
 Sayt — Netlify'da oldingi deployni qayta nashr qilish. 48-migratsiya faqat qo'shadi — qaytarish shart emas
 (eski kod yangi jadvallarni ishlatmaydi). Kuzatuvni vaqtincha o'chirish — `FW_OPS_ON=0`.
+
+## Tezlik: mintaqalar (deploydan keyin `health` → `region` ga qarab)
+Baza (Supabase) — **ap-southeast-2 (Sidney)**. Netlify funksiyalari odatda **us-east-2 (AQSh)** da ishlaydi: har bir server
+amali O'zbekiston → AQSh → Avstraliya → AQSh → O'zbekiston bo'lib aylanadi va ma'lumot yuklash bir necha bazaviy so'rovdan iborat —
+asosiy sekinlik shu. Yechimlar (egasi qaroriga):
+1. Netlify → loyiha → Functions sozlamalarida funksiyalar mintaqasini bazaga yaqin (Sidney) qilish — server ichidagi aylanishlar yo'qoladi.
+   Bu sozlama tarifga bog'liq bo'lishi mumkin.
+2. Uzoq muddatli eng tez yechim: bazani Frankfurtga (eu-central-1, O'zbekistonga eng yaqin) ko'chirish va funksiyalarni ham shu yerga.
+   Yangi Supabase loyihasi + ma'lumotlarni ko'chirish talab qilinadi — alohida rejalashtiriladi.

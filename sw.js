@@ -4,7 +4,7 @@
    • CDN kutubxonalari (versiyasi qat'iy, SRI bilan) va shriftlar — keshdan darhol (tez ochilish); yo'q bo'lsa tarmoqdan.
    • Server funksiyalari (/.netlify/functions), Supabase va boshqa so'rovlar — HECH QACHON keshlanmaydi (pul va qoldiq
      ma'lumoti faqat serverdan; oflayn savdolar ilovaning o'z navbatida turadi va internet qaytganda yuboriladi). */
-const CACHE = 'powerful-v25-12';
+const CACHE = 'powerful-v25-13';
 const SHELL = [
   './', './index.html', './sotuvchi.html', './diller.html', './manifest.json',
   './css/style.css', './css/design-system.css',
@@ -14,6 +14,7 @@ const SHELL = [
 ];
 const CDN_HOSTS = ['cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com'];
 const NET_TIMEOUT_MS = 4000;
+const NAV_TIMEOUT_MS = 1500;
 
 self.addEventListener('install', (e) => {
   self.skipWaiting();
@@ -36,14 +37,14 @@ function putCache(req, res) {
 }
 
 // Avval tarmoq; NET_TIMEOUT_MS ichida javob bo'lmasa yoki xato bo'lsa — kesh (keshda ham yo'q bo'lsa tarmoqni kutadi)
-function networkFirst(req, fallbackHtml) {
+function networkFirst(req, fallbackHtml, waitMs) {
   return caches.open(CACHE).then(cache => new Promise((resolve) => {
     let done = false;
     const fromCache = () => cache.match(req, { ignoreSearch: true }).then(r => r || (fallbackHtml ? cache.match(fallbackHtml) : null));
     const net = fetch(req).then(res => { putCache(req, res); return res; });
     const timer = setTimeout(() => {
       fromCache().then(r => { if (r && !done) { done = true; resolve(r); } });
-    }, NET_TIMEOUT_MS);
+    }, waitMs || NET_TIMEOUT_MS);
     net.then(res => { clearTimeout(timer); if (!done) { done = true; resolve(res); } })
       .catch(() => {
         clearTimeout(timer);
@@ -64,7 +65,10 @@ self.addEventListener('fetch', (e) => {
   if (CDN_HOSTS.includes(url.hostname)) { e.respondWith(cacheFirst(req)); return; }
   if (url.origin !== location.origin) return;                         // Supabase va boshqalar — to'g'ridan-to'g'ri
   if (url.pathname.startsWith('/.netlify/')) return;                  // server funksiyalari — hech qachon keshlanmaydi
+  // v25.3: xeshli nusxalar (build → /h/) — nomi mazmunga bog'liq, hech qachon o'zgarmaydi: avval kesh (tarmoq kutilmaydi)
+  if (url.pathname.startsWith('/h/')) { e.respondWith(cacheFirst(req)); return; }
   const isPage = req.mode === 'navigate';
   const page = /\/sotuvchi(\.html)?$/.test(url.pathname) ? './sotuvchi.html' : /\/diller(\.html)?$/.test(url.pathname) ? './diller.html' : './index.html';
-  e.respondWith(networkFirst(req, isPage ? page : null));
+  // v25.3: sahifa — tarmoq 1,5 soniyada javob bermasa keshdagisi ochiladi (sekin internetda ilova tez ochiladi; yangisi fonda keshga tushadi)
+  e.respondWith(networkFirst(req, isPage ? page : null, isPage ? NAV_TIMEOUT_MS : 0));
 });

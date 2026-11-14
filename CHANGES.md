@@ -7,6 +7,7 @@
 - **Kesh:** build JS/CSS'ning xeshli nusxalarini `dist/h/` ga qo'yadi (1 yil immutable), HTML va service worker shu nomlarda; noyob nomli rasmlar — 1 yil.
 - **k6 yuklama testlari** (`tests/load/`: o'qish, savdo, himoya) — ishlayotgan saytda ishga tushmaydi. Yo'riqnoma: `docs/YUKLAMAGA-TAYYORLIK.md` (xarajat, UptimeRobot, AI limitlari).
 - **Yuklanish oynasi:** yon ko'rinish — taxta stanok ustida, ostida katta va kichik arra (egasi namunasidagi kabi), yozuv faqat «POWERFUL PRO»; kompyuter/planshet/telefon uchun alohida o'lchamlar. **Kirish:** faqat katta logo, ostida login/parol. **Logo:** to'liq (qirqilmagan). **APK 1.0.3.**
+- **Tez qayta kirish (APK):** oxirgi faollik endi qurilmada saqlanadi — ilova yopilib 5 daqiqa ichida qayta ochilsa PIN so'ralmaydi (avval Android ilovani fonda yopsa, har safar so'ralardi); 5 daqiqadan keyin — PIN, avvalgidek. Admin PIN'dan keyin sahifa qayta yuklanmaydi (avval ikki marta yuklanardi). Xodim ruxsatlari ma'lumot bilan parallel. Service worker: xeshli fayllar keshdan, sahifa — tarmoq 1,5 s da javob bermasa keshdagisi. `health` — funksiyalar mintaqasi (`region`). Test: p90.
 - Testlar: yangi p89; p8 (sxema sonlari), p11 (48 zanjirda), p48/p49 (65 funksiya).
 
 # POWERFUL GROUP — v25.1: yaxlitlash va foyda (47-migratsiya), mijozga bot eslatmalari, yuklanish animatsiyasi (2026-11-12)

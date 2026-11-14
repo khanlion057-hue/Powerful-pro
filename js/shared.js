@@ -1990,7 +1990,7 @@ function fwReceiptFitPage(doc, widthMm) {
 // signOut kutiladi (oldin reload undan oldin bo'lib, sessiya ba'zan qolib ketardi); 1.2 soniyadan oshsa — baribir davom etadi (chiqish uzoq cho'zilmasin).
 async function fwLogoutFlow(client, name) {
   try { ['bp_auth_ok','bp_pin_ok','bp_branch_ok','bp_staff_id','fw_fast_staff'].forEach(k => sessionStorage.removeItem(k)); } catch (e) {}
-  try { localStorage.removeItem('fw_off_auth_v1'); localStorage.removeItem('fw_quick_v1'); } catch (e) {}   // v25: chiqqanda oflayn va tez kirish ham o'chadi
+  try { localStorage.removeItem('fw_off_auth_v1'); localStorage.removeItem('fw_quick_v1'); localStorage.removeItem('fw_last_active'); } catch (e) {}   // v25: chiqqanda oflayn va tez kirish ham o'chadi
   const h = new Date().getHours(), bye = h < 5 || h >= 18 ? 'Xayrli kech' : 'Yaxshi dam oling';
   const el = document.createElement('div');
   el.className = 'fw-bye fw-brand-bg';
@@ -2612,7 +2612,7 @@ async function fwQuickSet(pin, info, bio) {
 // PIN to'g'ri bo'lsa — info; noto'g'ri — null; 5-xatoda tez kirish o'chiriladi ({ locked: true })
 async function fwQuickCheck(pin) {
   const r = fwQuickGet(); if (!r) return { locked: true };
-  if ((await _fwPbkdf2(String(pin), r.salt)) === r.hash) { r.fails = 0; r.t = Date.now(); localStorage.setItem(FWQK, JSON.stringify(r)); return r.info || {}; }
+  if ((await _fwPbkdf2(String(pin), r.salt)) === r.hash) { r.fails = 0; r.t = Date.now(); localStorage.setItem(FWQK, JSON.stringify(r)); try { localStorage.setItem(FW_LAST_KEY, String(Date.now())); } catch (_) {} return r.info || {}; }
   r.fails = (r.fails || 0) + 1;
   if (r.fails >= FW_QUICK_MAX_FAILS) { fwQuickClear(); return { locked: true }; }
   localStorage.setItem(FWQK, JSON.stringify(r)); return null;
@@ -2718,11 +2718,29 @@ async function fwQuickUnlock(sessionUid) {
   if (v && !fwQuickGet()) { if (typeof toast === 'function') toast('PIN 5 marta notoʻgʻri — login va parol bilan kiring', 'error'); }
   return null;
 }
+// v25.3: OXIRGI FAOLLIK — qurilma xotirasida (localStorage). Android ilovani (APK) fonda yopib yuborsa ham saqlanadi:
+// 5 daqiqa ichida qayta ochilsa — PIN so'ralmaydi (avval sessionStorage bilan birga yo'qolib, har safar so'ralardi).
+const FW_LAST_KEY = 'fw_last_active';
+function _fwOnLoginScreen() { return !!(document.getElementById('fw-pin-ov') || document.getElementById('ul-login') || document.querySelector('.dl-login-screen:not([style*="none"])')); }
+function fwTouchActive() { try { if (fwQuickGet() && !_fwOnLoginScreen()) localStorage.setItem(FW_LAST_KEY, String(Date.now())); } catch (_) {} }
+function fwRecentlyActive() { try { const t = +localStorage.getItem(FW_LAST_KEY) || 0; return t > 0 && t <= Date.now() && Date.now() - t < FW_QUICK_IDLE_MS; } catch (_) { return false; } }
+// Yaqinda (5 daqiqa ichida) shu qurilmada ishlagan — o'sha foydalanuvchining kirish ma'lumoti (PINsiz); aks holda null
+function fwQuickRecent(sessionUid) {
+  const r = fwQuickGet();
+  if (!r || !r.info || !fwRecentlyActive()) return null;
+  if (sessionUid && r.uid && sessionUid !== r.uid) return null;
+  return r.info;
+}
+if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', fwTouchActive);
+  setInterval(() => { if (!document.hidden) fwTouchActive(); }, 30000);
+}
+
 // Fonda 5 daqiqadan ko'p turgan ilova — qaytganda PIN (sahifa qayta yuklanmaydi, ish joyida qoladi)
 if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', async () => {
     try {
-      if (document.hidden) { sessionStorage.setItem('fw_hid_at', String(Date.now())); return; }
+      if (document.hidden) { sessionStorage.setItem('fw_hid_at', String(Date.now())); fwTouchActive(); return; }
       const at = +sessionStorage.getItem('fw_hid_at') || 0; sessionStorage.removeItem('fw_hid_at');
       const r = fwQuickGet();
       if (!r || !at || Date.now() - at < FW_QUICK_IDLE_MS || document.getElementById('fw-pin-ov') || document.getElementById('ul-login')) return;

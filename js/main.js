@@ -1274,13 +1274,19 @@ function hasPerm(key) {
   return CURRENT_USER.perms.has(key);
 }
 
-async function loadCurrentUserPermissions(staffId) {
+// pre — oldindan boshlangan so'rov natijasi ({ ok, data } yoki { err }); berilmasa — shu yerda so'raladi
+async function loadCurrentUserPermissions(staffId, pre) {
   try {
-    const res = await authFetch('/.netlify/functions/rbac-user-permissions', {
-      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ staffId })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Ruxsatlar yuklanmadi");
+    let ok, data;
+    const got = pre ? await pre : null;
+    if (got && !got.err) { ok = got.ok; data = got.data; }
+    else {
+      const res = await authFetch('/.netlify/functions/rbac-user-permissions', {
+        method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ staffId })
+      });
+      ok = res.ok; data = await res.json();
+    }
+    if (!ok) throw new Error(data.error || "Ruxsatlar yuklanmadi");
     CURRENT_USER = {
       kind: 'staff',
       staffId,
@@ -14743,14 +14749,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Bitta kirish ekrani: login + parol (admin/sotuvchi/diller — tizim o'zi aniqlaydi)
   if (sessionStorage.getItem('bp_auth_ok') !== '1') {
     // v25: tez kirish — shu qurilmada avval kirilgan bo'lsa, PIN yoki barmoq izi (internetsiz ham)
+    // v25.3: 5 daqiqa ichida qayta ochilsa — PIN so'ralmaydi; admin — sahifa qayta yuklanmaydi (shu yerda davom etadi)
+    let entered = false;
     if (typeof fwQuickGet === 'function' && fwQuickGet()) {
       let uid = null, has = false;
       try { const { data: { session } } = await _db.auth.getSession(); uid = session?.user?.id || null; has = !!session; } catch (_) {}
-      if (has || navigator.onLine === false) { const info = await fwQuickUnlock(uid); if (info) { fwEnterWithInfo(info); return; } }
+      if (has || navigator.onLine === false) {
+        const info = (typeof fwQuickRecent === 'function' && fwQuickRecent(uid)) || await fwQuickUnlock(uid);
+        if (info) { if (fwEnterWithInfo(info, true) !== 'here') return; entered = true; }
+      }
       else fwQuickClear();   // sessiya tugagan — login va parol kerak
     }
-    await showUnifiedLogin();
-    return;
+    if (!entered) { await showUnifiedLogin(); return; }
   }
 
   // Filial tanlash (Baza / 729) — parol bilan, har safar ilova ochilganda
@@ -14767,6 +14777,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   const loadEl = document.getElementById('bp-loading');
   if (mainEl) mainEl.style.display='none';
   if (loadEl) loadEl.style.display='flex';
+
+  // v25.3: xodim ruxsatlari ma'lumot bilan PARALLEL so'raladi (avval ketma-ket — bitta to'liq server aylanishi tejaladi);
+  // natija ma'lumot yuklangandan keyin qo'llanadi (tartib o'zgarmaydi)
+  const _staffIdEarly = sessionStorage.getItem('bp_staff_id');
+  const _permPre = _staffIdEarly ? authFetch('/.netlify/functions/rbac-user-permissions', {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ staffId: Number(_staffIdEarly) }) })
+    .then(async (r) => ({ ok: r.ok, data: await r.json().catch(() => ({})) }), (e) => ({ err: e })) : null;
 
   await initData();
 
@@ -14802,7 +14819,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // RBAC sessiyasi: agar staff sifatida kirilgan bo'lsa — uning ruxsatlarini yuklaymiz,
   // aks holda (PIN orqali) to'liq huquqli Owner sessiyasi.
   const _staffId = sessionStorage.getItem('bp_staff_id');
-  if (_staffId) { await loadCurrentUserPermissions(Number(_staffId)); }
+  if (_staffId) { await loadCurrentUserPermissions(Number(_staffId), _staffId === _staffIdEarly ? _permPre : null); }
   else { setOwnerSession(); }
 
   const _startPage = location.hash.slice(1);
@@ -14831,16 +14848,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 // PWA — service worker endi js/shared.js da ro'yxatdan o'tadi (admin, sotuvchi va diller sahifalari uchun)
 
 // v25: tasdiqlangan (oflayn parol / PIN / barmoq izi) kirish — o'z sahifasiga
-function fwEnterWithInfo(info) {
+// v25.3: inPlace=true — admin sahifasi QAYTA YUKLANMAYDI ('here' qaytadi, chaqiruvchi shu yerda davom etadi)
+function fwEnterWithInfo(info, inPlace) {
   if (info.dest === 'seller') {
     try { sessionStorage.setItem('fw_fast_staff', JSON.stringify({ uid: info.uid, t: Date.now(), staff: info.staff, offline: navigator.onLine === false })); } catch (_) {}
-    location.replace('sotuvchi.html'); return;
+    location.replace('sotuvchi.html'); return 'away';
   }
   sessionStorage.setItem('bp_auth_ok', '1');
   sessionStorage.setItem('bp_branch_ok', info.branch || 'baza');
   if (info.staffId != null) sessionStorage.setItem('bp_staff_id', String(info.staffId));
   localStorage.setItem('bp_active_branch', info.branch || 'baza');
-  location.reload();
+  if (inPlace) return 'here';
+  location.reload(); return 'away';
 }
 
 function showUnifiedLogin() {

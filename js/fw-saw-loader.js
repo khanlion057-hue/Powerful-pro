@@ -397,7 +397,12 @@ function Loader(frame,getScale){
     if(!t0)t0=ts;
     var cyc=NB*(PASS+PAUSE),t=ts-t0;if(t>cyc+HOLD){t0=ts;t=0;parts.length=0}
     var k=Math.min(Math.floor(t/(PASS+PAUSE)),NB),lt=t-k*(PASS+PAUSE),q=k<NB?clamp(lt/PASS,0,1):1;
-    pct.textContent=Math.round((k<NB?(k+q)/NB:1)*100)+'%';
+    // v25.3: foiz — animatsiya aylanishiga emas, oyna ochiq turgan vaqtga bog'liq: hech qachon orqaga qaytmaydi va 100% ga
+    // yetmaydi (99% da to'xtaydi); ma'lumot kelib oyna yopilganda tugaydi. Avval har aylanishda 0→100 qayta to'lardi.
+    if(!self.shownAt)self.shownAt=ts;
+    var el=ts-self.shownAt,pv=Math.min(99,Math.floor(99*(1-Math.exp(-el/2500))));
+    if(pv>(self.lastPct||0))self.lastPct=pv;
+    pct.textContent=(self.lastPct||0)+'%';
     angle+=.12*dt/16;
 
     ctx.setTransform(res*s,0,0,res*s,0,0);ctx.clearRect(0,0,W,WH+2);
@@ -451,7 +456,7 @@ function Loader(frame,getScale){
     var any = false;
     for (var i = 0; i < loaders.length; i++) {
       var o = loaders[i];
-      if (!visible(o.box)) continue;
+      if (!visible(o.box)) { if (o.L) { o.L.shownAt = 0; o.L.lastPct = 0; } continue; }   // yopildi — keyingi ochilishda foiz 0 dan
       any = true;
       if (!o.L) { try { o.L = new Loader({ querySelector: function (s) { return s === 'canvas' ? o.cv : o.pc; } }, function () { return 1; }); } catch (e) { continue; } }
       o.L.frame(ts, dt);

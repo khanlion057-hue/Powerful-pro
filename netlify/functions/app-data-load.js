@@ -40,8 +40,17 @@ exports.handler = async (event) => {
   try {
     // 1) Eski, asosiy manba — bitta qatorli app_data
     // v24.8 (37): versiya — keyingi saqlashda optimistik qulf uchun brauzerga qaytariladi
-    const verOn = await versionOn(admin);
-    const { data: row, error } = await admin.from('app_data').select(verOn ? 'data,version' : 'data').eq('id', 'main').maybeSingle();
+    // v25.3 (tezlik): bir-biriga bog'liq bo'lmagan so'rovlar PARALLEL (baza boshqa qit'ada — har ketma-ket so'rov ~0,2 s).
+    // Natija avvalgidek: tartib va mantiq o'zgarmagan, faqat kutish birlashtirildi.
+    const debtQ = (() => { let q = admin.from('branch_debt_cur').select('filial,debt_uzs'); if (!auth.isAdmin) q = q.eq('filial', auth.filial); return q; })();
+    const [verOn, cashOn, ledgerOn, debtRes] = await Promise.all([
+      versionOn(admin), cashAuthorityOn(admin), ledgerAuthorityOn(admin),
+      Promise.resolve(debtQ).catch(() => ({ error: true })),   // 43-migratsiya bo'lmasa — yo'q
+    ]);
+    const [{ data: row, error }, { data: freshRows }] = await Promise.all([
+      admin.from('app_data').select(verOn ? 'data,version' : 'data').eq('id', 'main').maybeSingle(),
+      admin.from('app_data_branches').select(verOn ? 'branch_key,data,version' : 'branch_key,data'),
+    ]);
     if (error) throw error;
     let data = row?.data || null;
     if (!data) return json({ data: null, version: verOn ? 0 : null }, 200);
@@ -49,7 +58,6 @@ exports.handler = async (event) => {
     // 2) app_data_branches — har filial uchun "afzalroq" (yangiroq) nusxa bo'lsa,
     //    _cloudLoad()dan keyin initData() ichida qilinadigan tanlov bilan BIR XIL
     //    mantiq: mavjud bo'lsa ustunlik beriladi, bo'lmasa eski branchStore qoladi.
-    const { data: freshRows } = await admin.from('app_data_branches').select(verOn ? 'branch_key,data,version' : 'branch_key,data');
     const freshMap = {};
     const branchVersions = {};
     (freshRows || []).forEach(r => { if (r.data) freshMap[r.branch_key] = r.data; if (verOn && r.version != null) branchVersions[r.branch_key] = Number(r.version); });
@@ -70,28 +78,25 @@ exports.handler = async (event) => {
       data = { ...data, branchStore: { [own]: data.branchStore[own] || {} } };
     }
     // v11 (F4): kassa qoldiqlari — bazadagi haqiqiy qiymat (JSON'dagi son emas)
-    let cashAuthority = false;
-    if (data.branchStore && await cashAuthorityOn(admin)) {
-      cashAuthority = true;
+    // v23.2 (F4b): mijoz/ta'minotchi qarzi, partiya qoldig'i va savdo summalari — bazadagi haqiqiy qiymat.
+    // v25.3: barcha filiallarning kassa qoldiqlari va jurnallari bir vaqtda yuklanadi; qo'llash tartibi avvalgidek (avval kassa, keyin jurnal).
+    let cashAuthority = false, ledgerAuthority = false;
+    if (data.branchStore && (cashOn || ledgerOn)) {
+      cashAuthority = !!cashOn; ledgerAuthority = !!ledgerOn;
+      const keys = Object.keys(data.branchStore);
+      const [bals, ledgers] = await Promise.all([
+        cashOn ? Promise.all(keys.map((bk) => loadBalances(admin, bk))) : null,
+        ledgerOn ? Promise.all(keys.map((bk) => loadLedger(admin, bk))) : null,
+      ]);
       const bs = { ...data.branchStore };
-      for (const bk of Object.keys(bs)) bs[bk] = overlayBranch(bs[bk], await loadBalances(admin, bk));
-      data = { ...data, branchStore: bs };
-    }
-    // v23.2 (F4b): mijoz/ta'minotchi qarzi, partiya qoldig'i va savdo summalari — bazadagi haqiqiy qiymat
-    let ledgerAuthority = false;
-    if (data.branchStore && await ledgerAuthorityOn(admin)) {
-      ledgerAuthority = true;
-      const bs = { ...data.branchStore };
-      for (const bk of Object.keys(bs)) bs[bk] = overlayBranchLedger(bs[bk], await loadLedger(admin, bk)).branch;
+      keys.forEach((bk, i) => {
+        if (bals) bs[bk] = overlayBranch(bs[bk], bals[i]);
+        if (ledgers) bs[bk] = overlayBranchLedger(bs[bk], ledgers[i]).branch;
+      });
       data = { ...data, branchStore: bs };
     }
     // v25 (43): filiallarning so'mdagi qarzi (jadvaldan; brauzer saqlashi uni yozmaydi). 43 bo'lmasa — yo'q.
-    try {
-      let q = admin.from('branch_debt_cur').select('filial,debt_uzs');
-      if (!auth.isAdmin) q = q.eq('filial', auth.filial);
-      const { data: du, error: duErr } = await q;
-      if (!duErr) data = { ...data, branchDebtUzs: Object.fromEntries((du || []).map(r => [r.filial, Number(r.debt_uzs) || 0])) };
-    } catch (_) { /* 43-migratsiya hali yo'q */ }
+    if (debtRes && !debtRes.error) data = { ...data, branchDebtUzs: Object.fromEntries((debtRes.data || []).map(r => [r.filial, Number(r.debt_uzs) || 0])) };
     // v10 (F7): maxfiy sozlamalar (Telegram bot tokeni, PIN'lar) faqat admin'ga
     if (!auth.isAdmin && data.settings) data = { ...data, settings: stripSecretSettings(data.settings) };
     // v23: Telegram bot tokeni admin'ga ham yuborilmaydi (faqat "o'rnatilgan" belgisi)

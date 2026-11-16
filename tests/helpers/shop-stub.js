@@ -63,6 +63,10 @@ async function startShop(fx = fixture()) {
   process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'test';
   const sa = require(path.join(ROOT, 'netlify/functions/_lib/supabaseAdmin'));
   const admin = fakeAdmin(fx);
+  // boshqa testlardan qolgan kesh (versiya / jurnal / kassa yoqilganmi) — shu soxta baza uchun qayta aniqlanadi
+  require(path.join(ROOT, 'netlify/functions/_lib/appDataVersion'))._resetVersionCache();
+  require(path.join(ROOT, 'netlify/functions/_lib/ledgerAuthority'))._resetLedgerAuthorityCache();
+  require(path.join(ROOT, 'netlify/functions/_lib/cashAuthority'))._resetCashAuthorityCache();
   const orig = sa.getAdminClient;
   sa.getAdminClient = () => admin;
   delete require.cache[require.resolve(path.join(ROOT, 'netlify/functions/shop-public.js'))];

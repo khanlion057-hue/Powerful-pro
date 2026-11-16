@@ -233,7 +233,7 @@ function dlRenderContent() {
     if (DLO.seg === 'new') { dlRenderOrderList(); if (!DLO.loadedOnce) { DLO.loadedOnce = true; dlRefreshCatalog(); } }
   } else if (ACTIVE_TAB === 'pay') {
     el.innerHTML = dlPayHtml();
-    if (!DLPAY.loaded && !DLPAY.loading) dlPayLoad();
+    if (!DLPAY.loaded && !DLPAY.loading && !DLPAY.err) dlPayLoad();   // v25.4: xatoda o'zi qayta so'ramaydi (cheksiz so'rov bo'lardi) — «Qayta urinish» tugmasi
   } else if (ACTIVE_TAB === 'myorders') {
     el.innerHTML = dlMyOrdersHtml();
   } else if (ACTIVE_TAB === 'notif') {
@@ -265,33 +265,49 @@ async function dlPayLoad() {
   } catch (e) { DLPAY.err = e.message; }
   finally { DLPAY.loading = false; if (ACTIVE_TAB === 'pay') dlRenderContent(); }
 }
-function dlPaySetType(t) { DLPAY.type = t; const a = document.getElementById('dlp-amt'); const v = a ? a.value : ''; dlRenderContent(); const b = document.getElementById('dlp-amt'); if (b) { b.value = v; dlPayCalc(); } }
-function dlPayUsd(amount) { return DLPAY.type === 'cash_usd' ? amount : (DLPAY.rate ? Math.round(amount / DLPAY.rate * 100) / 100 : 0); }
+// v25.4: yozilayotgan summa va izoh DLPAY'da saqlanadi — qayta chizilganda (tur almashtirish, xato, yangilanish) yo'qolmaydi
+function dlPayKeep() { const a = document.getElementById('dlp-amt'), n = document.getElementById('dlp-note'); if (a) DLPAY.amt = a.value; if (n) DLPAY.note = n.value; }
+function dlPayType() { return DLPAY.loaded && !DLPAY.rate ? 'cash_usd' : DLPAY.type; }   // kurs yo'q — faqat dollar
+function dlPaySetType(t) { dlPayKeep(); DLPAY.type = t; dlRenderContent(); dlPayCalc(); }
+function dlPayRetry() { dlPayKeep(); DLPAY.err = ''; dlRenderContent(); }   // qayta chizish yuklashni o'zi boshlaydi (bitta so'rov)
+function dlPayUsd(amount) { return dlPayType() === 'cash_usd' ? amount : (DLPAY.rate ? Math.round(amount / DLPAY.rate * 100) / 100 : 0); }
+// «To'liq qarz»: so'mda — kurs bo'yicha aynan qarzga teng summa (dollarga qaytarilganda qarzdan oshmaydi)
+function dlPayFull() {
+  const debt = +ME.debt_usd || 0, a = document.getElementById('dlp-amt'); if (!a || !(debt > 0)) return;
+  a.value = dlPayType() === 'cash_usd' ? String(Math.round(debt * 100) / 100) : String(Math.round(debt * DLPAY.rate));
+  dlPayKeep(); dlPayCalc();
+}
 function dlPayCalc() {
   const amt = parseFloat(document.getElementById('dlp-amt')?.value) || 0, usd = dlPayUsd(amt), debt = +ME.debt_usd || 0, el = document.getElementById('dlp-conv');
   if (!el) return;
-  el.innerHTML = amt > 0 ? `<span>${DLPAY.type === 'cash_usd' ? 'Qarzdan ayiriladi' : '= dollarda'}: <b>${fmtUsd(usd)}</b></span><span class="${usd > debt + 0.01 ? 'bad' : ''}">${usd > debt + 0.01 ? 'Qarzingizdan oshib ketdi' : `Qarzingiz qoladi: <b>${fmtUsd(Math.max(0, debt - usd))}</b>`}</span>` : '';
+  const uzs = dlPayType() !== 'cash_usd';
+  el.innerHTML = amt > 0 ? `<span>${uzs ? `${dlUzs(amt)} = dollarda` : 'Qarzdan ayiriladi'}: <b>${fmtUsd(usd)}</b></span><span class="${usd > debt + 0.01 ? 'bad' : ''}">${usd > debt + 0.01 ? 'Qarzingizdan oshib ketdi' : `Qarzingiz qoladi: <b>${fmtUsd(Math.max(0, debt - usd))}</b>`}</span>` : '';
 }
 function dlPayHtml() {
-  const debt = +ME.debt_usd || 0, unit = DLPAY.type === 'cash_usd' ? '$' : "so'm";
+  const debt = +ME.debt_usd || 0, type = dlPayType(), unit = type === 'cash_usd' ? '$' : "so'm", noRate = DLPAY.loaded && !DLPAY.rate;
   const st = { pending: ['Kassir tasdigʻi kutilmoqda', 'amber'], accepted: ['Qabul qilindi', 'emerald'], rejected: ['Rad etildi — qarz qaytdi', 'red'] };
+  const errBox = DLPAY.err ? `<div class="dlp-err" role="alert"><span>${esc(DLPAY.err)}</span><button type="button" class="dl-btn" id="dlp-retry" onclick="dlPayRetry()" style="margin:0;width:auto;padding:8px 14px">Qayta urinish</button></div>` : '';
+  const form = !(debt > 0)
+    ? `<div class="dlp-nodebt"><b>Qarzingiz yoʻq</b><span>Hozir pul yuborish shart emas. Qarzga mahsulot olganingizda shu yerdan toʻlaysiz.</span></div>`
+    : `<div class="dlp-rate" style="margin-bottom:10px">${DLPAY.rate ? `Bugungi kurs: 1 $ = ${fwNum(DLPAY.rate)} soʻm — yuborilgan zahoti shu kurs qotiriladi` : (DLPAY.loading ? 'Kurs yuklanmoqda…' : (DLPAY.err ? 'Kurs yuklanmadi' : 'Kurs belgilanmagan — hozircha faqat dollarda yuborish mumkin'))}</div>
+      <div class="dlp-pay-types" role="radiogroup">${DLPAY_TYPES.map(([k, l, ic]) => `<button type="button" role="radio" aria-checked="${type === k}" class="${type === k ? 'on' : ''}" ${noRate && k !== 'cash_usd' ? 'disabled title="Kurs belgilanmagan"' : ''} onclick="dlPaySetType('${k}')"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="${ic}"/></svg>${l}</button>`).join('')}</div>
+      <div class="me-amt"><input class="dl-input" id="dlp-amt" type="number" min="0" step="any" inputmode="decimal" placeholder="Summa" value="${esc(DLPAY.amt || '')}" oninput="dlPayKeep();dlPayCalc()" style="margin:0;font-size:17px;font-weight:700;padding-right:54px"><i>${unit}</i></div>
+      <button type="button" class="dlp-full" id="dlp-full" onclick="dlPayFull()" ${type !== 'cash_usd' && !DLPAY.rate ? 'disabled' : ''}>Toʻliq qarz: ${fmtUsd(debt)}${type !== 'cash_usd' && DLPAY.rate ? ' = ' + dlUzs(Math.round(debt * DLPAY.rate)) : ''}</button>
+      <div class="dlp-conv" id="dlp-conv"></div>
+      <input class="dl-input" id="dlp-note" maxlength="300" placeholder="Izoh (ixtiyoriy): masalan, kim orqali berildi" value="${esc(DLPAY.note || '')}" oninput="dlPayKeep()" style="margin-top:8px">
+      <button class="dl-btn" id="dlp-btn" onclick="dlPaySend()" ${DLPAY.busy ? 'disabled' : ''}>${DLPAY.busy ? 'Yuborilmoqda…' : 'Pul yubordim'}</button>
+      <div class="dl-pmeta" style="margin-top:8px">Yuborilgan zahoti qarzingiz kamayadi. Kassir pulni qabul qiladi; pul kelmagan boʻlsa rad etadi va qarz qaytadi.</div>`;
   return `
     <div class="dl-card">
       <div style="font-weight:800;font-size:14px;margin-bottom:4px">Pul yuborish</div>
-      <div class="dlp-rate" style="margin-bottom:10px">${DLPAY.rate ? `Bugungi kurs: 1 $ = ${fwNum(DLPAY.rate)} soʻm — yuborilgan zahoti shu kurs qotiriladi` : (DLPAY.loading ? 'Kurs yuklanmoqda…' : 'Kurs belgilanmagan — soʻmda yuborib boʻlmaydi')}</div>
-      <div class="dlp-pay-types" role="radiogroup">${DLPAY_TYPES.map(([k, l, ic]) => `<button type="button" role="radio" aria-checked="${DLPAY.type === k}" class="${DLPAY.type === k ? 'on' : ''}" onclick="dlPaySetType('${k}')"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="${ic}"/></svg>${l}</button>`).join('')}</div>
-      <div class="me-amt"><input class="dl-input" id="dlp-amt" type="number" min="0" step="${DLPAY.type === 'cash_usd' ? '0.01' : '1000'}" inputmode="decimal" placeholder="Summa" oninput="dlPayCalc()" style="margin:0;font-size:17px;font-weight:700;padding-right:54px"><i>${unit}</i></div>
-      <div class="dlp-conv" id="dlp-conv"></div>
-      <input class="dl-input" id="dlp-note" maxlength="300" placeholder="Izoh (ixtiyoriy): masalan, kim orqali berildi" style="margin-top:8px">
-      <button class="dl-btn" id="dlp-btn" onclick="dlPaySend()" ${debt > 0 && !DLPAY.busy ? '' : 'disabled'}>Pul yubordim</button>
-      <div class="dl-pmeta" style="margin-top:8px">Yuborilgan zahoti qarzingiz kamayadi. Kassir pulni qabul qiladi; pul kelmagan boʻlsa rad etadi va qarz qaytadi.</div>
+      ${errBox}${form}
     </div>
     <div class="dl-card"><div style="font-weight:800;font-size:14px;margin-bottom:4px">Yuborganlarim</div>
-      ${DLPAY.err ? `<div class="dl-pmeta" style="color:var(--red)">${esc(DLPAY.err)}</div>` : ''}
-      ${DLPAY.list.length ? DLPAY.list.map(n => `<div class="dl-prow"><div><div class="dl-pname">${esc((DLPAY_TYPES.find(t => t[0] === n.payType) || [, ''])[1])} · ${n.currency === 'USD' ? fmtUsd(n.amount) : dlUzs(n.amount)}</div>
+      ${DLPAY.list.length ? DLPAY.list.map(n => { const [sl, sc] = st[n.status] || [String(n.status || '—'), 'amber'];
+        return `<div class="dl-prow"><div><div class="dl-pname">${esc((DLPAY_TYPES.find(t => t[0] === n.payType) || [, ''])[1])} · ${n.currency === 'USD' ? fmtUsd(n.amount) : dlUzs(n.amount)}</div>
           <div class="dl-pmeta">${fmtD(n.createdAt)}${n.currency === 'UZS' ? ` · = ${fmtUsd(n.amountUsd)} (kurs ${fwNum(n.rate)})` : ''}${n.rejectReason ? ' · ' + esc(n.rejectReason) : ''}</div></div>
-          <span class="dpn-pill" style="--c:var(--${st[n.status][1]})">${st[n.status][0]}</span></div>`).join('')
-        : `<div class="dl-pmeta" style="padding:10px 0">${DLPAY.loading ? 'Yuklanmoqda…' : 'Hali pul yuborilmagan'}</div>`}
+          <span class="dpn-pill" style="--c:var(--${sc})">${esc(sl)}</span></div>`; }).join('')
+        : `<div class="dl-pmeta" style="padding:10px 0">${DLPAY.loading ? 'Yuklanmoqda…' : (DLPAY.err ? 'Roʻyxat yuklanmadi' : 'Hali pul yuborilmagan')}</div>`}
     </div>`;
 }
 async function dlPaySend() {
@@ -299,19 +315,21 @@ async function dlPaySend() {
   const amount = Math.round((parseFloat(document.getElementById('dlp-amt')?.value) || 0) * 100) / 100;
   const note = (document.getElementById('dlp-note')?.value || '').trim().slice(0, 300);
   if (!(amount > 0)) { toast('Summani kiriting', 'error'); return; }
-  if (DLPAY.type !== 'cash_usd' && !DLPAY.rate) { toast("Kurs belgilanmagan — so'mda yuborib bo'lmaydi", 'error'); return; }
+  dlPayKeep();
+  const ptype = dlPayType();
+  if (ptype !== 'cash_usd' && !DLPAY.rate) { toast("Kurs belgilanmagan — so'mda yuborib bo'lmaydi", 'error'); return; }
   const usd = dlPayUsd(amount);
   if (usd > (+ME.debt_usd || 0) + 0.01) { toast(`Summa qarzingizdan (${fmtUsd(ME.debt_usd || 0)}) oshib ketdi`, 'error'); return; }
   // Barqaror kalit: tarmoq uzilib qayta bosilsa — server ikki marta yozmaydi
-  const sig = JSON.stringify([DLPAY.type, amount, note]);
+  const sig = JSON.stringify([ptype, amount, note]);
   if (!DLPAY.pend || DLPAY.pend.sig !== sig) DLPAY.pend = { sig, key: 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10) };
   DLPAY.busy = true; const btn = document.getElementById('dlp-btn'); if (btn) { btn.disabled = true; btn.textContent = 'Yuborilmoqda…'; }
   try {
     let res, d;
-    try { res = await authFetch('/.netlify/functions/dealer-pay', { method: 'POST', body: JSON.stringify({ action: 'send', payType: DLPAY.type, amount, note: note || null, idemKey: DLPAY.pend.key }) }); d = await res.json().catch(() => ({})); }
+    try { res = await authFetch('/.netlify/functions/dealer-pay', { method: 'POST', body: JSON.stringify({ action: 'send', payType: ptype, amount, note: note || null, idemKey: DLPAY.pend.key }) }); d = await res.json().catch(() => ({})); }
     catch (_) { toast("Internet bilan aloqa yoʻq — qayta bosing (ikki marta yozilmaydi)", 'error'); return; }
     if (!res.ok || d.ok === false) { toast(String(d.error || 'Yuborilmadi').replace(/^DEALER_PAY:\s*/, ''), 'error'); if (res.status < 500) DLPAY.pend = null; return; }
-    DLPAY.pend = null;
+    DLPAY.pend = null; DLPAY.amt = ''; DLPAY.note = '';   // muvaffaqiyat — maydonlar tozalanadi (xatoda saqlanadi)
     ME.debt_usd = d.dealerDebtUsd; ME.total_paid_usd = d.dealerTotalPaidUsd; if (d.rate) DLPAY.rate = d.rate;
     if (d.notice && !DLPAY.list.some(n => n.id === d.notice.id)) DLPAY.list.unshift(d.notice);
     toast(`✅ Yuborildi — qarzingiz ${fmtUsd(d.dealerDebtUsd)}. Kassir tasdiqlaydi`);

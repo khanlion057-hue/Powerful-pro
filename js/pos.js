@@ -219,6 +219,7 @@ function posRender() {
       <div class="pos-segs">
         <span class="pos-seg" role="group" aria-label="Narx turi"><button class="${POS.mode === 'retail' ? 'on' : ''}" onclick="posSetMode('retail')">Chakana</button><button class="${POS.mode === 'wholesale' ? 'on' : ''}" onclick="posSetMode('wholesale')">Optom</button></span>
         <span class="pos-seg" role="group" aria-label="Valyuta"><button class="${POS.cur === 'UZS' ? 'on' : ''}" onclick="posSetCurT('UZS')">UZS</button><button class="${POS.cur === 'USD' ? 'on' : ''}" onclick="posSetCurT('USD')">USD</button></span>
+        <button class="pos-img-btn${posImgOn() ? ' on' : ''}" onclick="posToggleImg()" aria-pressed="${posImgOn()}" aria-label="Mahsulotlarni rasm bilan koʻrsatish" title="Rasm bilan / faqat nomlar"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2zM8.5 13.5l2.5 3 3.5-4.5 4.5 6H5l3.5-4.5z"/></svg><span>Rasm</span></button>
         ${posCostVisible() ? `<button class="pos-cost-btn${POS.costOn ? ' on' : ''}" id="pos-cost-btn" onclick="posCostFlash()" aria-label="Tannarxni 5 soniya koʻrsatish">Tannarx</button>` : ''}
       </div>
       ${POS.a.topExtra ? POS.a.topExtra() : ''}
@@ -243,6 +244,12 @@ function posRender() {
 }
 function posSetCurT(c) { const s = _posLoadPrefs(); s.curTouched = true; try { localStorage.setItem(_posKey('prefs'), JSON.stringify(Object.assign(s, { mode: POS.mode, cur: c }))); } catch (_) {} posSetCur(c); }
 
+// v25.4 (egasi talabi): «Rasm» rejimi — mahsulotlar rasmli kartalar bilan (Mahsulotlar oynasidagi kabi) yoki faqat nomlar.
+// Tanlov shu qurilmada saqlanadi (standart — o'chiq: ro'yxat tezroq va ixcham).
+function posImgOn() { try { return localStorage.getItem('fw_pos_img') === '1'; } catch (_) { return !!POS._img; } }
+function posToggleImg() { const v = !posImgOn(); POS._img = v; try { localStorage.setItem('fw_pos_img', v ? '1' : '0'); } catch (_) {} posRender(); }
+function posProdImg(p) { const u = (Array.isArray(p.images) && p.images.find(Boolean)) || p.image || ''; return /^(https:|data:image\/)/.test(String(u)) ? String(u) : ''; }
+
 function posFilteredProducts() {
   const fav = posFavs();
   let list = POS.a.products().filter(p => !p.archived);
@@ -258,8 +265,25 @@ function posRenderList() {
   const box = document.getElementById('pos-list'); if (!box) return;
   const all = posFilteredProducts(), list = all.slice(0, 120), fav = posFavs();
   const cart = POS.a.cart();
+  const imgMode = posImgOn();
+  box.classList.toggle('grid', imgMode);
   box.innerHTML = list.length ? list.map(p => {
     const st = POS.a.stock(p.id), ds = !!p.directSale, can = POS.a.canSell(p);
+    if (imgMode) {
+      const inC = cart.filter(c => c.pid === p.id).reduce((a, c) => a + (+c.qty || 0), 0), itc = cart.find(c => c.pid === p.id && !c.directSupply);
+      const pr = posUnitUsd(p), src = posProdImg(p);
+      return `<div class="pos-card${inC ? ' in' : ''}${!can ? ' off' : ''}">
+        <button class="pos-card-main" onclick="posAdd(${p.id})" ${can ? '' : 'disabled'} aria-label="${esc(p.name)} — savatga">
+          <span class="pos-card-pic">${src ? `<img src="${esc(src)}" alt="" loading="lazy">` : `<i class="pos-card-ph" aria-hidden="true">${esc(String(p.name || '?').trim().charAt(0).toUpperCase())}</i>`}${inC ? `<em>${fmtQtyS(inC)}</em>` : ''}</span>
+          <span class="pos-card-n">${esc(p.name)}</span>
+          <span class="pos-card-s${st <= 0 && !ds ? ' red' : ''}">${ds ? 'Taʼminotchidan' : (st > 0 ? `${fmtQtyS(st)} ${esc(p.unit || 'dona')}` : 'tugagan')}</span>
+          <span class="pos-card-p">${pr > 0 ? posFmtN(posUsdToN(pr)) : '—'}</span>
+          ${POS.costOn && posCostVisible() ? `<span class="pos-row-c">Tannarx: ${(() => { const c = +POS.a.unitCost(p) || 0; return c > 0 ? posFmtN(posUsdToN(c)) : '—'; })()}</span>` : ''}
+        </button>
+        <button class="pos-fav${fav.has(p.id) ? ' on' : ''}" onclick="posToggleFav(${p.id})" aria-label="${fav.has(p.id) ? 'Sevimlilardan olib tashlash' : 'Sevimlilarga qoʻshish'}">${PI.star}</button>
+        ${itc ? `<span class="pos-step"><button onclick="posQty('${escJsAttr(itc.key)}',-1)" aria-label="Kamaytirish">−</button><b>${fmtQtyS(itc.qty)}</b><button onclick="posQty('${escJsAttr(itc.key)}',1)" aria-label="Koʻpaytirish">+</button></span>` : ''}
+      </div>`;
+    }
     const unit = esc(p.unit || 'dona');
     const inCart = cart.filter(c => c.pid === p.id).reduce((a, c) => a + (+c.qty || 0), 0);
     const it = cart.find(c => c.pid === p.id && !c.directSupply);

@@ -3,7 +3,7 @@
   Namunaning kamchiliklari tuzatildi: soxta ma'lumot o'rniga haqiqiy katalog (narx va qoldiq serverda, tannarx chiqmaydi, faqat omborda bor va narxli mahsulot), narx 0 yo'q, buyurtma haqiqatan do'kon bo'limiga tushadi (versiya bilan, xodim saqlashi bilan to'qnashmaydi) va Telegram'ga xabar beradi, bot tuzog'i va telefon/IP bo'yicha chegara, 6 MB base64 rasm o'rniga havolalar.
   Admin: «Vitrina havolasi» — haqiqiy havola (`/dokon?s=<slug>`); Telegram hodisa turi `shop`.
 - **APK tez qayta kirish**: 5 daqiqa ichida PINsiz; PIN'dan keyin qayta yuklanmaydi; ruxsatlar parallel; service worker — xeshli fayllar keshdan, sahifa 1,5 s kutish; `app-data-load` so'rovlari parallel (~17 → ~8 ketma-ket); yuklanish foizi qayta to'lmaydi.
-- **Zarrali yuklanish ekrani** (`js/fw-particle-loader.js`, `<fw-particle-loader>`) — tayyor komponent (hali ulanmagan).
+- **Zarrali yuklanish ekrani** (`js/fw-particle-loader.js`, `<fw-particle-loader>`) — admin, sotuvchi va diller yuklanishiga ulandi (`js/fw-boot-loader.js`, arra sahnasi o'rniga): foiz haqiqiy kutishga qarab, ilova tayyor bo'lishi bilan «Tayyor!» va ~1 s da yopiladi.
 - **Telegram hisobot widgeti** — API'siz qism (`_lib/reportPeriod.js`, `_lib/reportWidget.js`); Bot API hujjati kelgach ulanadi.
 - Testlar: p90, p91, p92, p93.
 

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#15161a">
+<title>Onlayn doʻkon — POWERFUL GROUP</title>
+<meta name="description" content="Arra tigʻlari, frezalar va asboblar — onlayn buyurtma, yetkazib berish.">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="stylesheet" href="css/vitrina.css">
+</head>
+<body>
+<a class="vt-skip" href="#vt-grid">Mahsulotlarga oʻtish</a>
+<header class="vt-hd"><div class="vt-wrap vt-hdin">
+  <a class="vt-logo" href="#" onclick="vtHome();return false" aria-label="Bosh sahifa"><img src="assets/logo.png" alt="POWERFUL GROUP" width="92" height="59"><span id="vt-name">Onlayn doʻkon</span></a>
+  <label class="vt-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+    <input id="vt-q" type="search" placeholder="Nom, brend yoki kod (masalan Ø250, 80T)" autocomplete="off" aria-label="Qidirish"></label>
+  <button class="vt-ic" id="vt-favb" aria-label="Sevimlilar"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 6C19 16.5 12 21 12 21z"/></svg><b id="vt-favc" hidden>0</b></button>
+  <button class="vt-ic" id="vt-ordb" aria-label="Buyurtmalarim"><svg viewBox="0 0 24 24"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2z"/><path d="M9 7h6M9 11h6M9 15h4"/></svg></button>
+  <button class="vt-cartb" id="vt-cartb" aria-label="Savat"><svg viewBox="0 0 24 24"><path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.5L21 8H6.2"/><circle cx="10" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/></svg><b id="vt-cartc">0</b></button>
+</div></header>
+
+<main class="vt-wrap" id="vt-main">
+  <section class="vt-hero" id="vt-hero" aria-roledescription="slayder"></section>
+  <div class="vt-perks" id="vt-perks"></div>
+
+  <section class="vt-finder" id="vt-finder" hidden>
+    <div class="vt-fhd"><b>Arra tigʻi tanlash yordamchisi</b><small>Stanokingizga mos tigʻni 3 qadamda toping</small></div>
+    <div class="vt-frow"><span>Material</span><div class="vt-seg" id="vt-fmat"></div></div>
+    <div class="vt-frow"><span>Diametr</span><div class="vt-seg" id="vt-fdia"></div></div>
+    <div class="vt-frow"><span>Tish soni</span><div class="vt-seg" id="vt-ftooth"></div></div>
+    <p class="vt-fhint" id="vt-fhint"></p>
+  </section>
+
+  <div class="vt-bar">
+    <div class="vt-chips" id="vt-chips" role="tablist" aria-label="Kategoriyalar"></div>
+    <select class="vt-sel" id="vt-brand" aria-label="Brend"></select>
+    <select class="vt-sel" id="vt-sort" aria-label="Saralash"><option value="def">Odatiy</option><option value="lo">Arzonroq</option><option value="hi">Qimmatroq</option><option value="disc">Chegirmadagilar</option><option value="az">Nom (A–Z)</option></select>
+  </div>
+  <p class="vt-count" id="vt-count" aria-live="polite"></p>
+  <div class="vt-grid" id="vt-grid"></div>
+
+  <section id="vt-recentw" hidden><h3 class="vt-h3">Yaqinda koʻrilganlar</h3><div class="vt-row" id="vt-recent"></div></section>
+</main>
+
+<footer class="vt-ft"><div class="vt-wrap vt-ftin" id="vt-ft"></div></footer>
+
+<div class="vt-cartbar" id="vt-cartbar" hidden><span id="vt-cbt"></span><button id="vt-cbgo">Savatni ochish →</button></div>
+<div class="vt-ov" id="vt-ov" hidden><div class="vt-sheet" id="vt-sheet" role="dialog" aria-modal="true"></div></div>
+<div class="vt-toast" id="vt-toast" role="status" aria-live="polite"></div>
+
+<script src="js/fw-err.js"></script>
+<script src="js/vitrina.js"></script>
+</body>
+</html>

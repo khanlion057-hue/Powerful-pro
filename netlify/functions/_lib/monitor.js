@@ -21,6 +21,7 @@ const LIMITS = {
   'staff-whoami': { scope: 'whoami', n: 150, s: 300 },
   'pw-reset': { scope: 'pwreset', n: 30, s: 300 },      // ichida soatlik IP chegarasi ham bor
   'client-error': { scope: 'cerr', n: 20, s: 300 },
+  'shop-public': { scope: 'shop', n: 600, s: 300 },   // ommaviy vitrina — katalog keshlanadi; buyurtmaga alohida soatlik chegara
 };
 const SLOW_MS = 8000;
 

@@ -10,7 +10,7 @@ const { checkAnonKey, checkUrl, parseConfigJs } = require('./lib/config');
 
 const ROOT = path.join(__dirname, '..');
 const DIST = path.join(ROOT, 'dist');
-const SITE = ['index.html', 'sotuvchi.html', 'diller.html', '404.html', 'manifest.json', 'sw.js', 'icon-180.png', 'icon-192.png', 'icon-512.png', 'assets', 'css', 'js', '.well-known'];
+const SITE = ['index.html', 'sotuvchi.html', 'diller.html', 'dokon.html', '404.html', 'manifest.json', 'sw.js', 'icon-180.png', 'icon-192.png', 'icon-512.png', 'assets', 'css', 'js', '.well-known'];
 
 function copy(src, dst) {
   const st = fs.statSync(src);
@@ -24,7 +24,7 @@ function copy(src, dst) {
 // h/ — js/ va css/ bilan bir chuqurlikda: CSS ichidagi «../assets/…» havolalari o'zgarmay ishlaydi.
 function hashAssets() {
   const crypto = require('crypto');
-  const PAGES = ['index.html', 'sotuvchi.html', 'diller.html'];
+  const PAGES = ['index.html', 'sotuvchi.html', 'diller.html', 'dokon.html'];
   const RE = /((?:src|href)=")((?:js|css)\/[A-Za-z0-9._-]+\.(?:js|css))(")/g;
   const refs = new Set();
   for (const h of PAGES) for (const m of fs.readFileSync(path.join(DIST, h), 'utf8').matchAll(RE)) refs.add(m[2]);
@@ -72,7 +72,7 @@ function build() {
   hashAssets();
 
   // HTML ichidagi lokal havolalar dist'da mavjudmi
-  for (const h of ['index.html', 'sotuvchi.html', 'diller.html']) {
+  for (const h of ['index.html', 'sotuvchi.html', 'diller.html', 'dokon.html']) {
     const s = fs.readFileSync(path.join(DIST, h), 'utf8');
     for (const m of s.matchAll(/(?:src|href)="([^"#:]+?)"/g)) {
       const u = m[1].split('?')[0];

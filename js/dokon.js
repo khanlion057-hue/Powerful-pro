@@ -612,9 +612,12 @@ function dkMapSet(lat, lng, center) {
 }
 
 // ── Havola: nusxalash / ulashish / ochish ──
+// v25.3: ommaviy vitrina ishga tushdi — dokon.html?s=<slug> (sozlamada boshqa manzil berilgan bo'lsa — o'sha)
 function shopPublicUrl() {
   const base = (S.settings && S.settings.shopPublicBase) || '';
-  return base ? `${String(base).replace(/\/+$/, '')}/${shopCfg().slug}` : '';
+  if (base) return `${String(base).replace(/\/+$/, '')}/${shopCfg().slug}`;
+  if (!shopCfg().enabled || typeof location === 'undefined' || !/^https?:$/.test(location.protocol)) return '';
+  return `${location.origin}/dokon?s=${encodeURIComponent(shopCfg().slug)}`;
 }
 function dkCopyLink() {
   const url = shopPublicUrl();
@@ -629,9 +632,9 @@ function dkShare() {
   else dkCopyLink();
 }
 function dkPublicInfo() {
-  openSheet({ ic:'link', c:'sky', title:'Vitrina havolasi', sub:'Ommaviy vitrina hali ishga tushirilmagan',
-    body:`<p class="bs-info">${ICONF.info}<span>Doʻkon, buyurtmalar, bannerlar va chegirmalar shu ilovada toʻliq ishlaydi. Xaridorlar oʻzlari ochadigan <b>ommaviy vitrina</b> sahifasi (va Telegram bot orqali buyurtma qabul qilish) — keyingi bosqich: u server tomonida alohida himoyalangan buyurtma qabul qilishni talab qiladi.</span></p>
-      <p class="bs-info">${ICONF.launch}<span>Hozir «Ochish» tugmasi vitrinani xaridor koʻzi bilan koʻrsatadi — u yerdan sinov buyurtmasi ham berish mumkin (u «Sinov» belgisi bilan chiqadi).</span></p>`,
+  openSheet({ ic:'link', c:'sky', title:'Vitrina havolasi', sub:'Avval doʻkonni yoqing',
+    body:`<p class="bs-info">${ICONF.info}<span>Xaridorlar oʻzlari ochadigan <b>ommaviy vitrina</b> ishga tushgan: <b>/dokon</b> sahifasi. Buyurtmalar shu boʻlimga «Vitrina» belgisi bilan tushadi, Telegram guruhga xabar keladi. Havola chiqishi uchun Sozlamalarda doʻkonni <b>yoqing</b>.</span></p>
+      <p class="bs-info">${ICONF.launch}<span>Narx va qoldiq serverda hisoblanadi (tannarx koʻrinmaydi). Faqat omborda bor va narxi qoʻyilgan mahsulotlar chiqadi.</span></p>`,
     foot:`<button class="bs-btn" onclick="closeSheet();dkOpenStorefront()">${ICONF.launch} Vitrinani ochish</button>` });
 }
 

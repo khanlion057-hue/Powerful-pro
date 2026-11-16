@@ -112,7 +112,7 @@ async function testMonitor() {
 
   // Barcha funksiyalar o'ralgan
   const files = fs.readdirSync(FN).filter((f) => f.endsWith('.js'));
-  assert.equal(files.length, 65);
+  assert.equal(files.length, 66);
   for (const f of files) assert.equal(require(path.join(FN, f)).handler._fwMonitored, f.slice(0, -3), `${f} kuzatuvchi bilan o'ralgan`);
 }
 

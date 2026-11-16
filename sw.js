@@ -4,13 +4,13 @@
    • CDN kutubxonalari (versiyasi qat'iy, SRI bilan) va shriftlar — keshdan darhol (tez ochilish); yo'q bo'lsa tarmoqdan.
    • Server funksiyalari (/.netlify/functions), Supabase va boshqa so'rovlar — HECH QACHON keshlanmaydi (pul va qoldiq
      ma'lumoti faqat serverdan; oflayn savdolar ilovaning o'z navbatida turadi va internet qaytganda yuboriladi). */
-const CACHE = 'powerful-v25-13';
+const CACHE = 'powerful-v25-14';
 const SHELL = [
-  './', './index.html', './sotuvchi.html', './diller.html', './manifest.json',
-  './css/style.css', './css/design-system.css',
+  './', './index.html', './sotuvchi.html', './diller.html', './dokon.html', './manifest.json',
+  './css/style.css', './css/design-system.css', './css/vitrina.css',
   './js/config.js', './js/brand.js', './js/fw-err.js', './js/fw-saw-loader.js', './js/fw-round.js', './js/shared.js', './js/pos.js', './js/main.js', './js/sotuvchi.js', './js/diller.js',
-  './js/firma-kassa.js', './js/dokon.js', './js/writeoff.js', './js/dealer-pay.js', './js/notifications.js', './js/zaklad.js', './js/shell.js',
-  './assets/brand-logo.png', './assets/brand-logo-dark.png', './assets/brand-mark.png', './assets/chek/pg-mark.png', './assets/chek/pg-mark-bw.png', './assets/chek/banner-top.jpg', './assets/chek/banner-bottom.jpg', './assets/saw-blade.svg', './assets/tile-pattern.svg', './icon-192.png', './icon-180.png',
+  './js/firma-kassa.js', './js/dokon.js', './js/writeoff.js', './js/dealer-pay.js', './js/notifications.js', './js/zaklad.js', './js/shell.js', './js/vitrina.js',
+  './assets/brand-logo.png', './assets/logo.png', './assets/brand-logo-dark.png', './assets/brand-mark.png', './assets/chek/pg-mark.png', './assets/chek/pg-mark-bw.png', './assets/chek/banner-top.jpg', './assets/chek/banner-bottom.jpg', './assets/saw-blade.svg', './assets/tile-pattern.svg', './icon-192.png', './icon-180.png',
 ];
 const CDN_HOSTS = ['cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com'];
 const NET_TIMEOUT_MS = 4000;
@@ -68,7 +68,7 @@ self.addEventListener('fetch', (e) => {
   // v25.3: xeshli nusxalar (build → /h/) — nomi mazmunga bog'liq, hech qachon o'zgarmaydi: avval kesh (tarmoq kutilmaydi)
   if (url.pathname.startsWith('/h/')) { e.respondWith(cacheFirst(req)); return; }
   const isPage = req.mode === 'navigate';
-  const page = /\/sotuvchi(\.html)?$/.test(url.pathname) ? './sotuvchi.html' : /\/diller(\.html)?$/.test(url.pathname) ? './diller.html' : './index.html';
+  const page = /\/sotuvchi(\.html)?$/.test(url.pathname) ? './sotuvchi.html' : /\/diller(\.html)?$/.test(url.pathname) ? './diller.html' : /\/dokon(\.html)?$/.test(url.pathname) ? './dokon.html' : './index.html';
   // v25.3: sahifa — tarmoq 1,5 soniyada javob bermasa keshdagisi ochiladi (sekin internetda ilova tez ochiladi; yangisi fonda keshga tushadi)
   e.respondWith(networkFirst(req, isPage ? page : null, isPage ? NAV_TIMEOUT_MS : 0));
 });

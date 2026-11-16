@@ -30,6 +30,12 @@
   to = "/diller.html"
   status = 200
 
+# v25.3: ommaviy vitrina (xaridorlar uchun onlayn do'kon)
+[[redirects]]
+  from = "/dokon"
+  to = "/dokon.html"
+  status = 200
+
 [[redirects]]
   from = "/index"
   to = "/"

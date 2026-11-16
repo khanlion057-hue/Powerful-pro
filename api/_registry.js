@@ -51,6 +51,7 @@ module.exports = {
   'sale-ops': () => require('../netlify/functions/sale-ops.js'),
   'sale-return-shadow-check': () => require('../netlify/functions/sale-return-shadow-check.js'),
   'shop-bot': () => require('../netlify/functions/shop-bot.js'),
+  'shop-public': () => require('../netlify/functions/shop-public.js'),
   'staff-delete': () => require('../netlify/functions/staff-delete.js'),
   'staff-list': () => require('../netlify/functions/staff-list.js'),
   'staff-login': () => require('../netlify/functions/staff-login.js'),

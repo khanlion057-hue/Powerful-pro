@@ -1126,6 +1126,7 @@ html[data-variant^="mono"] .kr-q.on, html[data-variant^="mono"] .kf-addrow, html
 .sx-chart .kst-col.cur .kst-bar{ box-shadow:0 0 0 2px color-mix(in srgb,var(--c) 40%,transparent); }
 /* ombor plitkalari */
 .sx-tiles{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+div.sx-tile{ cursor:default !important; }
 .sx-tile{ --c:var(--sky); display:flex; align-items:center; gap:11px; min-width:0; padding:12px; border-radius:18px; cursor:pointer; font:inherit; text-align:left;
   color:var(--text-primary); background:var(--bg-card); border:1px solid var(--border); }
 .sx-tile:not([onclick]){ cursor:default; }
@@ -3164,6 +3165,7 @@ body::before{ content:''; position:fixed; inset:0; z-index:-1; pointer-events:no
   -webkit-backdrop-filter:blur(10px); border-bottom:1px solid var(--border); }
 .pt-top2 .fw-shop-sw.pt-brand{ display:flex; flex:0 1 auto; max-width:340px; min-height:52px; }
 .pt-top2 .fw-shop-t b{ font-size:18px; }
+@media (max-width:480px){ .pt-top2 .fw-shop-t b{ font-size:clamp(13px,3.9vw,16px); letter-spacing:-.01em; } }   /* v25.3: telefonda «POWERFUL GROUP» qirqilmasin */
 .pt-top2 > .pt-date{ display:none; }
 .pt-sr{ position:absolute !important; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
 .dl-wrap .dl-topbar.pt-top2 > .pt-who.pt-sr{ flex:none; }
@@ -3173,7 +3175,7 @@ body::before{ content:''; position:fixed; inset:0; z-index:-1; pointer-events:no
 .pt-ava{ order:5; flex:none; width:48px; height:48px; border-radius:50%; border:1px solid var(--border); background:var(--bg-card); color:var(--text-primary);
   font:inherit; font-size:15px; font-weight:800; letter-spacing:.02em; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; }
 .pt-ava:hover{ border-color:color-mix(in srgb,var(--gold) 50%,var(--border)); color:var(--gold); }
-@media (max-width:360px){ .pt-top2 .fw-shop-t b{ font-size:16px; } .pt-ava, .pt-top2 .pt-ib.pt-bell{ width:42px; height:42px; } }
+@media (max-width:360px){ .pt-top2 .fw-shop-t b{ font-size:13.5px; } .pt-ava, .pt-top2 .pt-ib.pt-bell{ width:42px; height:42px; } }
 
 /* Yon menyu — faqat kompyuterda (≥1025px), admin .sidebar kabi */
 .pt-side{ display:none; }

@@ -3011,11 +3011,11 @@ function dashShowSale(sid) {
       ${s.debtUsd>0?`<div style="color:var(--red);font-size:13px;margin-top:6px">Qarz: ${CUR.fmtUsd(s.debtUsd)}</div>`:''}
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost btn-sm" onclick="closeModal();openEditSale(${s.id})">✏️ Tahrirlash</button>
-      <button class="btn btn-danger btn-sm" onclick="closeModal();openSaleReturn(${s.id})">↩️ Qaytarish</button>
-      <button class="btn btn-danger btn-sm" onclick="closeModal();deleteSale(${s.id})">🗑 O'chirish</button>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal();openEditSale(${JSON.stringify(s.id).replace(/"/g,'&quot;')})">✏️ Tahrirlash</button>
+      <button class="btn btn-danger btn-sm" onclick="closeModal();openSaleReturn(${JSON.stringify(s.id).replace(/"/g,'&quot;')})">↩️ Qaytarish</button>
+      <button class="btn btn-danger btn-sm" onclick="closeModal();deleteSale(${JSON.stringify(s.id).replace(/"/g,'&quot;')})">🗑 O'chirish</button>
       <button class="btn btn-ghost" onclick="closeModal()">Yopish</button>
-      <button class="btn btn-primary" onclick="printReceipt(${s.id})">🖨️ Chop</button>
+      <button class="btn btn-primary" onclick="printReceipt(${JSON.stringify(s.id).replace(/"/g,'&quot;')})">🖨️ Chop</button>
     </div>`);
 }
 
@@ -3091,8 +3091,8 @@ function pgSavdoToday() {
       <td><span class="badge badge-${s.debtUsd > 0.005 ? 'danger' : 'success'}">${s.debtUsd > 0.005 ? 'Qarz' : 'Toʻlangan'}</span></td>
       <td style="display:flex;gap:4px">
         <button class="btn btn-ghost btn-sm" onclick="printReceipt(${JSON.stringify(s.id)})" aria-label="Chop etish">🖨️</button>
-        <button class="btn btn-danger btn-sm" onclick="openSaleReturn(${JSON.stringify(s.id)})" aria-label="Qaytarish">↩️</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteSale(${JSON.stringify(s.id)})" aria-label="Oʻchirish">🗑</button>
+        <button class="btn btn-danger btn-sm" onclick="openSaleReturn(${JSON.stringify(s.id).replace(/"/g,'&quot;')})" aria-label="Qaytarish">↩️</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteSale(${JSON.stringify(s.id).replace(/"/g,'&quot;')})" aria-label="Oʻchirish">🗑</button>
       </td></tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">Bugun savdo yoʻq</td></tr>'}
     </tbody></table></div>`;
 }
@@ -3533,9 +3533,9 @@ function qrRows(list) {
       <div class="om-b-h"><code>${esc(s.inv||'')}</code>${s.edited?'<span class="fw-tag" style="--c:var(--gold)">Tahrirlangan</span>':''}${debt?'<span class="fw-tag" style="--c:var(--red)">Nasiya</span>':''}<time>${fmtD(s.date)}</time></div>
       <div class="qr-s-m"><span><b>${esc(fwCustLabel(s.custName))}</b><small>${esc(s.staffName||'Admin')} · ${items.length} xil · ${esc(items.slice(0,2).map(i=>i.name||i.sku).join(', '))}${items.length>2?'…':''}</small></span><b class="qr-s-t">${CUR.fmtUsd(s.totalUsd)}</b></div>
       <div class="fw-pc-a">
-        <button class="fw-btn qr-ret" onclick="openSaleReturn(${s.id})">${ICONF.ret}<span>Qaytarish</span></button>
-        <button class="fw-btn" onclick="openSaleEdit(${s.id})">${ICONF.edit}<span>Tahrir</span></button>
-        <button class="fw-btn icon" onclick="deleteSale(${s.id})" title="Butunlay oʻchirish" aria-label="Savdoni butunlay oʻchirish">${ICONF.trash}</button>
+        <button class="fw-btn qr-ret" onclick="openSaleReturn(${JSON.stringify(s.id).replace(/"/g,'&quot;')})">${ICONF.ret}<span>Qaytarish</span></button>
+        <button class="fw-btn" onclick="openSaleEdit(${JSON.stringify(s.id).replace(/"/g,'&quot;')})">${ICONF.edit}<span>Tahrir</span></button>
+        <button class="fw-btn icon" onclick="deleteSale(${JSON.stringify(s.id).replace(/"/g,'&quot;')})" title="Butunlay oʻchirish" aria-label="Savdoni butunlay oʻchirish">${ICONF.trash}</button>
       </div></article>`; }).join('')}</div>`;
 }
 
@@ -6422,7 +6422,7 @@ function suppSearch(q, onFocus) {
   const r = t ? multiFieldSearch(S.suppliers, t, s=>[s.name, s.country, s.phone]).slice(0,12)
               : [...S.suppliers].sort((a,b)=>String(a.name).localeCompare(String(b.name))).slice(0,12);
   let html = t ? '' : '<div class="kf-dd-h">Taʼminotchilar</div>';
-  html += r.map(s=>`<button type="button" class="kf-opt" onmousedown="event.preventDefault()" onclick="suppSelect(${s.id})">
+  html += r.map(s=>`<button type="button" class="kf-opt" onmousedown="event.preventDefault()" onclick="suppSelect(${JSON.stringify(s.id).replace(/"/g,'&quot;')})">
       <span class="kf-av">${esc(String(s.name||'?')[0].toUpperCase())}</span><span class="kf-opt-n">${esc(s.name)}</span>
       <span class="kf-opt-m">${[s.country, (+s.debt||0)>0.004?`qarz ${CUR.fmtUsd(s.debt)}`:(+s.debt||0)<-0.004?`haq ${CUR.fmtUsd(-s.debt)}`:''].filter(Boolean).map(esc).join(' · ')}</span></button>`).join('');
   if (t) html += `<button type="button" class="kf-opt kf-new" onmousedown="event.preventDefault()" onclick="suppSelectNew('${escJsAttr(t)}')">${ICONF.add}<span class="kf-opt-n">«${esc(t)}» — yangi taʼminotchi</span></button>`;
@@ -7445,11 +7445,11 @@ function tmRows(list) {
       ${(s.tg||s.wa||s.wechat)?`<div class="sp-chs">${suppContactChips(s)}</div>`:''}${s.note?`<small class="sp-note">📝 ${esc(String(s.note).slice(0,140))}</small>`:''}</div>
     <div class="fw-pc-v ${debt?'warn':'ok'}"><b>${debt?suppDebtTxt(s):'Qarz yoʻq'}</b><small>Toʻlangan: ${CUR.fmtUsd(s.paid||0)}</small></div>
     <div class="fw-pc-a">
-      ${debt?`<button class="fw-btn ok" onclick="openPaySupplierDebt(${s.id})">${ICONF.money}<span>Toʻlash</span></button>`:''}
+      ${debt?`<button class="fw-btn ok" onclick="openPaySupplierDebt(${JSON.stringify(s.id).replace(/"/g,'&quot;')})">${ICONF.money}<span>Toʻlash</span></button>`:''}
       ${debt&&hasPerm('taminotchilar.edit')?`<button class="fw-btn" onclick="openDebtDiscount('supp',${s.id})">${ICONF.percent}<span>Chegirma</span></button>`:''}
       ${typeof sadvRowBtns==='function'?sadvRowBtns(s):''}
-      <button class="fw-btn" onclick="openTaminotchiTarixi(${s.id})">${ICONF.history}<span>Tarix</span></button>
-      <button class="fw-btn" onclick="editSupplier(${s.id})">${ICONF.edit}<span>Tahrir</span></button>
+      <button class="fw-btn" onclick="openTaminotchiTarixi(${JSON.stringify(s.id).replace(/"/g,'&quot;')})">${ICONF.history}<span>Tarix</span></button>
+      <button class="fw-btn" onclick="editSupplier(${JSON.stringify(s.id).replace(/"/g,'&quot;')})">${ICONF.edit}<span>Tahrir</span></button>
     </div></article>`; }).join('')}</div>`;
 }
 
@@ -12392,7 +12392,7 @@ function pgHisobot() {
   // Hozirgi ombor
   const act = branchVisibleProducts(S.products).filter(p=>!p.archived && !p.directSale);
   let oUnits=0, oVal=0, oLow=0, oOut=0; act.forEach(p=>{ const q=getStock(p.id); oUnits+=q; oVal+=q*getCostFIFO(p.id); if(q===0) oOut++; else if(q<=p.minStock) oLow++; });
-  const tile = (ic,c,v,l,on) => `<button class="sx-tile" style="--c:var(--${c})"${on?` onclick="${on}"`:''}><span class="sx-tile-ic">${ICONF[ic]}</span><span class="sx-tile-t"><b>${v}</b><small>${l}</small></span></button>`;
+  const tile = (ic,c,v,l,on) => `<${on?'button':'div'} class="sx-tile" style="--c:var(--${c})"${on?` onclick="${on}"`:''}><span class="sx-tile-ic">${ICONF[ic]}</span><span class="sx-tile-t"><b>${v}</b><small>${l}</small></span></${on?'button':'div'}>`;   // amalsiz ko'rsatkich — tugma emas
   const lastRev = (S.revisions||[])[0];
   // Davr bo'yicha pul
   const money = [['Sotuv',D.rev,'emerald'],['Chegirma',D.disc,'pink'],['Qarz',D.debt,'amber'],['Qaytarish',D.ret,'amber'],['Xarajatlar',D.exp,'red'],['Hisobdan chiqarish',D.wo||0,'red'],['Sof foyda',D.profit-D.exp-(D.wo||0),'sky']];

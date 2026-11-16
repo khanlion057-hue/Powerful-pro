@@ -230,7 +230,8 @@ body {
 
 .user-avatar {
   width: 36px; height: 36px;
-  background: linear-gradient(135deg, var(--purple), var(--blue));
+  background: linear-gradient(135deg, #E8961E, #8A5208);   /* brend: oltin (avval binafsha-ko'k) */
+  color: #fff;
   border-radius: 50%;
   display: flex;
   align-items: center;

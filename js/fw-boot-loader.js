@@ -7,7 +7,7 @@
   if (typeof window === 'undefined' || !window.FWParticleLoader) return;
   var L = null, t0 = 0, timer = 0;
   function shown(el) { return !!el && getComputedStyle(el).display !== 'none' && el.getClientRects().length > 0; }
-  function box() { var a = document.getElementById('bp-loading'); if (shown(a)) return a; var b = document.getElementById('fw-splash'); return shown(b) ? b : null; }
+  function box() { var a = document.getElementById('bp-loading'); if (shown(a)) return a; var b = document.getElementById('fw-splash'); return document.documentElement.classList.contains('fw-booting') && shown(b) ? b : null; }   // splash — faqat yuklanish holatida (CSS yuklanmagan bo'lsa ham adashmaydi)
   function label(b) { var s = b && b.querySelector('.fw-load-s'); return s ? String(s.textContent || '').trim().toUpperCase() : 'BOSHQARUV PANELI'; }
   function check() {
     var b = box();
@@ -17,6 +17,7 @@
       clearInterval(timer);
       timer = setInterval(function () {
         if (!L) { clearInterval(timer); return; }
+        if (!box()) { if (!L.doneAt) L.complete(); return; }   // oyna yopilgan (hodisa o'tkazib yuborilgan bo'lsa ham) — yakunlash
         var p = 92 * (1 - Math.exp(-(Date.now() - t0) / 2400));
         if (!L.doneAt) L.setProgress(Math.max(2, Math.round(p)));
       }, 150);

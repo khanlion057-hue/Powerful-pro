@@ -244,11 +244,11 @@ function posRender() {
 }
 function posSetCurT(c) { const s = _posLoadPrefs(); s.curTouched = true; try { localStorage.setItem(_posKey('prefs'), JSON.stringify(Object.assign(s, { mode: POS.mode, cur: c }))); } catch (_) {} posSetCur(c); }
 
-// v25.4 (egasi talabi): «Rasm» rejimi — mahsulotlar rasmli kartalar bilan (Mahsulotlar oynasidagi kabi) yoki faqat nomlar.
+// v25.4 (egasi talabi): «Rasm» rejimi — ro'yxatda nom oldida kichik rasm (bosilsa — barcha rasmlar) yoki faqat nomlar.
 // Tanlov shu qurilmada saqlanadi (standart — o'chiq: ro'yxat tezroq va ixcham).
 function posImgOn() { try { return localStorage.getItem('fw_pos_img') === '1'; } catch (_) { return !!POS._img; } }
 function posToggleImg() { const v = !posImgOn(); POS._img = v; try { localStorage.setItem('fw_pos_img', v ? '1' : '0'); } catch (_) {} posRender(); }
-function posProdImg(p) { const u = (Array.isArray(p.images) && p.images.find(Boolean)) || p.image || ''; return /^(https:|data:image\/)/.test(String(u)) ? String(u) : ''; }
+function posGallery(pid) { const p = POS.a.products().find(x => String(x.id) === String(pid)); if (p) fwGallery(fwProdImages(p), p.name, 0); }
 
 function posFilteredProducts() {
   const fav = posFavs();
@@ -266,31 +266,20 @@ function posRenderList() {
   const all = posFilteredProducts(), list = all.slice(0, 120), fav = posFavs();
   const cart = POS.a.cart();
   const imgMode = posImgOn();
-  box.classList.toggle('grid', imgMode);
   box.innerHTML = list.length ? list.map(p => {
     const st = POS.a.stock(p.id), ds = !!p.directSale, can = POS.a.canSell(p);
-    if (imgMode) {
-      const inC = cart.filter(c => c.pid === p.id).reduce((a, c) => a + (+c.qty || 0), 0), itc = cart.find(c => c.pid === p.id && !c.directSupply);
-      const pr = posUnitUsd(p), src = posProdImg(p);
-      return `<div class="pos-card${inC ? ' in' : ''}${!can ? ' off' : ''}">
-        <button class="pos-card-main" onclick="posAdd(${p.id})" ${can ? '' : 'disabled'} aria-label="${esc(p.name)} — savatga">
-          <span class="pos-card-pic">${src ? `<img src="${esc(src)}" alt="" loading="lazy">` : `<i class="pos-card-ph" aria-hidden="true">${esc(String(p.name || '?').trim().charAt(0).toUpperCase())}</i>`}${inC ? `<em>${fmtQtyS(inC)}</em>` : ''}</span>
-          <span class="pos-card-n">${esc(p.name)}</span>
-          <span class="pos-card-s${st <= 0 && !ds ? ' red' : ''}">${ds ? 'Taʼminotchidan' : (st > 0 ? `${fmtQtyS(st)} ${esc(p.unit || 'dona')}` : 'tugagan')}</span>
-          <span class="pos-card-p">${pr > 0 ? posFmtN(posUsdToN(pr)) : '—'}</span>
-          ${POS.costOn && posCostVisible() ? `<span class="pos-row-c">Tannarx: ${(() => { const c = +POS.a.unitCost(p) || 0; return c > 0 ? posFmtN(posUsdToN(c)) : '—'; })()}</span>` : ''}
-        </button>
-        <button class="pos-fav${fav.has(p.id) ? ' on' : ''}" onclick="posToggleFav(${p.id})" aria-label="${fav.has(p.id) ? 'Sevimlilardan olib tashlash' : 'Sevimlilarga qoʻshish'}">${PI.star}</button>
-        ${itc ? `<span class="pos-step"><button onclick="posQty('${escJsAttr(itc.key)}',-1)" aria-label="Kamaytirish">−</button><b>${fmtQtyS(itc.qty)}</b><button onclick="posQty('${escJsAttr(itc.key)}',1)" aria-label="Koʻpaytirish">+</button></span>` : ''}
-      </div>`;
-    }
+    const imgs = imgMode ? fwProdImages(p) : [];
+    // v25.4: «Rasm» rejimi — nom OLDIDA kichik rasm; bosilsa mahsulotning barcha rasmlari (rasmi yo'q — bosh harf, bosilmaydi)
+    const thumb = !imgMode ? '' : imgs.length
+      ? `<button type="button" class="pos-thumb has" onclick="posGallery(${p.id})" aria-label="${esc(p.name)} — rasmlarni koʻrish"><img src="${esc(imgs[0])}" alt="" loading="lazy">${imgs.length > 1 ? `<em>${imgs.length}</em>` : ''}</button>`
+      : `<span class="pos-thumb" aria-hidden="true">${esc(String(p.name || '?').trim().charAt(0).toUpperCase())}</span>`;
     const unit = esc(p.unit || 'dona');
     const inCart = cart.filter(c => c.pid === p.id).reduce((a, c) => a + (+c.qty || 0), 0);
     const it = cart.find(c => c.pid === p.id && !c.directSupply);
     const price = posUnitUsd(p);
     const stTxt = ds ? 'Taʼminotchidan' : (st > 0 ? `Qoldiq: ${fmtQtyS(st)} ${unit}` : 'Qoldiq: 0 — tugagan');
-    return `<div class="pos-row${inCart ? ' in' : ''}${!can ? ' off' : ''}">
-      <button class="pos-row-main" onclick="posAdd(${p.id})" ${can ? '' : 'disabled'}>
+    return `<div class="pos-row${inCart ? ' in' : ''}${!can ? ' off' : ''}${imgMode ? ' img' : ''}">
+      ${thumb}<button class="pos-row-main" onclick="posAdd(${p.id})" ${can ? '' : 'disabled'}>
         <span class="pos-row-n">${esc(p.name)}${p.sku ? ` <small>${esc(p.sku)}</small>` : ''}</span>
         <span class="pos-row-s${st <= 0 && !ds ? ' red' : ''}">${stTxt}</span>
         <span class="pos-row-p">${price > 0 ? posFmtN(posUsdToN(price)) : '—'}</span>

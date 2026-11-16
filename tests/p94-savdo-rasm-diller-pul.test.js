@@ -13,7 +13,7 @@ async function testPosImages() {
   for (const width of [390, 340]) {
     const { browser, page, errors } = await openPage('index.html', { width, height: 844, mobile: true, admin: true });
     try {
-      await page.evaluate((img) => { try { localStorage.removeItem('fw_pos_img'); } catch (_) {} S.products[0].image = img; go('savdo'); }, IMG);
+      await page.evaluate((img) => { try { localStorage.removeItem('fw_pos_img'); } catch (_) {} S.products.forEach((p) => { delete p.image; delete p.images; }); const first = S.products.slice().sort((a, b) => String(a.name).localeCompare(String(b.name)))[0]; first.images = [img, img + '#2']; first.image = img; window.__pid = first.id; go('savdo'); }, IMG);
       await page.waitForSelector('.pos-segs');
       // Bitta chiziq: yuqori qatordagi barcha boshqaruvlar bir xil balandlikda (o'ralmagan)
       const row = await page.evaluate(() => { const t = document.querySelector('.pos-top'); const tops = [...t.querySelectorAll('.pos-seg, .pos-img-btn, .pos-ib')].map((e) => Math.round(e.getBoundingClientRect().top + e.getBoundingClientRect().height / 2)); return { tops, w: t.scrollWidth, cw: document.documentElement.clientWidth }; });
@@ -21,24 +21,37 @@ async function testPosImages() {
       assert.ok(await page.$('.pos-img-btn'), '«Rasm» tugmasi bor');
       assert.equal(await page.$eval('.pos-img-btn', (b) => b.getAttribute('aria-pressed')), 'false', 'standart — o\'chiq (faqat nomlar)');
       assert.ok((await page.$$('#pos-list .pos-row')).length > 0); assert.equal((await page.$$('#pos-list .pos-card')).length, 0);
-      // Yoqish → rasmli kartalar
-      await page.click('.pos-img-btn'); await page.waitForSelector('#pos-list .pos-card');
+      // Yoqish → ro'yxat qoladi, har nom OLDIDA kichik rasm (rasmi yo'q — belgi)
+      await page.click('.pos-img-btn'); await page.waitForSelector('#pos-list .pos-thumb');
       assert.equal(await page.$eval('.pos-img-btn', (b) => b.getAttribute('aria-pressed')), 'true');
-      const cards = await page.evaluate(() => ({ n: document.querySelectorAll('#pos-list .pos-card').length, rows: document.querySelectorAll('#pos-list .pos-row').length,
-        imgs: document.querySelectorAll('#pos-list .pos-card img').length, ph: document.querySelectorAll('#pos-list .pos-card .pos-card-ph').length,
-        cols: new Set([...document.querySelectorAll('#pos-list .pos-card')].map((c) => Math.round(c.getBoundingClientRect().left))).size,
-        hs: document.documentElement.scrollWidth > innerWidth + 1 }));
-      assert.equal(cards.rows, 0); assert.ok(cards.n >= 2); assert.equal(cards.imgs, 1, 'rasmi bor mahsulot — rasm'); assert.equal(cards.ph, cards.n - 1, 'rasmi yo\'q — belgi');
-      assert.ok(cards.cols >= 2, 'telefonda kamida 2 ustun'); assert.equal(cards.hs, false, 'gorizontal surilish yo\'q');
-      // Kartadan savatga
-      await page.click('#pos-list .pos-card .pos-card-main');
-      assert.equal(await page.evaluate(() => S.cart.length), 1, 'kartani bosish — savatga');
-      assert.ok(await page.$('#pos-list .pos-card .pos-step'), 'savatdagi kartada miqdor boshqaruvi');
+      const rows = await page.evaluate(() => { const r = [...document.querySelectorAll('#pos-list .pos-row')]; const f = r[0];
+        return { n: r.length, thumbs: document.querySelectorAll('#pos-list .pos-row .pos-thumb').length, imgs: document.querySelectorAll('#pos-list .pos-thumb img').length,
+          before: f.querySelector('.pos-thumb').getBoundingClientRect().right <= f.querySelector('.pos-row-n').getBoundingClientRect().left + 1,
+          size: Math.round(f.querySelector('.pos-thumb').getBoundingClientRect().width), hs: document.documentElement.scrollWidth > innerWidth + 1, cards: document.querySelectorAll('#pos-list .pos-card').length }; });
+      assert.ok(rows.n >= 2); assert.equal(rows.thumbs, rows.n, 'har qatorda kichik rasm joyi'); assert.equal(rows.imgs, 1); assert.equal(rows.cards, 0, 'katta kartalar yo\'q');
+      assert.ok(rows.before, 'rasm — nom oldida'); assert.ok(rows.size >= 36 && rows.size <= 56, `kichik rasm (${rows.size}px)`); assert.equal(rows.hs, false);
+      // Rasmni bosish → barcha rasmlar ko'rgichi (savatga qo'shilmaydi); oldinga, yopish
+      await page.click('#pos-list .pos-thumb.has'); await page.waitForSelector('#fw-gal');
+      assert.equal(await page.evaluate(() => S.cart.length), 0, 'rasmni bosish savatga qo\'shmaydi');
+      assert.equal(await page.$eval('#fw-gal .fw-gal-n', (e) => e.textContent.trim()), '1 / 2');
+      await page.click('#fw-gal .fw-gal-next');
+      assert.equal(await page.$eval('#fw-gal .fw-gal-n', (e) => e.textContent.trim()), '2 / 2');
+      assert.match(await page.$eval('#fw-gal .fw-gal-t', (e) => e.textContent), /\S/);
+      await page.keyboard.press('Escape'); await page.waitForSelector('#fw-gal', { state: 'detached' });
+      // Nomni bosish — savatga
+      await page.click('#pos-list .pos-row .pos-row-main');
+      assert.equal(await page.evaluate(() => S.cart.length), 1);
       // Saqlanadi
       assert.equal(await page.evaluate(() => localStorage.getItem('fw_pos_img')), '1');
-      await page.evaluate(() => { go('dashboard'); go('savdo'); }); await page.waitForSelector('#pos-list .pos-card');
-      await page.click('.pos-img-btn'); await page.waitForSelector('#pos-list .pos-row');
+      await page.evaluate(() => { go('dashboard'); go('savdo'); }); await page.waitForSelector('#pos-list .pos-thumb');
+      await page.click('.pos-img-btn'); await page.waitForFunction(() => !document.querySelector('#pos-list .pos-thumb'));
       assert.equal(await page.evaluate(() => localStorage.getItem('fw_pos_img')), '0');
+      // Mahsulotlar ro'yxati: kichik rasm bosilsa — o'sha ko'rgich (mahsulot kartasi ochilmaydi); rasmsiz — karta ochiladi
+      await page.evaluate(() => { S.cart.length = 0; S.pmView = 'list'; go('mahsulotlar'); }); await page.waitForSelector('.pml');
+      await page.click('.pml .pml-img.has'); await page.waitForSelector('#fw-gal');
+      assert.equal(await page.$eval('#fw-gal .fw-gal-n', (e) => e.textContent.trim()), '1 / 2');
+      assert.equal(await page.evaluate(() => { const o = document.getElementById('bs-ov'); return !!o && !o.hidden; }), false, 'mahsulot kartasi ochilmadi');
+      await page.click('#fw-gal .fw-gal-x'); await page.waitForSelector('#fw-gal', { state: 'detached' });
       assert.deepEqual(errors, []);
     } finally { await browser.close(); }
   }
@@ -114,7 +127,7 @@ async function testDealerPay() {
 module.exports = {
   name: 'P94 — Savdo oynasi «Rasm» rejimi; diller «Pul yuborish» tuzatishlari',
   cases: [
-    { name: "Savdo: «Rasm» tugmasi bitta chiziqda (390 va 340 px), rasmli kartalar / faqat nomlar, kartadan savatga, tanlov saqlanadi", run: testPosImages },
+    { name: "Savdo: «Rasm» tugmasi bitta chiziqda (390 va 340 px), nom oldida kichik rasm / faqat nomlar, rasm bosilsa barcha rasmlar ko'rgichi (mahsulotlar ro'yxatida ham), tanlov saqlanadi", run: testPosImages },
     { name: "Diller pul yuborish: xatoda so'rov takrorlanmaydi + qayta urinish; to'liq qarz; xatoda maydonlar saqlanadi, o'sha kalit; kurs yo'q; qarz yo'q", run: testDealerPay },
   ],
 };

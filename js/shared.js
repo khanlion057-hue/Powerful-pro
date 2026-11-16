@@ -2749,3 +2749,40 @@ if (typeof document !== 'undefined') {
     } catch (_) {}
   });
 }
+
+// ════════════════════════════════════════════════════════════
+// v25.4 — RASM KO'RGICH (egasi talabi): ro'yxatdagi kichik rasm bosilganda mahsulotning BARCHA rasmlari to'liq ekranda.
+// fwGallery([url, ...], sarlavha, boshlang'ich indeks). Oldinga/orqaga: tugma, klaviatura (← →), barmoq bilan surish; Esc — yopish.
+// Faqat https va data:image havolalar ko'rsatiladi.
+// ════════════════════════════════════════════════════════════
+function fwGallery(urls, title, start) {
+  const list = (Array.isArray(urls) ? urls : [urls]).map(String).filter(u => /^(https:|data:image\/)/.test(u));
+  if (!list.length) return;
+  document.getElementById('fw-gal')?.remove();
+  let i = Math.max(0, Math.min(list.length - 1, +start || 0));
+  const prevFocus = document.activeElement;
+  const ov = document.createElement('div'); ov.id = 'fw-gal'; ov.className = 'fw-gal'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); ov.setAttribute('aria-label', 'Rasmlar');
+  const e = (t) => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const paint = () => {
+    ov.innerHTML = `<div class="fw-gal-hd"><b class="fw-gal-t">${e(title || 'Rasm')}</b><span class="fw-gal-n">${i + 1} / ${list.length}</span><button type="button" class="fw-gal-x" aria-label="Yopish">×</button></div>
+      <div class="fw-gal-main">${list.length > 1 ? '<button type="button" class="fw-gal-prev" aria-label="Oldingi rasm">‹</button>' : ''}<img src="${e(list[i])}" alt="${e(title || '')}">${list.length > 1 ? '<button type="button" class="fw-gal-next" aria-label="Keyingi rasm">›</button>' : ''}</div>
+      ${list.length > 1 ? `<div class="fw-gal-th">${list.map((u, k) => `<button type="button" data-k="${k}" class="${k === i ? 'on' : ''}" aria-label="${k + 1}-rasm"><img src="${e(u)}" alt=""></button>`).join('')}</div>` : ''}`;
+  };
+  const go = (d) => { i = (i + d + list.length) % list.length; paint(); };
+  const close = () => { ov.remove(); document.removeEventListener('keydown', onKey, true); if (prevFocus && prevFocus.focus) try { prevFocus.focus({ preventScroll: true }); } catch (_) {} };
+  const onKey = (ev) => { if (ev.key === 'Escape') { ev.stopPropagation(); close(); } else if (ev.key === 'ArrowRight') go(1); else if (ev.key === 'ArrowLeft') go(-1); };
+  ov.addEventListener('click', (ev) => {
+    const t = ev.target;
+    if (t.closest('.fw-gal-x') || t === ov || t.classList.contains('fw-gal-main')) return close();
+    if (t.closest('.fw-gal-next')) return go(1);
+    if (t.closest('.fw-gal-prev')) return go(-1);
+    const th = t.closest('.fw-gal-th button'); if (th) { i = +th.dataset.k; paint(); }
+  });
+  let x0 = null;
+  ov.addEventListener('touchstart', (ev) => { x0 = ev.touches[0].clientX; }, { passive: true });
+  ov.addEventListener('touchend', (ev) => { if (x0 == null) return; const dx = ev.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 45 && list.length > 1) go(dx < 0 ? 1 : -1); }, { passive: true });
+  document.addEventListener('keydown', onKey, true);
+  paint(); document.body.appendChild(ov);
+}
+// Mahsulot rasmlari (≤ 4): p.images, bo'lmasa p.image
+function fwProdImages(p) { if (!p) return []; const a = Array.isArray(p.images) ? p.images.filter(Boolean) : []; return (a.length ? a : (p.image ? [p.image] : [])).map(String).filter(u => /^(https:|data:image\/)/.test(u)); }

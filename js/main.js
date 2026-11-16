@@ -4187,6 +4187,8 @@ function productUsageCheck(pid) {
   return { inBatches, inSales, inDealerStock, inDealerTxns, usedAnywhere: inBatches||inSales||inDealerStock||inDealerTxns };
 }
 
+// v25.4: ro'yxatdagi kichik rasm bosilganda — mahsulotning barcha rasmlari (rasm ko'rgich)
+function pmGallery(pid) { const p = (S.products || []).find(x => String(x.id) === String(pid)); if (p) fwGallery(fwProdImages(p), p.name, 0); }
 function pmCards(prods) {
   if (!prods.length) return `<div class="kr-empty pm-empty">${ICONF.inventory}<b>Mahsulot topilmadi</b><span>Qidiruv yoki filtrni oʻzgartiring, yoki yangi mahsulot qoʻshing.</span></div>`;
   const n = v => Math.round(+v||0).toLocaleString('en-US').replace(/,/g,' ');
@@ -4194,7 +4196,7 @@ function pmCards(prods) {
     const st = getStock(p.id), cost = getCostFIFO(p.id), sell = sellPrice(p, cost);
     const state = p.archived ? ['Arxivda','text-muted','inbox'] : p.directSale ? ['Doim bor','purple','truck'] : st===0 ? ['Qolmadi','red','close'] : st<=p.minStock ? ['Kam','amber','warning'] : ['Bor','emerald','check'];
     return `<article class="pml" onclick="openProductCard(${p.id})">
-      <div class="pml-img" style="--c:var(--${state[1]})">${p.image ? `<img src="${esc(p.image)}" alt="" loading="lazy">` : ICONF.inventory}</div>
+      <div class="pml-img${p.image ? ' has' : ''}" style="--c:var(--${state[1]})"${p.image ? ` role="button" tabindex="0" aria-label="${esc(p.name)} — rasmlarni koʻrish" onclick="event.stopPropagation();pmGallery(${p.id})"` : ''}>${p.image ? `<img src="${esc(p.image)}" alt="" loading="lazy">${productImages(p).length > 1 ? `<em>${productImages(p).length}</em>` : ''}` : ICONF.inventory}</div>
       <div class="pml-t"><b>${esc(p.name)}</b>
         <small style="color:${st===0&&!p.directSale?'var(--red)':'var(--text-secondary)'}">${p.directSale?'taʼminotchidan':n(st)+' '+esc(p.unit||'dona')}${p.sku?` · <code>${esc(p.sku)}</code>`:''}</small>
         <span class="pml-cat">${esc(p.cat||'Kategoriyasiz')}</span></div>

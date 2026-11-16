@@ -9,8 +9,16 @@
 const { getAdminClient } = require('./supabaseAdmin');
 const { TOKEN_RE, CHAT_RE, tgSend } = require('./dailyReportRun');
 
+// v25.3: 48-migratsiya hali qo'llanmagan bo'lsa (bazada ops_* funksiyalari yo'q) — birinchi murojaatda seziladi va kuzatuv
+// shu konteynerda 10 daqiqaga o'chadi (har so'rovda behuda murojaat va kutish bo'lmaydi); migratsiyadan keyin o'zi yoqiladi.
+let _missingUntil = 0;
+const MISSING_FN_RE = /could not find the function|function .* does not exist|PGRST202|42883/i;
+function noteRpcError(err) {
+  if (err && (err.code === 'PGRST202' || err.code === '42883' || MISSING_FN_RE.test(String(err.message || '')))) _missingUntil = Date.now() + 10 * 60000;
+}
 function opsOn() {
   if (process.env.FW_OPS_ON === '0') return false;
+  if (_missingUntil && Date.now() < _missingUntil) return false;
   return process.env.FW_OPS_ON === '1' || !!process.env.AWS_LAMBDA_FUNCTION_NAME;
 }
 
@@ -33,6 +41,7 @@ function clientIp(event) {
 // { ok, first } — ok: ruxsat; first: chegaradan endi oshdi (jurnalga bir marta). Baza javob bermasa — ruxsat (fail-open).
 async function rateHit(admin, key, limit, windowSec) {
   const r = await within(admin.rpc('ops_rate_hit', { p_key: key, p_limit: limit, p_window_s: windowSec }), 700, null);
+  if (r && r.error) noteRpcError(r.error);
   if (!r || r.error || typeof r.data !== 'number') return { ok: true, first: false };
   return { ok: r.data <= limit, first: r.data === limit + 1 };
 }
@@ -52,6 +61,7 @@ const esc = (s) => String(s == null ? '' : s).replace(/[&<>]/g, (c) => ({ '&': '
 async function report(admin, { kind, fn, key, title, detail, windowSec = 600 }) {
   try {
     const r = await within(admin.rpc('ops_alert', { p_key: key, p_kind: kind, p_fn: fn || '', p_msg: String(detail || title || '').slice(0, 500), p_window_s: windowSec }), 1200, null);
+    if (r && r.error) noteRpcError(r.error);
     if (!r || r.error) return false;
     const row = Array.isArray(r.data) ? r.data[0] : r.data;
     if (!row || !row.send) return false;
@@ -108,4 +118,4 @@ async function usageText(admin) {
     `Telegram navbati: kutmoqda ${u.outbox_pending}, yuborilmadi ${u.outbox_failed_24h}`].join('\n') + warn;
 }
 
-module.exports = { opsOn, within, clientIp, rateHit, report, enqueue, flushOutbox, usageText, RETRYABLE, getAdminClient };
+module.exports = { _resetMissing: () => { _missingUntil = 0; }, opsOn, within, clientIp, rateHit, report, enqueue, flushOutbox, usageText, RETRYABLE, getAdminClient };

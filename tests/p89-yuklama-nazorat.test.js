@@ -110,6 +110,17 @@ async function testMonitor() {
     for (let i = 0; i < 40; i++) assert.equal((await okh(ev('3.3.3.3'))).statusCode, 200, 'cheklov bazasi ishlamasa — ruxsat');
   }));
 
+  // 48-migratsiya yo'q (funksiya topilmaydi) — birinchi murojaatdan keyin kuzatuv 10 daqiqaga o'chadi, javob o'zgarmaydi
+  const fm = fakeAdmin(); let calls = 0;
+  fm.admin.rpc = () => { calls++; return Promise.resolve({ data: null, error: { code: 'PGRST202', message: 'Could not find the function public.ops_rate_hit' } }); };
+  await withOps(fm, async () => {
+    const opsG = require(path.join(FN, '_lib', 'opsGuard'));
+    const okh = wrap('health', async () => ({ statusCode: 200, body: 'ok' }));
+    for (let i = 0; i < 5; i++) assert.equal((await okh(ev('5.5.5.5'))).statusCode, 200);
+    assert.equal(calls, 1, 'migratsiyasiz — faqat bitta behuda murojaat');
+    assert.equal(opsG.opsOn(), false); opsG._resetMissing(); assert.equal(opsG.opsOn(), true);
+  });
+
   // Barcha funksiyalar o'ralgan
   const files = fs.readdirSync(FN).filter((f) => f.endsWith('.js'));
   assert.equal(files.length, 66);

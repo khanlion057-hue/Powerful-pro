@@ -68,6 +68,11 @@
     this.start();
   }
 
+  // Ilova tayyor — darhol 100% (qolgan zarralar joyiga tez o'tiradi), qisqa ushlab, so'nadi
+  Loader.prototype.complete = function () {
+    if (this.destroyed || this.doneAt) return;
+    this.auto = false; this.target = 100; this.q = 1; this.doneAt = this.last || performance.now();
+  };
   Loader.prototype.setProgress = function (p) {
     if (p == null || p === '') { this.auto = true; this.target = null; return; }
     this.auto = false; this.target = clamp(+p || 0, 0, 100);
@@ -80,6 +85,9 @@
     var dpr = Math.min(DPR_MAX, window.devicePixelRatio || 1);
     this.W = w; this.H = h; this.dpr = dpr;
     cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    // ilova sahifaga CSS zoom qo'llaydi (masalan 90%) — canvas baribir butun ekranni qoplasin
+    var z = 1; try { z = parseFloat(getComputedStyle(document.documentElement).zoom) || 1; } catch (e) {}
+    cv.style.width = (w / z) + 'px'; cv.style.height = (h / z) + 'px';
     var aspect = this.img ? this.img.naturalWidth / this.img.naturalHeight : 3.2;
     var lw;
     if (w >= h) lw = Math.min(w * 0.42, h * 0.5 * aspect);   // landshaft: kenglik 42% yoki balandlik 50% — kichigi
@@ -177,7 +185,7 @@
     }
     this.draw(ts, dt);
     var pv = Math.round(this.q * 100); if (pv !== this._pv) { this._pv = pv; this.cv.setAttribute('aria-valuenow', String(pv)); }
-    if (this.doneAt && !this.closed && ts - this.doneAt >= HOLD_MS) this.finish();
+    if (this.doneAt && !this.closed && ts - this.doneAt >= (this.opts.holdMs != null ? +this.opts.holdMs : HOLD_MS)) this.finish();
   };
 
   Loader.prototype.draw = function (ts, dt) {

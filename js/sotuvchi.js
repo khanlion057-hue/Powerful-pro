@@ -163,7 +163,7 @@ async function svLoadShopData() {
     try { const c = JSON.parse(localStorage.getItem(_dataKey) || 'null'); if (c && c.raw) { raw = c.raw; FWL.on = !!c.ledger; loaded = true; } } catch (_) {}
   }
   if (!loaded) try {
-    const res = await authFetch('/.netlify/functions/app-data-load', { method:'POST' });
+    const res = await fwLoadAppData();   // v25.6: kutish chegarasi + qayta urinish
     if (res.ok) {
       const result = await res.json();
       raw = result.data || {};

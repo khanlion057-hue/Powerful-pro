@@ -506,6 +506,27 @@ async function fwLedgerCall(fn, body, sigParts) {
   } finally { _fwLedgerInflight.delete(sig); }
 }
 
+// v25.6: kirishdan keyingi ma'lumot yuklash (app-data-load) — KUTISH CHEGARASI + bitta qayta urinish.
+// Avval so'rov cheksiz osilib qolishi mumkin edi (sekin tarmoq / sovuq server → kirish ekrani qotadi). Endi: 1-urinish 20 s, 2-urinish 30 s;
+// 8 s dan oshsa foydalanuvchiga xabar. Ikkalasi ham yiqilsa — TARMOQ xatosi (TypeError) tashlanadi: mavjud zaxira yo'llari
+// (qurilmadagi nusxa / eski o'qish) o'zgarishsiz ishlaydi. Ma'lumotga tegilmaydi — faqat so'rov o'ralgan.
+// (authFetch har sahifaning o'z faylida: main.js / sotuvchi.js / diller.js — shu yerda global nom orqali chaqiriladi.)
+async function fwLoadAppData(opt) {
+  const tries = (opt && opt.timeouts) || [20000, 30000];
+  const slowMs = opt && opt.slowMs != null ? opt.slowMs : 8000;
+  const hint = setTimeout(() => { try { toast("Ulanish sekin — maʼlumot yuklanmoqda…", 'warning'); } catch (_) {} }, slowMs);
+  try {
+    let last = null;
+    for (let i = 0; i < tries.length; i++) {
+      const ctrl = new AbortController(), timer = setTimeout(() => ctrl.abort(), tries[i]);
+      try { return await authFetch('/.netlify/functions/app-data-load', { method: 'POST', signal: ctrl.signal }); }
+      catch (e) { last = e; }
+      finally { clearTimeout(timer); }
+    }
+    throw (last && last.name === 'AbortError') ? new TypeError('Failed to fetch (kutish chegarasi tugadi)') : last;
+  } finally { clearTimeout(hint); }
+}
+
 // v25.6: server bir so'rovda eng ko'pi 500 partiya qabul qiladi — katta guruh (Excel: 800–2000 qator) 400 talik qismlarga bo'linadi.
 // Natija: { done: serverda bajarilgan elementlar, err: birinchi xato (yoki null) }. Qism yiqilsa — to'xtaydi; bajarilganlari qaytariladi.
 const FW_LEDGER_CHUNK = 400;

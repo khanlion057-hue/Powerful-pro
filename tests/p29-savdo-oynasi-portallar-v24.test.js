@@ -108,7 +108,9 @@ async function testSeller() {
 
     // «Orqaga» (telefon tugmasi) — faqat oyna yopiladi, savat saqlanadi, sahifadan chiqilmaydi
     await page.evaluate(() => { posAdd(2); posOpen('cart'); posOpen('disc'); });
-    await page.goBack(); await page.waitForTimeout(200);
+    // v25.6: qat'iy kutish — yuklama ostida «Orqaga» tarixga yetmasdan sahifadan chiqib ketib, «POS is not defined» berar edi
+    await page.waitForFunction(() => typeof POS !== 'undefined' && POS.stack.length === 2, null, { timeout: 10000 });
+    await page.goBack(); await page.waitForFunction(() => typeof POS !== 'undefined' && POS.stack.length === 1, null, { timeout: 10000 });
     let nav = await page.evaluate(() => ({ stack: POS.stack.slice(), cart: CART.map(i => i.pid), url: location.pathname, xs: document.querySelectorAll('#pos-ov .pos-hd .pos-ib[aria-label="Yopish"]').length }));
     assert.deepEqual(nav.stack, ['cart'], '«Orqaga» — bitta qadam (chegirma yopildi, savat qoldi)'); assert.deepEqual(nav.cart, [2]); assert.equal(nav.url, '/sotuvchi.html');
     assert.equal(nav.xs, 1, 'bitta X');

@@ -346,6 +346,12 @@ To'liq hisobot — `AUDIT-HISOBOT.md`. Qisqacha:
 > nimalar kam, to'ldiraylik". Ilova funksiyalari, biznes qoidalari, production bazasi
 > O'ZGARMADI (bazadan faqat o'qildi).
 
+## v25.6.2 — Yuklash: kutish chegarasi; testlar barqarorligi
+
+- Kirishdan keyingi `app-data-load` (admin va sotuvchi): 1-urinish 20 s, so'ng 30 s li qayta urinish; 8 s dan oshsa «Ulanish sekin» xabari. Ikkalasi yiqilsa — tarmoq xatosi sifatida tugaydi, mavjud zaxira yo'llari (qurilmadagi nusxa) o'zgarishsiz ishlaydi. Ma'lumotga tegilmaydi.
+- p29: «Orqaga» tekshiruvi qat'iy kutishga o'tkazildi (yuklama ostida «POS is not defined» berardi).
+- Test: p96.
+
 ## v25.6.1 — Excel kirimini (katta partiya) o'chirish tuzatildi
 
 - **Sabab (prod jurnali):** «Butun partiyani o'chirish» 800–1600 ta qatorni BITTA so'rovda yuborar, server esa eng ko'pi 500 qabul qiladi → 400 xato, hech narsa o'chmasdi. Endi 400 talik qismlarda (o'chirish, butun partiyani tahrirlash, «yetib keldi»); qism yiqilsa — o'chganlari ro'yxatdan chiqadi, xabar aniq («400 / 1250 ta o'chirildi…»), qayta urinish faqat qolganini yuboradi.

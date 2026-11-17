@@ -724,7 +724,7 @@ async function _cloudLoad() {
   // xatosi, Function javob bermasa) — ESKI, to'g'ridan-to'g'ri yo'lga qaytamiz.
   // Bu — orqaga moslik: hech qanday holatda ma'lumot yuklanmay qolmaydi.
   try {
-    const res = await authFetch('/.netlify/functions/app-data-load', { method:'POST' });
+    const res = await fwLoadAppData();   // v25.6: kutish chegarasi + qayta urinish
     if (res.ok) {
       const result = await res.json();
       if (Number.isSafeInteger(result.version)) _fwVer = { main: result.version, branches: { ...(result.branchVersions || {}) } };

@@ -127,8 +127,10 @@ function fwStripHeadEmoji(root) {
 
 // ── Noyob ID generatori (millisekund + ichki hisoblagich, bir vaqtda
 //    bir nechta chaqiruv bo'lsa ham to'qnashmasligi uchun) ──
-let _uidCounter = 0;
-const uid = () => Date.now()*1000 + (_uidCounter = (_uidCounter+1)%1000);
+// v25.6: qat'iy o'suvchi — bir millisekundda 1000 tadan ko'p chaqirilsa ham (Excel: 1600 qator) ID takrorlanmaydi
+// (avval hisoblagich 1000 da aylanib, bir xil ID chiqarar edi — bitta qatorni o'chirish ikkitasini olib ketishi mumkin edi)
+let _uidLast = 0;
+const uid = () => { const t = Date.now()*1000; return (_uidLast = t > _uidLast ? t : _uidLast + 1); };
 
 // ── Bugungi sana, YYYY-MM-DD ko'rinishida ──
 const td = () => new Date().toISOString().slice(0,10);
@@ -502,6 +504,19 @@ async function fwLedgerCall(fn, body, sigParts) {
     if (data.authority) fwApplyLedger(data.authority);
     return data;
   } finally { _fwLedgerInflight.delete(sig); }
+}
+
+// v25.6: server bir so'rovda eng ko'pi 500 partiya qabul qiladi — katta guruh (Excel: 800–2000 qator) 400 talik qismlarga bo'linadi.
+// Natija: { done: serverda bajarilgan elementlar, err: birinchi xato (yoki null) }. Qism yiqilsa — to'xtaydi; bajarilganlari qaytariladi.
+const FW_LEDGER_CHUNK = 400;
+async function fwLedgerBatchChunks(kind, items, mkPayload) {
+  const done = []; let err = null;
+  for (let i = 0; i < items.length; i += FW_LEDGER_CHUNK) {
+    const part = items.slice(i, i + FW_LEDGER_CHUNK);
+    try { await fwLedgerCall('stock-debt-ops', { kind, payload: mkPayload(part) }); done.push(...part); }
+    catch (e) { err = e; break; }
+  }
+  return { done, err };
 }
 
 // ════════════════════════════════════════════════════════════

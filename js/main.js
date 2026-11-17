@@ -1672,8 +1672,11 @@ async function confirmArrival(bno) {
       const distributed = CUR.distributeUsd(customsUsd, batches.map(b=>({qty:b.qty, unitUsd:b.costUsd})), method);
       batches.forEach((b,i)=>{ costAdds[String(b.id)] = b.qty>0 ? (distributed[i]||0)/b.qty : 0; });
     }
-    try { await fwLedgerCall('stock-debt-ops', { kind:'batch_arrive', payload:{ localIds: batches.map(b=>String(b.id)), costAdds } }); }
-    catch(e) { toast('⛔ ' + e.message, 'error'); return; }
+    const ar = await fwLedgerBatchChunks('batch_arrive', batches, part => ({ localIds: part.map(b=>String(b.id)), costAdds: Object.fromEntries(part.map(b=>[String(b.id), costAdds[String(b.id)]]).filter(x=>x[1]!==undefined)) }));
+    if (ar.err) {
+      if (ar.done.length) save();
+      toast('⛔ ' + (ar.done.length ? `${ar.done.length} / ${batches.length} ta keldi, qolgani kelmadi: ` : '') + ar.err.message, 'error'); return;
+    }
     batches.forEach(b=>{ b.arrivedDate = td(); });
     auditLog(`Partiya keldi: #${bno}${customsUsd>0?' — bojxona +'+CUR.fmtUsd(customsUsd):''}`);
     save(); closeModal();
@@ -5302,8 +5305,19 @@ async function deleteBatchGroup(bno) {
   }
   // v23.2 (F4b): o'chirish — SERVERDA (partiya FIFO'dan chiqadi, tarix saqlanadi); rad etilsa hech narsa o'zgarmaydi
   if (fwLedgerRemote()) {
-    try { await fwLedgerCall('stock-debt-ops', { kind:'batch_delete', payload:{ localIds: list.map(b=>String(b.id)) } }); }
-    catch(e) { toast('⛔ ' + e.message, 'error'); return; }
+    // v25.6: 400 talik qismlar (server chegarasi — 500). Qism yiqilsa: serverda o'chganlari ro'yxatdan chiqadi, xabar aniq, qayta urinsa — qolgani
+    const r = await fwLedgerBatchChunks('batch_delete', list, part => ({ localIds: part.map(b=>String(b.id)) }));
+    if (r.err) {
+      if (r.done.length) {
+        const gone = new Set(r.done.map(b=>String(b.id)));
+        S.batches = S.batches.filter(b=>!gone.has(String(b.id)));
+        r.done.forEach(b=>markDeleted('batches', b.id));
+        auditLog(`Partiya #${bno} qisman o'chirildi: ${r.done.length} / ${list.length}`);
+        save(); fwKirimRerender();
+      }
+      toast('⛔ ' + (r.done.length ? `${r.done.length} / ${list.length} ta o'chirildi, qolgani o'chmadi: ` : '') + r.err.message, 'error');
+      return;
+    }
   }
   S.batches = S.batches.filter(b=>b.bno!==bno);
   list.forEach(b=>markDeleted('batches', b.id));
@@ -5311,7 +5325,19 @@ async function deleteBatchGroup(bno) {
   save();
   toast(`✅ Partiya #${bno} butunlay o'chirildi!`, 'warning');
   fwCleanupOrphans([...new Set(list.map(b => b.pid))], true);
-  if (S.page==='kirim') pgKirim(); else pgOmbor();
+  fwKirimRerender();
+}
+
+// v25.6: ro'yxatni qayta chizadi, lekin ochiq turgan batafsil bo'limlar va sahifa o'rni saqlanadi
+// (avval bitta qatorni o'chirgach hamma narsa yopilib, tepaga qaytardi — o'chdi-o'chmadi bilinmasdi)
+function fwKirimRerender() {
+  if (S.page !== 'kirim') { pgOmbor(); return; }
+  const open = [...document.querySelectorAll('.kh-detail:not([hidden])')].map(e => e.id.replace(/^kirim-detail-/, ''));
+  const hold = [window, document.getElementById('main-content-area'), document.querySelector('.main'), document.querySelector('.content')].filter(Boolean)
+    .map(el => [el, el === window ? window.scrollY : el.scrollTop]);
+  pgKirim();
+  open.forEach(bno => { const el = document.getElementById('kirim-detail-' + bno); if (el && el.hidden) kirimToggleDetail(bno); });
+  hold.forEach(([el, y]) => { if (el === window) window.scrollTo(0, y); else el.scrollTop = y; });
 }
 
 // ── Alohida partiyani o'chirish (yo'lda yoki kelgan — ikkalasi ham) ──
@@ -5334,7 +5360,7 @@ async function deleteBatch(batchId) {
   save();
   toast("✅ Partiya o'chirildi!", 'warning');
   fwCleanupOrphans([b.pid], true);
-  if (S.page==='kirim') pgKirim(); else pgOmbor();
+  fwKirimRerender();
 }
 
 // ════════════════════════════════════════════
@@ -6052,9 +6078,13 @@ async function saveBatchGroupEdit(bno) {
       edits.push({ localId:String(bid), qty:newQty, costUsd:newCost });
     });
     if (edits.length) {
-      try { await fwLedgerCall('stock-debt-ops', { kind:'batch_edit', payload:{ edits } }); }
-      catch(e) { toast('⛔ ' + e.message, 'error'); if (btn) { btn.disabled=false; btn.textContent='💾 Hammasini saqlash'; } return; }
-      edits.forEach(e => { const b = S.batches.find(x=>String(x.id)===e.localId); if (b) { b.edited = true; b.editedAt = new Date().toISOString(); } });
+      const r = await fwLedgerBatchChunks('batch_edit', edits, part => ({ edits: part }));   // v25.6: server chegarasi 500 — 400 talik qismlar
+      r.done.forEach(e => { const b = S.batches.find(x=>String(x.id)===e.localId); if (b) { b.edited = true; b.editedAt = new Date().toISOString(); } });
+      if (r.err) {
+        if (r.done.length) save();
+        toast('⛔ ' + (r.done.length ? `${r.done.length} / ${edits.length} ta saqlandi, qolgani saqlanmadi: ` : '') + r.err.message, 'error');
+        if (btn) { btn.disabled=false; btn.textContent='💾 Hammasini saqlash'; } return;
+      }
     }
     auditLog(`Partiya #${bno} — ${edits.length} ta mahsulot birdaniga tahrirlandi`);
     save(); closeModal(); pgKirim();

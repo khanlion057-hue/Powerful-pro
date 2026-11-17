@@ -126,9 +126,14 @@ function overlayBranchLedger(branchObj, ledger, prev) {
     // v24.6 (36): filiallar o'tkazmasi partiyalari («tr…») — SERVER yaratadi (jo'natuvchi boshqa filial bo'lishi mumkin,
     // u bu filialning JSON'iga yoza olmaydi). JSON'da yo'q bo'lsa — bazadagi holati bilan ro'yxatga qo'shiladi.
     const have = new Set(list.filter(x => x && x.id != null).map(x => String(x.id)));
+    // v25.6: serverda BOR, lekin JSON'da YO'Q partiya (masalan Excel importidan keyin «saqlash» 401 bilan yiqilgan) — ro'yxatdan
+    // «yo'qolib», ko'rinmas va o'chirib bo'lmaydigan bo'lib qolardi (omborda esa qoldiq hisoblanardi). Endi serverdagi holati bilan qaytadi.
+    // Mijoz ID'lari raqamli (uid()) — xavfsiz butun son bo'lsa raqam sifatida qaytariladi (jo'natuvchi kodda `===` bilan solishtiriladi).
     for (const [k, db] of ledger.batches) {
-      if (!/^trb?\d+-\d+$/.test(k) || have.has(k) || db.status === 'deleted' || !db.pid) continue;
-      list.push({ id: k, pid: db.pid, bno: db.bno, origin: db.origin, cur: 'USD', qty: db.qty, sold: db.sold, costUsd: db.costUsd,
+      if (have.has(k) || db.status === 'deleted' || !db.pid) continue;
+      const isTr = /^trb?\d+-\d+$/.test(k), n = Number(k), isNum = /^\d{1,16}$/.test(k) && Number.isSafeInteger(n);
+      if (!isTr && !isNum) continue;
+      list.push({ id: isTr ? k : n, pid: db.pid, bno: db.bno, origin: db.origin, cur: 'USD', qty: db.qty, sold: db.sold, costUsd: db.costUsd,
         bankFeeUsd: 0, date: db.date, status: db.status, fromBranch: db.fromBranch, consignment: false, items: [] });
     }
     out.batches = list;

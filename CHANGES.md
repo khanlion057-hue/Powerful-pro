@@ -346,6 +346,14 @@ To'liq hisobot — `AUDIT-HISOBOT.md`. Qisqacha:
 > nimalar kam, to'ldiraylik". Ilova funksiyalari, biznes qoidalari, production bazasi
 > O'ZGARMADI (bazadan faqat o'qildi).
 
+## v25.6.1 — Excel kirimini (katta partiya) o'chirish tuzatildi
+
+- **Sabab (prod jurnali):** «Butun partiyani o'chirish» 800–1600 ta qatorni BITTA so'rovda yuborar, server esa eng ko'pi 500 qabul qiladi → 400 xato, hech narsa o'chmasdi. Endi 400 talik qismlarda (o'chirish, butun partiyani tahrirlash, «yetib keldi»); qism yiqilsa — o'chganlari ro'yxatdan chiqadi, xabar aniq («400 / 1250 ta o'chirildi…»), qayta urinish faqat qolganini yuboradi.
+- Bitta qatorni o'chirgach batafsil ro'yxat yopilib, tepaga qaytmaydi.
+- `uid()` bir millisekundda 1000 tadan ko'p chaqirilsa takrorlanmaydi (Excel: 1600 qator).
+- Serverda bor, lekin saqlash 401 bilan yiqilgani uchun JSON'da yo'q partiyalar yuklashda ro'yxatga qaytadi (ko'rish va o'chirish mumkin).
+- Test: p95.
+
 ## v25.5 — Rasmlar kartochka uslubida (admin + onlayn doʻkon)
 
 - **Rasm koʻrish oynasi** (Savdo, Mahsulotlar): oq yumaloq kartochka, rasm tepani toʻldiradi, rasm ostida kichik rasmlar tasmasi (tanlangani oq hoshiyada), pastda mahsulot nomi va kulrang izoh (kod · toifa). Surish, strelkalar, Esc — avvalgidek.

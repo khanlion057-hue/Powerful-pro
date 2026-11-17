@@ -14071,7 +14071,21 @@ function xlShowErrors(errs) {
     <div style="max-height:320px;overflow:auto;font-size:12.5px;line-height:1.6;background:var(--bg-secondary);border-radius:10px;padding:10px 12px">${errs.slice(0,100).map(e=>`• ${esc(e)}`).join('<br>')}${errs.length>100?`<br>… va yana ${errs.length-100} ta`:''}</div></div>
     <div class="modal-footer"><button class="btn btn-primary" onclick="closeModal()">Tushunarli</button></div>`);
 }
-const XL_HEADERS = ['Rasm','SKU (Kod)','Nomi','Kategoriya','Brend','Miqdor','Tannarx ($, 1 dona)','Chakana narxi ($)','Optom narxi ($)'];
+const XL_HEADERS = ['Rasm','SKU (Kod)','Nomi','Kategoriya','Brend','Miqdor','Tannarx ($, 1 dona)','Chakana narxi ($)','Optom narxi ($)','Rang','Rang HEX','Variant guruhi'];
+// v25.6: RANGLAR — oxirgi 3 ta ixtiyoriy ustun (J, K, L). Mavjud 9 ustun joyi o'zgarmagan; eski fayllarda bu ustunlar yo'q — bo'sh deb olinadi.
+// Bir xil «Variant guruhi» = bitta mahsulotning ranglari (vitrinada bitta karta). Noto'g'ri HEX — qator xatosi.
+function xlVariantCols(v, off, rowNumber, sku, errs) {
+  const color = xlText(v[9+off]).slice(0, 40), raw = xlText(v[10+off]), vgroup = xlText(v[11+off]).slice(0, 80);
+  let hex = raw ? (raw[0] === '#' ? raw : '#' + raw).toLowerCase() : '';
+  if (hex && !/^#[0-9a-f]{6}$/.test(hex)) { errs.push(`${rowNumber}-qator (${sku}): Rang HEX noto'g'ri — «${raw}» (masalan #1a2b3c)`); hex = ''; }
+  return { color, hex, vgroup };
+}
+// Bo'sh katak — mavjud qiymat o'zgarmaydi
+function fwApplyVariant(p, r) {
+  if (!p || !r) return;
+  if (r.color || r.hex) p.color = { name: r.color || (p.color && p.color.name) || '', hex: r.hex || (p.color && p.color.hex) || '' };
+  if (r.vgroup) p.vgroup = r.vgroup;
+}
 const XL_SAMPLE_RE = /^namuna\b/i;
 // v24.5: chegaralar — juda katta fayl brauzerni osib qo'ymasin, xato aniq ko'rsatilsin
 const XL_MAX_ROWS = 20000;
@@ -14112,11 +14126,12 @@ async function fwBuildXlTemplate() {
   wb.creator = fwBrand().name || 'ERP';
   const ws = wb.addWorksheet('Shablon', { views:[{ state:'frozen', ySplit:1 }] });
   ws.addRow(XL_HEADERS);
-  ws.addRow(['', 'NAMUNA-001', "Namuna — bu qator import qilinmaydi", 'Elektronika', 'Samsung', 70, 15.1, 18.88, 17.37]);
+  ws.addRow(['', 'NAMUNA-001', "Namuna — bu qator import qilinmaydi", 'Elektronika', 'Samsung', 70, 15.1, 18.88, 17.37, 'Qora', '#111111', 'NAMUNA-GURUH']);
   const head = ws.getRow(1);
   head.font = { bold:true, color:{argb:'FF1C2433'} }; head.height = 30; head.alignment = { vertical:'middle', wrapText:true };
   head.eachCell(c=>{ c.fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FFEFF1F5'}}; c.border={bottom:{style:'thin',color:{argb:'FFD0D5DD'}}}; });
-  [13,16,34,16,14,12,18,16,16].forEach((w,i)=>{ ws.getColumn(i+1).width = w; });
+  [13,16,34,16,14,12,18,16,16,14,12,18].forEach((w,i)=>{ ws.getColumn(i+1).width = w; });
+  ws.getColumn(11).numFmt = '@';   // HEX — matn
   const sample = ws.getRow(2); sample.height = 58; sample.font = { italic:true, color:{argb:'FF98A2B3'} };
   ws.getCell('A2').note = "Rasmni shu katakka joylashtiring (nusxa → joylashtirish). Import qilinganda shu qatordagi mahsulotga biriktiriladi.";
   ws.getCell('B2').note = "SKU «NAMUNA» bilan boshlangan qatorlar import qilinmaydi. Bu qatorni o'chirib yoki ostiga o'z mahsulotlaringizni yozing.";
@@ -14135,6 +14150,7 @@ async function fwBuildXlTemplate() {
    ["Miqdor (F)","Omborda hozir bor (bosh qoldiq) yoki kirim qilinadigan son. «dona» mahsulotda — butun son. Bo'sh yoki 0 — omborga tushmaydi, faqat mahsulot ma'lumoti yangilanadi."],
    ["Tannarx (G)","1 dona narxi, $ da. Miqdor yozilgan bo'lsa — majburiy."],
    ["Chakana / Optom narxi (H, I)","Ixtiyoriy, $ da. Yozilsa — ustama foizi shu narxga moslab qayta hisoblanadi."],
+   ["Rang, Rang HEX, Variant guruhi (J, K, L)","Ixtiyoriy. Rang nomi (masalan Qora), rang kodi (#111111) va guruh. Bir xil «Variant guruhi» yozilgan qatorlar — bitta mahsulotning ranglari: onlayn-do'konda bitta kartada rang nuqtalari bo'lib chiqadi. Har rang — o'z SKU, narx va qoldig'i bilan alohida qator."],
    ["",""],
    ["Muhim","Import avval BUTUN faylni tekshiradi: biror qatorda xato bo'lsa, hech narsa yozilmaydi va xatolar qator raqami bilan ko'rsatiladi."],
    ["","Sonlar: 15.10, 15,10 va 1 000 — hammasi to'g'ri o'qiladi. Formulali kataklar — natijasi olinadi. Son o'rnida matn bo'lsa — xato (0 deb olinmaydi)."],
@@ -14170,7 +14186,7 @@ async function exportExistingAsKirimTemplate() {
     const p = S.products[i];
     const rowIdx = i+2;
     const cost = getCostFIFO(p.id);
-    ws.addRow(['', p.sku, p.name, p.cat, p.brand||'', '', Number(cost.toFixed(2))||'', Number(sellPrice(p,cost).toFixed(2))||'', Number(optPrice(p,cost).toFixed(2))||'']);
+    ws.addRow(['', p.sku, p.name, p.cat, p.brand||'', '', Number(cost.toFixed(2))||'', Number(sellPrice(p,cost).toFixed(2))||'', Number(optPrice(p,cost).toFixed(2))||'', (p.color&&p.color.name)||'', (p.color&&p.color.hex)||'', p.vgroup||'']);
     ws.getRow(rowIdx).height = 58;
     if (p.image) {
       try {
@@ -14253,6 +14269,7 @@ async function importProducts(input) {
         S.products.push(p);
         added++;
       }
+      fwApplyVariant(p, xlVariantCols(v, off, rowNumber, sku, []));   // noto'g'ri HEX — e'tiborsiz (bu import qatorma-qator)
       if (imgMap[rowNumber]) { p.image = imgMap[rowNumber]; withImg++; pendingImgUploads.push(p); }
     });
     save();pgMahsulotlar();
@@ -14369,8 +14386,9 @@ async function importBatchXlsx() {
       const valsOk = !bad(qty) && !bad(price);   // noto'g'ri qiymat allaqachon qayd etilgan — o'zaro tekshiruv ortiqcha
       if (valsOk && qty > 0 && !(price > 0)) errs.push(`${rowNumber}-qator (${sku}): miqdor bor, tannarx yo'q`);
       if (valsOk && !(qty > 0) && price > 0) errs.push(`${rowNumber}-qator (${sku}): tannarx bor, miqdor yo'q`);
+      const vc = xlVariantCols(v, off, rowNumber, sku, errs);
       seen.set(sku, true);
-      plan.push({ rowNumber, sku, name, cat, brand, qty: qty > 0 ? Math.round(qty*1000)/1000 : 0, priceNative: price || 0, chakana: chakana || 0, optim: optim || 0, img: imgMap[rowNumber] || null });
+      plan.push({ vc, rowNumber, sku, name, cat, brand, qty: qty > 0 ? Math.round(qty*1000)/1000 : 0, priceNative: price || 0, chakana: chakana || 0, optim: optim || 0, img: imgMap[rowNumber] || null });
     });
     if (errs.length) { btnReset(); xlShowErrors(errs); return; }
     if (!plan.length) {
@@ -14403,6 +14421,7 @@ async function importBatchXlsx() {
         if (r.brand) p.brand = r.brand;
         updProdCnt++;
       }
+      fwApplyVariant(p, r.vc);
       if (r.img) { pendingImgUploads2.push({ p, prev: p.image || null, img: r.img }); p.image = r.img; imgCnt++; }
       if (r.qty > 0 && r.priceNative > 0) rows.push({p, qty:r.qty, priceNative:r.priceNative, chakana:r.chakana, optim:r.optim});
     }

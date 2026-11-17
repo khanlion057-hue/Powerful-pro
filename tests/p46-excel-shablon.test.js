@@ -98,7 +98,8 @@ async function testTemplate() {
     assert.deepEqual(r.dl, ['shablon.xlsx', 'shablon.xlsx'], 'ikkala tugma — bitta shablon fayli');
     assert.equal(r.nBlobs, 2); assert.equal(r.same, true, 'ikkala shablon mazmuni bir xil');
     assert.deepEqual(r.sheets, ['Shablon', "Yo'riqnoma"]);
-    assert.equal(r.head.length, 9); assert.equal(r.head[0], 'Rasm'); assert.equal(r.head[1], 'SKU (Kod)'); assert.equal(r.head[5], 'Miqdor');
+    assert.equal(r.head.length, 12); assert.deepEqual(r.head.slice(9), ['Rang', 'Rang HEX', 'Variant guruhi']);   // v25.6: oxiriga 3 ta ixtiyoriy ustun, dastlabki 9 tasi o'zgarmagan
+    assert.equal(r.head[0], 'Rasm'); assert.equal(r.head[1], 'SKU (Kod)'); assert.equal(r.head[5], 'Miqdor');
     assert.match(String(r.sample[1]), /^NAMUNA-/, 'namuna qatori belgilangan');
     assert.equal(r.dvF, 'decimal'); assert.equal(r.dvG, 'decimal', 'miqdor/narx kataklarida tekshiruv');
     assert.match(r.guide, /MAJBURIY/);

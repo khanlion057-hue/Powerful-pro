@@ -99,6 +99,7 @@ function shopCfg() {
     lat: Number.isFinite(+st.lat) && st.lat !== null && st.lat !== '' ? +st.lat : null,
     lng: Number.isFinite(+st.lng) && st.lng !== null && st.lng !== '' ? +st.lng : null,
     bot: st.bot || null,
+    colorsSeparate: !!st.colorsSeparate,   // v25.6: har rang — alohida karta
   };
 }
 function shopSlugify(s) {
@@ -295,7 +296,7 @@ function dkOrderSheet(id) {
           <a class="dk-ghost" href="https://wa.me/${esc(wa)}" target="_blank" rel="noopener">${ICONF.chat}<span>WhatsApp</span></a></div>` : ''}
       </div>
       <div class="bs-card">
-        ${(o.items || []).map(it => `<div class="dk-line"><span>${esc(it.name)}<small>${esc(it.sku || '')} · ${+it.qty} × ${esc(shopMoney(it.priceUsd))}</small></span><b>${esc(shopMoney(it.qty * it.priceUsd))}</b></div>`).join('')}
+        ${(o.items || []).map(it => `<div class="dk-line"><span>${esc(it.name)}<small>${it.color ? esc(it.color) + ' · ' : ''}${esc(it.sku || '')} · ${+it.qty} × ${esc(shopMoney(it.priceUsd))}</small></span><b>${esc(shopMoney(it.qty * it.priceUsd))}</b></div>`).join('')}
         <div class="dk-kv"><span>Mahsulotlar</span><b>${esc(shopMoney(o.subtotalUsd))}</b></div>
         <div class="dk-kv"><span>Yetkazib berish</span><b>${o.deliveryUsd ? esc(shopMoney(o.deliveryUsd)) : 'Bepul'}</b></div>
         <div class="dk-kv dk-total"><span>Jami</span><b>${esc(shopMoney(o.totalUsd))}</b></div>
@@ -419,7 +420,7 @@ function dkDraftSave() {
 // Yagona buyurtma yaratish nuqtasi (qo'lda va vitrina oldindan ko'rishdan)
 function shopCreateOrder({ source, delivery, cust, items, note, test, branch }) {
   const sh = shopDataOf(branch);
-  const clean = items.filter(it => (+it.qty || 0) > 0).map(it => ({ pid: it.pid, sku: it.sku || '', name: String(it.name || '').slice(0, 120), qty: Math.round(+it.qty), priceUsd: Math.round((+it.priceUsd || 0) * 100) / 100 }));
+  const clean = items.filter(it => (+it.qty || 0) > 0).map(it => ({ pid: it.pid, sku: it.sku || '', name: String(it.name || '').slice(0, 120), qty: Math.round(+it.qty), priceUsd: Math.round((+it.priceUsd || 0) * 100) / 100, ...(it.color ? { color: String(it.color).slice(0, 40) } : {}) }));
   const t = shopOrderTotals(clean, delivery);
   sh.seq = (+sh.seq || 0) + 1;
   const now = shopNowIso();
@@ -509,6 +510,8 @@ function dkSettingsSheet() {
         ${segCtl([["'UZS'", 'UZS — soʻm'], ["'USD'", 'USD — dollar']], `'${c.currency}'`, 'dkCurSet')}
       </div>
 
+      <div class="bs-card"><div class="bs-rowc dk-row"><span class="dk-rowic" style="--c:var(--purple, var(--sky))">${ICONF.tag}</span><span><b>Ranglarni alohida kartada koʻrsat</b><small class="bs-note">Oʻchirilgan: bitta karta + rang nuqtalari. Yoqilgan: har rang oʻz kartasida.</small></span>${sw('dks-colsep', c.colorsSeparate)}</div></div>
+
       <div class="bs-card"><div class="bs-rowc dk-row"><span class="dk-rowic" style="--c:var(--blue, var(--sky))">${ICONF.car}</span><span><b>Doʻkon buyurtmalarni yetkazib beradi</b></span>${sw('dks-del', c.delivery)}</div>
         <label class="bs-lbl" for="dks-fee">Yetkazib berish narxi (0 — bepul) · UZS</label><input class="bs-in" id="dks-fee" inputmode="numeric" value="${c.feeUzs || 0}" oninput="liveFormatSpaces&&liveFormatSpaces(this)">
         <label class="bs-lbl" for="dks-km">Bepul yetkazib berish radiusi: <b id="dks-kmv">${c.freeKm}</b> km (0 — oʻchirilgan)</label>
@@ -547,7 +550,7 @@ function dkSettingsSave() {
     phone: String(v('dks-phone')?.value || '').trim().slice(0, 24),
     waOn: !!v('dks-waon')?.checked, wa: String(v('dks-wa')?.value || '').trim().slice(0, 24),
     tgOn: !!v('dks-tgon')?.checked, tg: String(v('dks-tg')?.value || '').trim().slice(0, 40),
-    currency: S._dkCur === 'USD' ? 'USD' : 'UZS',
+    currency: S._dkCur === 'USD' ? 'USD' : 'UZS', colorsSeparate: !!v('dks-colsep')?.checked,
     delivery: !!v('dks-del')?.checked, feeUzs: num('dks-fee'), freeKm: Math.min(30, Math.max(0, +v('dks-km')?.value || 0)), freeMinUzs: num('dks-min'),
     address: String(v('dks-addr')?.value || '').trim().slice(0, 160),
     lat: hasLL ? Math.round(lat * 1e6) / 1e6 : null, lng: hasLL ? Math.round(lng * 1e6) / 1e6 : null,
@@ -982,7 +985,7 @@ function dkReviewHide(id) {
 // ════════════════════════════════════════════════════════════
 let SF = null;   // { cart:{pid:qty}, cat, q, view:'shop'|'cart'|'about'|'done', del, order }
 function dkOpenStorefront() {
-  SF = { cart: {}, cat: '', q: '', view: 'shop', del: 'pickup', bi: 0, sort: 'pop', pid: null, fav: sfFavLoad() };
+  SF = { cart: {}, cat: '', q: '', view: 'shop', del: 'pickup', bi: 0, sort: 'pop', pid: null, fav: sfFavLoad(), vsel: {}, gi: 0 };
   let ov = document.getElementById('sf-ov');
   if (!ov) { ov = document.createElement('div'); ov.id = 'sf-ov'; ov.className = 'sf-ov'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); document.body.appendChild(ov); }
   ov.hidden = false; document.body.classList.add('sf-lock');
@@ -1004,7 +1007,7 @@ function sfFavToggle(pid) {
   sfKeepScroll(sfRender);
 }
 function sfKeepScroll(fn) { const y = document.querySelector('.sf-main')?.scrollTop || 0; fn(); const m = document.querySelector('.sf-main'); if (m) m.scrollTop = y; }
-function sfGo(view, extra) { Object.assign(SF, { view }, extra || {}); sfRender(); const m = document.querySelector('.sf-main'); if (m) m.scrollTop = 0; }
+function sfGo(view, extra) { Object.assign(SF, { view, gi: 0 }, extra || {}); sfRender(); const m = document.querySelector('.sf-main'); if (m) m.scrollTop = 0; }
 function sfPopularity() {   // so'nggi 90 kunda sotilgan dona — «Ommabop»
   if (sfPopularity._at === S.sales.length && sfPopularity._m) return sfPopularity._m;
   const from = new Date(Date.now() - 90 * 864e5).toISOString().slice(0, 10), m = {};
@@ -1020,7 +1023,7 @@ function sfFiltered() {
   if (SF.view === 'fav') list = list.filter(p => SF.fav.includes(String(p.id)));
   const by = { pop: (a, b) => (pop[b.id] || 0) - (pop[a.id] || 0), cheap: (a, b) => shopPrice(a) - shopPrice(b), dear: (a, b) => shopPrice(b) - shopPrice(a),
     new: (a, b) => String(nw[b.id] || '').localeCompare(String(nw[a.id] || '')), az: (a, b) => String(a.name).localeCompare(String(b.name)) };
-  return list.slice().sort(by[SF.sort] || by.pop);
+  return sfUniq(list.slice().sort(by[SF.sort] || by.pop));
 }
 const SF_SORT = [['pop', 'Ommabop'], ['new', 'Yangi'], ['cheap', 'Arzonroq'], ['dear', 'Qimmatroq'], ['az', 'A–Z']];
 const SF_TONES = ['#2563eb', '#e11d48', '#059669', '#d97706', '#7c3aed', '#0891b2', '#db2777', '#4f46e5'];
@@ -1049,6 +1052,89 @@ const SF_CAT_DEF = _ci('<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="M3 8l9 5 9
 function sfCatIc(name) { for (const [re, ic] of SF_CAT_IC) if (re.test(String(name || ''))) return ic; return SF_CAT_DEF; }
 function sfNoImg(p, big) { const ci = p.cat && shopCatImg(p.cat); if (ci) return `<img src="${esc(ci)}" alt="" loading="lazy" class="sf-catfb">`; const t = sfTone(p.cat || 'Boshqa'); return `<i class="sf-noimg${big ? ' big' : ''}" style="--t:${t}">${sfCatIc(p.cat)}</i>`; }
 function sfTone(s) { let h = 0; for (const ch of String(s)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return SF_TONES[h % SF_TONES.length]; }
+// ── v25.6: RANGLAR (variantlar) — docs/SPEC-RANGLAR.md ──
+// Omborda har rang — alohida mahsulot yozuvi (o'z SKU, narx, qoldiq); `vgroup` bir xil bo'lsa — bitta kartaning ranglari.
+const SF_HEX = /^#[0-9a-f]{6}$/i;
+function sfSeparate() { return !!shopData().settings.colorsSeparate; }
+function sfVg(p) { return p && p.vgroup && !sfSeparate() ? String(p.vgroup) : ''; }   // kartada birlashtirish kaliti («alohida karta»da — yo'q)
+function sfColor(p) {
+  const c = p && p.color; if (!c || typeof c !== 'object') return null;
+  const nom = String(c.name || '').trim().slice(0, 40), hex = SF_HEX.test(String(c.hex || '')) ? String(c.hex).toLowerCase() : '';
+  return nom || hex ? { nom: nom || hex, hex: hex || '#cbd5e1' } : null;
+}
+function sfVideo(p) { const u = String((p && p.video) || ''); return /^https:\/\/[^\s"'<>]{3,400}$/.test(u) ? u : ''; }
+function sfAttrs(p) {
+  const o = {}, a = p && p.attrs;
+  if (a && typeof a === 'object' && !Array.isArray(a)) Object.keys(a).slice(0, 6).forEach(k => { const v = String(a[k] == null ? '' : a[k]).trim(); if (k && v) o[String(k).slice(0, 40)] = v.slice(0, 60); });
+  return o;
+}
+function sfImgs(p) { const a = fwProdImages(p); return a.length ? a : (p.image ? [String(p.image)] : []); }
+function sfGroupOf(p) { return p.vgroup ? S.products.filter(x => !x.archived && !x.directSale && String(x.vgroup || '') === String(p.vgroup)) : [p]; }
+function sfVariant(p) { return { pid: p.id, sku: p.sku || '', rang: sfColor(p), rasmlar: sfImgs(p), video: sfVideo(p), narx: shopPrice(p), qoldiq: sfStock(p.id), atributlar: sfAttrs(p) }; }
+// Vitrina modeli (saqlanmaydi): variantsiz eski mahsulot — bitta default variant
+function sfModel(p) { return { id: p.vgroup ? String(p.vgroup) : p.id, nom: p.name, brend: p.brand || '', tavsif: p.desc || '', kategoriya: p.cat || '', variants: sfGroupOf(p).map(sfVariant) }; }
+// Ro'yxatda guruhdan bitta karta: tanlangan rang (mavjud bo'lsa), aks holda ro'yxatdagi birinchi mavjud rang
+function sfUniq(list) {
+  if (sfSeparate()) return list;
+  const seen = new Set(), out = [];
+  list.forEach(p => { const g = sfVg(p); if (!g) { out.push(p); return; } if (seen.has(g)) return; seen.add(g);
+    const id = SF.vsel[g], sel = id != null && list.find(x => String(x.id) === String(id) && String(x.vgroup) === g); out.push(sel || p); });
+  return out;
+}
+function sfAttrLine(p) {
+  const a = sfAttrs(p), ks = Object.keys(a), c = sfColor(p);
+  const rows = ks.length ? ks.slice(0, 2).map(k => `${k}: ${a[k]}`) : c ? [`Rang: ${c.nom}`] : [];
+  return rows.map(r => `<span>${esc(r)}</span>`).join('');
+}
+function sfSwatches(p, g) {
+  const vs = sfGroupOf(p); if (vs.length < 2) return '';
+  const gJs = esc(JSON.stringify(g));
+  return `<div class="sf-sw" role="radiogroup" aria-label="Rang" onkeydown="sfSwKey(event)">${vs.map(v => { const c = sfColor(v) || { nom: v.sku || 'Rang', hex: '#cbd5e1' }, out = sfStock(v.id) <= 0, on = v.id === p.id;
+    return `<button type="button" role="radio" class="sf-swb${on ? ' on' : ''}" data-pid="${esc(v.id)}" aria-checked="${on}" aria-label="Rang: ${esc(c.nom)}${out ? ' — Tugagan' : ''}" title="${esc(c.nom)}${out ? ' — Tugagan' : ''}" tabindex="${on ? 0 : -1}" style="--sw:${c.hex}" ${out ? 'disabled' : ''} onclick="sfPick(${gJs},${esc(JSON.stringify(v.id))})"></button>`; }).join('')}</div>`;
+}
+// Kartada rang almashtirish: faqat shu guruh kartalari yangilanadi (sahifa qayta chizilmaydi — sakrash yo'q), rasm 200 ms fade
+function sfPick(g, pid) {
+  if (!SF) return;
+  const p = S.products.find(x => String(x.id) === String(pid) && String(x.vgroup || '') === String(g));
+  if (!p || sfStock(p.id) <= 0) return;
+  SF.vsel[String(g)] = p.id;
+  document.querySelectorAll('.sf-card[data-vg]').forEach(c => {
+    if (c.dataset.vg !== String(g)) return;
+    const foc = c.contains(document.activeElement), t = document.createElement('div');
+    t.innerHTML = sfCard(p).trim(); const n = t.firstChild;
+    const im = n.querySelector('.sf-img'); if (im) im.classList.add('sf-fade');
+    c.replaceWith(n);
+    if (foc) { const b = n.querySelector('.sf-sw .on'); if (b) b.focus({ preventScroll: true }); }
+  });
+}
+// ←/→ (↑/↓): keyingi mavjud rang (kartada ham, mahsulot sahifasida ham)
+function sfSwKey(e) {
+  const d = e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : 0; if (!d) return;
+  const bs = [...e.currentTarget.querySelectorAll('[role=radio]:not(:disabled)')]; if (bs.length < 2) return;
+  e.preventDefault();
+  const n = bs[(bs.findIndex(b => b.classList.contains('on')) + d + bs.length) % bs.length];
+  n.focus({ preventScroll: true }); n.click();
+}
+// Rasm ustida surish — keyingi/oldingi mavjud rang
+function sfSwipeStart(el, e) { const t = e.touches && e.touches[0]; el._sx = t ? t.clientX : null; el._sy = t ? t.clientY : 0; }
+function sfSwipeEnd(el, e) {
+  const t = e.changedTouches && e.changedTouches[0], card = el.closest('.sf-card[data-vg]'); if (!t || el._sx == null || !card) return;
+  const dx = t.clientX - el._sx, dy = t.clientY - el._sy; el._sx = null;
+  if (Math.abs(dx) < 36 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+  SF._swAt = Date.now();
+  const bs = [...card.querySelectorAll('.sf-sw [role=radio]:not(:disabled)')]; if (bs.length < 2) return;
+  const n = bs[(bs.findIndex(b => b.classList.contains('on')) + (dx < 0 ? 1 : -1) + bs.length) % bs.length];
+  sfPick(card.dataset.vg, n.dataset.pid);
+}
+function sfOpen(pid) { if (SF._swAt && Date.now() - SF._swAt < 400) return; sfGo('product', { pid }); }   // surishdan keyingi «bosish» sahifani ochmaydi
+function sfGal(i) { SF.gi = i; sfKeepScroll(sfRender); const b = document.querySelector('.sf-gal-th .on'); if (b) b.focus({ preventScroll: true }); }
+function sfPdPick(pid) {
+  const p = S.products.find(x => String(x.id) === String(pid)); if (!p || sfStock(p.id) <= 0) return;
+  SF.pid = p.id; SF.gi = 0; if (p.vgroup) SF.vsel[String(p.vgroup)] = p.id;
+  sfKeepScroll(sfRender); const b = document.querySelector('.sf-pd-sw .on'); if (b) b.focus({ preventScroll: true });
+}
+const SF_GO_IC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>';
+const SF_PLAY_IC = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>';
 function sfRender() {
   const ov = document.getElementById('sf-ov'); if (!ov || !SF) return;
   const c = shopCfg(), sh = shopData();
@@ -1087,9 +1173,9 @@ function sfShopHtml(c, sh) {
   const prods = sfProducts(), cats = [...new Set(prods.map(p => p.cat).filter(Boolean))].sort();
   const fav = SF.view === 'fav', home = !fav && !SF.q && !SF.cat;
   const ban = sh.banners.filter(b => b.active !== false), pop = sfPopularity(), nw = sfNewest();
-  const disc = prods.filter(p => shopDiscountOf(p.id));
-  const popular = prods.filter(p => pop[p.id] > 0).sort((a, b) => pop[b.id] - pop[a.id]).slice(0, 12);
-  const newest = prods.filter(p => nw[p.id]).sort((a, b) => String(nw[b.id]).localeCompare(String(nw[a.id]))).slice(0, 12);
+  const disc = sfUniq(prods.filter(p => shopDiscountOf(p.id)));
+  const popular = sfUniq(prods.filter(p => pop[p.id] > 0).sort((a, b) => pop[b.id] - pop[a.id])).slice(0, 12);
+  const newest = sfUniq(prods.filter(p => nw[p.id]).sort((a, b) => String(nw[b.id]).localeCompare(String(nw[a.id])))).slice(0, 12);
   const row = (ic, t, list, cls) => list.length ? `<section class="sf-sec ${cls || ''}"><div class="sf-sec-h"><h3>${ICONF[ic] || ''}${esc(t)}</h3><span>${list.length} ta</span></div><div class="sf-row">${list.map(sfCard).join('')}</div></section>` : '';
   const list = sfFiltered();
   return `
@@ -1116,15 +1202,25 @@ function sfProductHtml() {
   const p = S.products.find(x => String(x.id) === String(SF.pid)); if (!p) return '<p class="sf-none">Mahsulot topilmadi</p>';
   const d = shopDiscountOf(p.id), price = shopPrice(p), reg = shopRegularPrice(p), q = SF.cart[p.id] || 0, st = sfStock(p.id), isFav = SF.fav.includes(String(p.id));
   const pidJs = JSON.stringify(p.id).replace(/"/g, '&quot;');
-  const sim = sfProducts().filter(x => x.id !== p.id && x.cat && x.cat === p.cat).slice(0, 10);
+  const sim = sfUniq(sfProducts().filter(x => x.id !== p.id && x.cat && x.cat === p.cat && !(p.vgroup && String(x.vgroup || '') === String(p.vgroup)))).slice(0, 10);
+  // Galereya: ko'pi 4 ta kichik rasm; video bo'lsa — oxirgi o'rinda
+  const imgs = sfImgs(p), vid = sfVideo(p), gal = (vid ? imgs.slice(0, 3) : imgs.slice(0, 4)).map(u => ({ u })).concat(vid ? [{ u: vid, v: 1 }] : []);
+  const gi = Math.min(Math.max(0, SF.gi || 0), Math.max(0, gal.length - 1)), cur = gal[gi];
+  const vs = p.vgroup ? sfGroupOf(p) : [p], col = sfColor(p), attrs = sfAttrs(p);
   return `<div class="sf-pd">
-    <div class="sf-pd-img">${p.image ? `<img src="${esc(p.image)}" alt="">` : sfNoImg(p, true)}${d && reg > price ? `<em>−${Math.round((1 - price / reg) * 100)}%</em>` : ''}
+    <div class="sf-gal">
+    <div class="sf-pd-img sf-gal-main">${cur ? (cur.v ? `<video src="${esc(cur.u)}" controls playsinline preload="metadata"></video>` : `<img src="${esc(cur.u)}" alt="${esc(p.name)}" class="sf-fade">`) : sfNoImg(p, true)}${d && reg > price ? `<em>−${Math.round((1 - price / reg) * 100)}%</em>` : ''}
       <button class="sf-fav ${isFav ? 'on' : ''}" onclick="sfFavToggle(${pidJs})" aria-label="Sevimlilarga">${ICONF.starO}</button></div>
+    ${gal.length > 1 ? `<div class="sf-gal-th" role="group" aria-label="Rasmlar">${gal.map((x, i) => `<button type="button" class="${i === gi ? 'on' : ''}${x.v ? ' vid' : ''}" aria-pressed="${i === gi}" aria-label="${x.v ? 'Video' : 'Rasm ' + (i + 1)}" onclick="sfGal(${i})">${x.v ? SF_PLAY_IC : `<img src="${esc(x.u)}" alt="" loading="lazy">`}</button>`).join('')}</div>` : ''}
+    </div>
     <div class="sf-pd-info">
       ${p.brand || p.cat ? `<small class="sf-pd-cat">${esc([p.brand, p.cat].filter(Boolean).join(' · '))}</small>` : ''}
       <h2>${esc(p.name)}</h2>
       <div class="sf-pd-price"><b>${esc(shopMoney(price))}</b>${d && reg > price ? `<s>${esc(shopMoney(reg))}</s><em>Tejaysiz ${esc(shopMoney(reg - price))}</em>` : ''}</div>
+      ${vs.length > 1 ? `<div class="sf-pd-swl">Rang: <b>${esc(col ? col.nom : '')}</b></div><div class="sf-pd-sw" role="radiogroup" aria-label="Rang" onkeydown="sfSwKey(event)">${vs.map(v => { const c = sfColor(v) || { nom: v.sku || 'Rang', hex: '#cbd5e1' }, out = sfStock(v.id) <= 0, on = v.id === p.id;
+        return `<button type="button" role="radio" class="${on ? 'on' : ''}" data-pid="${esc(v.id)}" aria-checked="${on}" tabindex="${on ? 0 : -1}" ${out ? 'disabled' : ''} onclick="sfPdPick(${esc(JSON.stringify(v.id))})"><i style="--sw:${c.hex}"></i><span>${esc(c.nom)}</span>${out ? '<small>Tugagan</small>' : ''}</button>`; }).join('')}</div>` : ''}
       <div class="sf-pd-meta"><span class="${st <= (p.minStock || 0) ? 'low' : ''}">${ICONF.inventory}${st <= (p.minStock || 0) ? `Oz qoldi: ${st} ${esc(p.unit || 'dona')}` : `Mavjud: ${st} ${esc(p.unit || 'dona')}`}</span>${p.sku ? `<span>${ICONF.tag}Kod: ${esc(p.sku)}</span>` : ''}</div>
+      ${Object.keys(attrs).length ? `<dl class="sf-pd-attrs">${Object.keys(attrs).map(k => `<div><dt>${esc(k)}</dt><dd>${esc(attrs[k])}</dd></div>`).join('')}</dl>` : ''}
       ${p.desc ? `<p class="sf-pd-desc">${esc(p.desc)}</p>` : ''}
       <div class="sf-pd-buy">${q ? `<div class="sf-qty big"><button onclick="sfAdd(${pidJs},-1)" aria-label="Kamaytirish">${ICONF.minus}</button><b>${q}</b><button onclick="sfAdd(${pidJs},1)" aria-label="Koʻpaytirish">${ICONF.add}</button></div><button class="sf-btn" onclick="sfGo('cart')">${ICONF.cart} Savatga oʻtish</button>`
         : `<button class="sf-btn" onclick="sfAdd(${pidJs},1)">${ICONF.cart} Savatga qoʻshish</button>`}</div>
@@ -1134,14 +1230,18 @@ function sfProductHtml() {
 function sfCard(p) {
   const d = shopDiscountOf(p.id), price = shopPrice(p), reg = shopRegularPrice(p), q = SF.cart[p.id] || 0, st = sfStock(p.id), isFav = SF.fav.includes(String(p.id));
   const pidJs = JSON.stringify(p.id).replace(/"/g, '&quot;'), hot = (sfPopularity()[p.id] || 0) >= 5;
-  return `<div class="sf-card">
-    <div class="sf-img" onclick="sfGo('product',{pid:${pidJs}})">${p.image ? `<img src="${esc(p.image)}" alt="" loading="lazy">` : sfNoImg(p)}${d && reg > price ? `<em>−${Math.round((1 - price / reg) * 100)}%</em>` : hot ? '<em class="hit">Hit</em>' : ''}</div>
+  const g = sfVg(p), sw = g ? sfSwatches(p, g) : '', img = p.image || sfImgs(p)[0], al = sfAttrLine(p);
+  return `<div class="sf-card" data-pid="${esc(p.id)}"${sw ? ` data-vg="${esc(g)}"` : ''}>
+    <div class="sf-img" onclick="sfOpen(${pidJs})"${sw ? ' ontouchstart="sfSwipeStart(this,event)" ontouchend="sfSwipeEnd(this,event)"' : ''}>${img ? `<img src="${esc(img)}" alt="" loading="lazy">` : sfNoImg(p)}${d && reg > price ? `<em>−${Math.round((1 - price / reg) * 100)}%</em>` : hot ? '<em class="hit">Hit</em>' : ''}</div>
     <button class="sf-fav ${isFav ? 'on' : ''}" onclick="sfFavToggle(${pidJs})" aria-label="Sevimlilarga">${ICONF.starO}</button>
+    ${sw}
     <div class="sf-price">${esc(shopMoney(price))}${d && reg > price ? `<s>${esc(shopMoney(reg))}</s>` : ''}</div>
-    <b class="sf-name" onclick="sfGo('product',{pid:${pidJs}})">${esc(p.name)}</b>
+    <b class="sf-name" onclick="sfOpen(${pidJs})">${esc(p.name)}</b>
+    ${p.desc ? `<small class="sf-desc">${esc(p.desc)}</small>` : ''}
+    ${al ? `<small class="sf-attrs">${al}</small>` : ''}
     <small class="sf-stock ${st <= (p.minStock || 0) ? 'low' : ''}">${st <= (p.minStock || 0) ? `Oz qoldi: ${st}` : 'Mavjud'}</small>
-    ${q ? `<div class="sf-qty"><button onclick="sfAdd(${pidJs},-1)" aria-label="Kamaytirish">${ICONF.minus}</button><b>${q}</b><button onclick="sfAdd(${pidJs},1)" aria-label="Koʻpaytirish">${ICONF.add}</button></div>`
-        : `<button class="sf-add" onclick="sfAdd(${pidJs},1)">${ICONF.cart}<span>Savatga</span></button>`}
+    <div class="sf-act">${q ? `<div class="sf-qty"><button onclick="sfAdd(${pidJs},-1)" aria-label="Kamaytirish">${ICONF.minus}</button><b>${q}</b><button onclick="sfAdd(${pidJs},1)" aria-label="Koʻpaytirish">${ICONF.add}</button></div>`
+        : `<button class="sf-add" onclick="sfAdd(${pidJs},1)">${ICONF.cart}<span>Savatga</span></button>`}<button class="sf-go" onclick="sfOpen(${pidJs})" aria-label="Mahsulot sahifasi: ${esc(p.name)}">${SF_GO_IC}</button></div>
   </div>`;
 }
 function sfRenderGrid() {
@@ -1167,7 +1267,7 @@ function sfCartHtml() {
   return `<h2 class="sf-h2">Savat</h2>
     <div class="sf-list">${list.map(({ p, qty }) => { const pidJs = JSON.stringify(p.id).replace(/"/g, '&quot;'); return `<div class="sf-li">
       <div class="sf-img sm">${p.image ? `<img src="${esc(p.image)}" alt="">` : sfNoImg(p)}</div>
-      <span><b>${esc(p.name)}</b><small>${esc(shopMoney(shopPrice(p)))}</small></span>
+      <span><b>${esc(p.name)}</b><small>${sfColor(p) ? esc(sfColor(p).nom) + ' · ' : ''}${esc(shopMoney(shopPrice(p)))}</small></span>
       <div class="sf-qty"><button onclick="sfAdd(${pidJs},-1)" aria-label="Kamaytirish">${ICONF.minus}</button><b>${qty}</b><button onclick="sfAdd(${pidJs},1)" aria-label="Koʻpaytirish">${ICONF.add}</button></div></div>`; }).join('')}</div>
     <h3 class="sf-h">Qanday olasiz?</h3>
     <div class="sf-seg"><button class="${SF.del === 'pickup' ? 'on' : ''}" onclick="SF.del='pickup';sfRender()">${ICONF.store}<span>Doʻkondan olib ketaman</span></button>
@@ -1190,7 +1290,7 @@ function sfOrder() {
   if (!name) { toast('Ismingizni yozing', 'error'); return; }
   if (shopPhoneDigits(phone).length < 9) { toast("Telefon raqamini toʻliq yozing", 'error'); return; }
   if (SF.del === 'courier' && !String(SF.addr || '').trim()) { toast('Manzilni yozing', 'error'); return; }
-  const items = sfCartList().map(({ p, qty }) => ({ pid: p.id, sku: p.sku, name: p.name, qty, priceUsd: shopPrice(p) }));
+  const items = sfCartList().map(({ p, qty }) => ({ pid: p.id, sku: p.sku, name: p.name, qty, priceUsd: shopPrice(p), color: sfColor(p) ? sfColor(p).nom : '' }));
   if (!items.length) return;
   SF.order = shopCreateOrder({ source: 'site', delivery: SF.del, cust: { name, phone, address: String(SF.addr || '').trim() }, items, note: SF.note, test: true, branch: SF.br || S.branch });
   SF.cart = {}; SF.view = 'done'; sfRender();

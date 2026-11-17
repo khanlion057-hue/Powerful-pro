@@ -147,7 +147,7 @@ async function testCatImgClient() {
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }
 }
-module.exports = { name: 'P63 — zamonaviy vitrina (v24.7)', cases: [
+module.exports = { openPage, name: 'P63 — zamonaviy vitrina (v24.7)', cases: [
   { name: "bo'limlar, saralash, sevimlilar, mahsulot sahifasi, savat → sinov buyurtmasi; XSS yo'q", run: testStorefront },
   { name: "kategoriya rasmlari: server faqat https saqlaydi; vitrina doira, katalog va rasmsiz mahsulotda ko'rsatadi", run: testCatImgServer },
   { name: "kategoriya rasmlari oynasi va vitrinada ko'rinishi", run: testCatImgClient },

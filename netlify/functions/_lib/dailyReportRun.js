@@ -29,6 +29,24 @@ async function dealerPayToday(admin, date) {
   const rows = (r.data || []).filter((n) => String(n.created_at).slice(0, 10) === date && n.status !== 'rejected');
   return { count: rows.length, usd: rows.reduce((a, n) => a + (Number(n.amount_usd) || 0), 0), pending: rows.filter((n) => n.status === 'pending').length };
 }
+// v25.6: Dillerlar bo'limi uchun — faol dillerlar, BUGUNGI (Toshkent kuni) sof to'lov va ombor qoldig'i.
+// To'lovning yagona manbai — dealer_payments (portal to'lovi ham, rad etilsa teskari manfiy yozuv ham shu yerda; xabarnomalar qayta qo'shilmaydi).
+// Jadval yo'q / xato — null (hisobotda bo'lim tushiriladi, hisobot to'xtamaydi).
+async function dealerOverview(admin, date) {
+  const from = new Date(Date.parse(date + 'T00:00:00+05:00')), to = new Date(from.getTime() + 864e5);
+  if (!Number.isFinite(from.getTime())) return null;
+  const d = await admin.from('dealers').select('id,name,region,debt_usd,active').order('name');
+  if (d.error || !Array.isArray(d.data)) return null;
+  const pay = await admin.from('dealer_payments').select('dealer_id,amount_usd,created_at').gte('created_at', from.toISOString()).lt('created_at', to.toISOString());
+  const stk = await admin.from('dealer_stock').select('dealer_id,qty,avg_cost_usd').gt('qty', 0);
+  const n = (v) => { const x = Number(v); return Number.isFinite(x) ? x : 0; };
+  const paid = new Map(), qty = new Map(), val = new Map();
+  (pay.error ? [] : pay.data || []).forEach((r) => paid.set(r.dealer_id, (paid.get(r.dealer_id) || 0) + n(r.amount_usd)));
+  (stk.error ? [] : stk.data || []).forEach((r) => { qty.set(r.dealer_id, (qty.get(r.dealer_id) || 0) + n(r.qty)); val.set(r.dealer_id, (val.get(r.dealer_id) || 0) + n(r.qty) * n(r.avg_cost_usd)); });
+  const r2 = (v) => Math.round(v * 100) / 100;
+  return d.data.filter((x) => x && x.name && x.active !== false).map((x) => ({ id: x.id, name: String(x.name), region: x.region || '', debt: n(x.debt_usd),
+    paidToday: r2(paid.get(x.id) || 0), stockQty: qty.get(x.id) || 0, stockUsd: r2(val.get(x.id) || 0) }));
+}
 async function tgSend(token, chatId, text) {
   const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 8000);
   try {
@@ -42,4 +60,4 @@ async function tgSend(token, chatId, text) {
 }
 
 
-module.exports = { TOKEN_RE, CHAT_RE, hourOf, loadAll, dealerPayToday, tgSend };
+module.exports = { TOKEN_RE, CHAT_RE, hourOf, loadAll, dealerPayToday, dealerOverview, tgSend };

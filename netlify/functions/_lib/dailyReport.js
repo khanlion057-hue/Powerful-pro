@@ -66,7 +66,7 @@ function row(label, value) {
 }
 const asc = (t) => String(t).replace(/[\u02BB\u02BC\u2018\u2019\u02B9]/g, "'").replace(/\u2212/g, '-').replace(/\u00D7/g, 'x').replace(/\u2026/g, '...');
 const pre = (rows) => '<pre>' + rows.map(asc).join('\n') + '</pre>';
-const cut = (s, n) => { s = String(s || ''); return s.length > n ? s.slice(0, n - 1) + '…' : s; };
+const cut = (s, n) => { s = String(s || ''); return s.length > n ? s.slice(0, n - 1) + '.' : s; };   // v25.6: bitta ASCII belgi (avval '…' → '...' bo'lib ustunni buzardi)
 
 // Hisobot matni (Telegram HTML). Natija — xabarlar ro'yxati (har biri ≤ 3900 belgi).
 // v25.1 (egasi talabi «tartibli emas»): bo'limlar sarlavhali va chiziq bilan ajratilgan — «Bosh kassa», har filialda
@@ -115,11 +115,27 @@ function buildDailyReport(data, date, extra = {}) {
   if (extra.firma) {
     top.push(`🏦 <b>Bosh kassa</b>\n` + pre([row('Dollar', usd(extra.firma.USD)), row("Soʻm", uzs(extra.firma.UZS))]));
   }
-  const dl = ((data && data.dealers) || []).filter((x) => x && x.name);
+  // v25.6 (egasi talabi): Dillerlar — qarz, BUGUNGI to'lovlar va OMBOR qoldig'i (dona va $). Manba: extra.dealers (jadvallardan);
+  // bo'lmasa eski yo'l (data.dealers — faqat nom va qarz). Ko'p diller — alohida xabarlarga bo'linadi (har biri ≤ 4000).
+  const dl = Array.isArray(extra.dealers) ? extra.dealers.filter((x) => x && x.name)
+    : ((data && data.dealers) || []).filter((x) => x && x.name).map((x) => ({ name: x.name, debt: num(x.debt), paidToday: 0, stockQty: 0, stockUsd: 0 }));
+  const dealerMsgs = [];
   if (extra.firma && dl.length) {
-    const R = dl.slice(0, 15).map((x) => row(cut(x.name, 18), usd(num(x.debt))));
-    R.push(LINE); R.push(row('Jami qarz', usd(dl.reduce((a, x) => a + Math.max(0, num(x.debt)), 0))));
-    top.push(`🚚 <b>Dillerlar</b>\n` + pre(R));
+    const blocks = []; let R = [], len = 0;
+    for (const x of dl) {
+      const r = [esc(cut(x.name, COL_W)), row('  Qarz', usd(x.debt))];
+      if (num(x.paidToday) !== 0) r.push(row("  Bugun to'ladi", usd(x.paidToday)));
+      if (num(x.stockQty) > 0) r.push(row(`  Ombor (${sp(x.stockQty)} dona)`, usd(x.stockUsd)));
+      const add = r.join('\n').length + 1;
+      if (R.length && len + add > 3300) { blocks.push(R); R = []; len = 0; }
+      R.push(...r); len += add;
+    }
+    const T = { debt: dl.reduce((a, x) => a + Math.max(0, num(x.debt)), 0), paid: dl.reduce((a, x) => a + num(x.paidToday), 0), stock: dl.reduce((a, x) => a + num(x.stockUsd), 0) };
+    R.push(LINE, row('Jami qarz', usd(T.debt)));
+    if (T.paid !== 0) R.push(row("Bugun to'langan", usd(T.paid)));
+    if (T.stock > 0) R.push(row('Diller ombori', usd(T.stock)));
+    blocks.push(R);
+    blocks.forEach((b, i) => dealerMsgs.push(`🚚 <b>Dillerlar${blocks.length > 1 ? ` (${i + 1}/${blocks.length})` : ''}</b>\n` + pre(b)));
   }
   const sum = [];
   if (order.length > 1) { sum.push(row(`Jami savdo (${total.count} chek)`, usd(total.revenue))); sum.push(row('Jami sof foyda', usd(total.profit - total.expense))); }
@@ -134,6 +150,7 @@ function buildDailyReport(data, date, extra = {}) {
     if ((cur + '\n\n' + p).length > 3900) { msgs.push(cur); cur = p; } else cur += '\n\n' + p;
   }
   msgs.push(cur);
+  msgs.push(...dealerMsgs);
   return msgs.map((m) => (m.length > 4000 ? m.slice(0, 3990).replace(/<pre>(?![\s\S]*<\/pre>)[\s\S]*$/, '') + '…' : m));
 }
 

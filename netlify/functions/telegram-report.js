@@ -4,7 +4,7 @@
 // Faqat administrator. Bot tokeni javobga hech qachon qo'shilmaydi.
 const { getAdminClient, json, methodGuard, parseBody, requireStaffAuth, serverError } = require('./_lib/supabaseAdmin');
 const { buildDailyReport, tashkentNow } = require('./_lib/dailyReport');
-const { TOKEN_RE, CHAT_RE, loadAll, dealerPayToday, tgSend } = require('./_lib/dailyReportRun');
+const { TOKEN_RE, CHAT_RE, loadAll, dealerPayToday, dealerOverview, tgSend } = require('./_lib/dailyReportRun');
 
 exports.handler = async (event) => {
   const methodErr = methodGuard(event, ['POST']);
@@ -19,6 +19,7 @@ exports.handler = async (event) => {
     const now = tashkentNow();
     const { data, extra } = await loadAll(admin);
     extra.dealerPay = await dealerPayToday(admin, now.date);
+    extra.dealers = await dealerOverview(admin, now.date).catch(() => null);   // v25.6: qarz + bugungi to'lov + ombor
     const msgs = buildDailyReport(data, now.date, extra);
     if (body.action === 'preview') return json({ ok: true, date: now.date, messages: msgs }, 200);
     const st = data.settings || {};

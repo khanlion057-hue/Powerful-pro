@@ -32,7 +32,7 @@ async function testCreditText() {
   assert.equal(Math.round(debt * 100) / 100, 100, 'qarz = 120 − 20');
   assert.match(text, /Nasiya savdo<\/b> · INV-12/);
   assert.match(text, /Ali Valiyev/); assert.match(text, /\+998901234567/); assert.match(text, /Asosiy ombor · Admin/);
-  assert.match(text, /Arra tigʻi 300×30×96T\n  2 × \$45 +\$90\n/, 'mahsulot, miqdor × narx = summa');
+  assert.match(text, /Arra tig'i 300x30x96T\n  2 x \$45 +\$90\n/, 'mahsulot, miqdor x narx = summa (v25.6: <pre> faqat ASCII)');
   assert.match(text, /Freza D12 &lt;spiral&gt;/, 'HTML ekranlangan');
   assert.match(text, /Qarzga: <b>\$100 · 1 200 000 so'm<\/b>/);
   assert.match(text, /Qaytarish sanasi: <b>21\.11\.2026<\/b> \(10 kun\)/);
@@ -82,8 +82,8 @@ async function testPaymentsAndDealers() {
     await ev.notifyDealerOp(admin, { kind: 'ship', mode: 'consign', dealerId: 3, items: [{ pid: 1, name: 'Arra tigʻi', qty: 5 }], filial: 'baza' });
     await ev.notifyDealerPayment(admin, { dealerId: 3, amountUsd: 450, debtAfterUsd: 0, filial: 'baza' });
     assert.equal(f.sent.length, 3); assert.ok(f.sent.every(s => s.body.chat_id === '@powerful_dillerlar'));
-    assert.match(f.sent[0].body.text, /qarzga berildi[\s\S]*10 × \$45 +\$450\n[\s\S]*Jami +\$450<\/pre>[\s\S]*Diller qarzi: <b>\$450<\/b>/);
-    assert.match(f.sent[1].body.text, /sotish uchun[\s\S]*Arra tigʻi +×5/);
+    assert.match(f.sent[0].body.text, /qarzga berildi[\s\S]*10 x \$45 +\$450\n[\s\S]*Jami +\$450<\/pre>[\s\S]*Diller qarzi: <b>\$450<\/b>/);
+    assert.match(f.sent[1].body.text, /sotish uchun[\s\S]*Arra tig'i +x5/);
     assert.match(f.sent[2].body.text, /Diller qarzi toʻliq yopildi/);
   } finally { f.restore(); }
   f = captureFetch();
@@ -137,14 +137,14 @@ async function testOwnGroups() {
 async function testMonthPerDealer() {
   const rows = { dealers: [{ id: 3, name: 'Diller A', debt_usd: 100, active: true }, { id: 4, name: 'Diller B', debt_usd: 50, active: true }],
     dealer_stock_moves: [{ dealer_id: 3, type: 'send', qty: 10, cost_usd: 20 }, { dealer_id: 4, type: 'send', qty: 1, cost_usd: 5 }, { dealer_id: 3, type: 'return', qty: 2, cost_usd: 20 }],
-    dealer_payments: [{ dealer_id: 3, amount_usd: 60 }], dealer_pay_notices: [{ dealer_id: 4, amount_usd: 7, status: 'accepted' }, { dealer_id: 4, amount_usd: 99, status: 'rejected' }] };
+    dealer_payments: [{ dealer_id: 3, amount_usd: 60 }, { dealer_id: 4, amount_usd: 7 }, { dealer_id: 4, amount_usd: 99 }, { dealer_id: 4, amount_usd: -99 }], dealer_pay_notices: [{ dealer_id: 4, amount_usd: 7, status: 'accepted' }, { dealer_id: 4, amount_usd: 99, status: 'rejected' }] };
   const admin = { from(t) { const q = { select: () => q, gte: () => q, lt: () => q, order: () => q, then: (ok) => Promise.resolve({ data: rows[t] || [], error: null }).then(ok) }; return q; } };
   const rep = await ev.monthDealerReports(admin, {}, '2026-10');
   assert.match(rep.overview, /Dillerlar — oktabr 2026 yakuni[\s\S]*Diller A[\s\S]*Diller B[\s\S]*Jami olgan +\$205/);
   const a = rep.perDealer.find(x => x.dealerId === 3).text, b = rep.perDealer.find(x => x.dealerId === 4).text;
-  assert.match(a, /Diller A — oktabr 2026[\s\S]*Olgan \(tannarx\) +\$200[\s\S]*Qaytargan +\$40[\s\S]*Toʻlagan +\$60[\s\S]*qarz +\$100/);
+  assert.match(a, /Diller A — oktabr 2026[\s\S]*Olgan \(tannarx\) +\$200[\s\S]*Qaytargan +\$40[\s\S]*To'lagan +\$60[\s\S]*qarz +\$100/);
   assert.doesNotMatch(a, /Diller B/, 'diller A hisobotida boshqa diller yoʻq');
-  assert.match(b, /Toʻlagan +\$7(\n|<)/, 'rad etilgan toʻlov hisoblanmaydi'); assert.doesNotMatch(b, /Diller A/);
+  assert.match(b, /To'lagan +\$7(\n|<)/, 'rad etilgan toʻlov hisoblanmaydi'); assert.doesNotMatch(b, /Diller A/);
 }
 
 module.exports = {

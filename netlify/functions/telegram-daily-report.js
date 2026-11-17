@@ -8,7 +8,7 @@ const { isScheduledEvent, claimHourlyAttempt, alreadyDone } = require('./_lib/sc
 const { _isMissingRelation } = require('./_lib/cashAuthority');
 const { claimIdempotent, completeIdempotent, releaseIdempotent } = require('./_lib/idempotency');
 const { buildDailyReport, tashkentNow } = require('./_lib/dailyReport');
-const { TOKEN_RE, CHAT_RE, hourOf, loadAll, dealerPayToday, tgSend } = require('./_lib/dailyReportRun');
+const { TOKEN_RE, CHAT_RE, hourOf, loadAll, dealerPayToday, dealerOverview, tgSend } = require('./_lib/dailyReportRun');
 const { evtOn, chatsFor, dueList, dueByBranch, remindText, monthDealerReports, mapChat, brandOf } = require('./_lib/tgEvents');
 const tc = require('./_lib/tgCustomers');
 const ops = require('./_lib/opsGuard');
@@ -105,6 +105,7 @@ exports.handler = async (event) => {
     try {
       const { data, extra } = await loadAll(admin);
       extra.dealerPay = await dealerPayToday(admin, now.date);
+      extra.dealers = await dealerOverview(admin, now.date).catch(() => null);   // v25.6: qarz + bugungi to'lov + ombor
       const msgs = buildDailyReport(data, now.date, extra);
       for (const m of msgs) {
         const r = await tgSend(st.tgBotToken, st.tgChatId, m);

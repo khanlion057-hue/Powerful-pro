@@ -346,6 +346,14 @@ To'liq hisobot — `AUDIT-HISOBOT.md`. Qisqacha:
 > nimalar kam, to'ldiraylik". Ilova funksiyalari, biznes qoidalari, production bazasi
 > O'ZGARMADI (bazadan faqat o'qildi).
 
+## v25.6.3 — Kunlik hisobot: Dillerlar kengaytirildi
+
+- «Dillerlar» bo'limi endi dillerlar jadvalidan o'qiladi (avval ilova JSON'idan — u yerda dillerlar yo'q, bo'lim umuman chiqmasdi): har diller — **qarz**, **bugungi to'lov** (Toshkent kuni; rad etilgan — manfiy yozuv bilan), **ombor qoldig'i** (dona va $); oxirida jami. Ko'p diller — alohida xabarlarga bo'linadi.
+- Oy yakuni dillerlar hisobotida portal to'lovi ikki marta sanalmaydi (dealer_payments'da allaqachon bor).
+- Telegram `<pre>` — faqat ASCII (oy yakuni va nasiya xabarlarida ham: tutuq/minus/×/… oddiy belgiga); qisqartirish belgisi bitta nuqta (ustunlar buzilmaydi).
+- Tekshirildi (p27): egasiga to'liq hisobot, har filial guruhiga faqat o'z bo'limi, takror yuborilmaydi. Diller guruhlariga — hodisalar va oy yakuni (p84).
+- Test: p97, p27, p84.
+
 ## v25.6.2 — Yuklash: kutish chegarasi; testlar barqarorligi
 
 - Kirishdan keyingi `app-data-load` (admin va sotuvchi): 1-urinish 20 s, so'ng 30 s li qayta urinish; 8 s dan oshsa «Ulanish sekin» xabari. Ikkalasi yiqilsa — tarmoq xatosi sifatida tugaydi, mavjud zaxira yo'llari (qurilmadagi nusxa) o'zgarishsiz ishlaydi. Ma'lumotga tegilmaydi.

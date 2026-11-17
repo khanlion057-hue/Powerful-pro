@@ -26,15 +26,17 @@ const sp = (n, d = 0) => { const v = Math.round(num(n) * 10 ** d) / 10 ** d; con
 const usd = (n) => '$' + sp(n, Math.abs(num(n)) >= 1000 ? 0 : 2);
 const uzs = (n) => sp(n) + " so'm";
 const fmtDate = (d) => String(d || '').slice(0, 10).split('-').reverse().join('.');
-const cut = (s, n) => { s = String(s || ''); return s.length > n ? s.slice(0, n - 1) + '…' : s; };
+const cut = (s, n) => { s = String(s || ''); return s.length > n ? s.slice(0, n - 1) + '.' : s; };
 const W = 30;
 function row(l, v) {
   l = String(l); v = String(v);
   if (l.length + 1 + v.length <= W) return esc(l + ' '.repeat(W - l.length - v.length) + v);
   return esc(l) + '\n' + esc(' '.repeat(Math.max(0, W - v.length)) + v);
 }
-const pre = (rows) => '<pre>' + rows.join('\n') + '</pre>';
-const LINE = '─'.repeat(W);
+// v25.6: Telegram <pre> — faqat ASCII (aks holda ustunlar tekis chiqmaydi): tipografik tutuq/minus/ko'paytirish belgilari oddiy belgiga
+const asc = (t) => String(t).replace(/[\u02BB\u02BC\u2018\u2019\u02B9]/g, "'").replace(/\u2212/g, '-').replace(/\u00D7/g, 'x').replace(/\u2026/g, '.');
+const pre = (rows) => '<pre>' + rows.map(asc).join('\n') + '</pre>';
+const LINE = '-'.repeat(W);
 
 function evtOn(st, kind) { const e = st && st.tgEvt; return !(e && typeof e === 'object' && e[kind] === false); }
 function chatList(v) {
@@ -232,11 +234,8 @@ async function monthDealerReports(admin, st, ym) {
   const { data: dealers } = await admin.from('dealers').select('id,name,debt_usd,active').order('name');
   const moves = (await admin.from('dealer_stock_moves').select('dealer_id,type,qty,cost_usd').gte('created_at', from).lt('created_at', to)).data || [];
   const pays = (await admin.from('dealer_payments').select('dealer_id,amount_usd').gte('created_at', from).lt('created_at', to)).data || [];
-  // Diller portalidan yuborilgan pul (30-migratsiya) — rad etilmaganlari ham to'lov hisoblanadi (qarz darhol kamaygan)
-  try {
-    const n = await admin.from('dealer_pay_notices').select('dealer_id,amount_usd,status').gte('created_at', from).lt('created_at', to);
-    (n.data || []).filter((x) => x.status !== 'rejected').forEach((x) => pays.push({ dealer_id: x.dealer_id, amount_usd: x.amount_usd }));
-  } catch (_) { /* jadval yo'q */ }
+  // Diller portalidan yuborilgan pul (30-migratsiya) ham dealer_payments'ga yoziladi (rad etilsa — teskari manfiy yozuv), shuning uchun
+  // xabarnomalar alohida QO'SHILMAYDI (avval ikki marta sanalardi).
   const title = `${MO[m - 1]} ${y} yakuni`;
   const R = [], perDealer = [];
   let tShip = 0, tRet = 0, tPay = 0, tDebt = 0;

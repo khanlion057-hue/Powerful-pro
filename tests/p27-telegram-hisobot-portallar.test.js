@@ -231,11 +231,33 @@ async function testBrandFit() {
   } finally { await browser.close(); }
 }
 
+// v25.6: guruhlarga yetkazish — egasi (to'liq), har filial (faqat o'z bo'limi); filial xabari boshqasini/Bosh kassani/Dillerlarni ko'rsatmaydi
+async function testGroups() {
+  const RealDate = global.Date, realFetch = global.fetch, sent = [];
+  global.fetch = async (url, opts) => { sent.push({ url: String(url), body: JSON.parse(opts.body) }); return { json: async () => ({ ok: true }) }; };
+  const fixed = new RealDate('2026-10-07T16:30:00Z').getTime();
+  global.Date = class extends RealDate { constructor(...a) { super(...(a.length ? a : [fixed])); } static now() { return fixed; } };
+  let w;
+  try {
+    w = await world({ tgDaily: true, tgBotToken: TOKEN, tgChatId: '-1001234567890', tgDailyHour: 21, tgBranchChats: { baza: '-1001111111111', f729: '-1002222222222' } });
+    const h = loadFunction('telegram-daily-report', w.client);
+    const r = await h(sched()); assert.equal(JSON.parse(r.body).sent >= 1, true, r.body);
+    const to = (chat) => sent.filter((m) => m.body.chat_id === chat).map((m) => m.body.text).join('\n');
+    const owner = to('-1001234567890'), baza = to('-1001111111111'), f729 = to('-1002222222222');
+    assert.match(owner, /Bosh kassa/); assert.match(owner, /Baza<\/b>/); assert.match(owner, /Chilonzor<\/b>/);
+    assert.match(baza, /Baza<\/b>/); assert.doesNotMatch(baza, /Chilonzor|Bosh kassa<\/b>|Dillerlar/, "Baza guruhi: faqat o'z bo'limi");
+    assert.match(f729, /Chilonzor<\/b>/); assert.doesNotMatch(f729, /Baza<\/b>|Bosh kassa<\/b>|Dillerlar/, "729 guruhi: faqat o'z bo'limi");
+    const before = sent.length; await h(sched());
+    assert.equal(sent.length, before, "ikkinchi chaqiruvda hech kimga qayta yuborilmaydi (guruh bo'yicha bir marta)");
+  } finally { global.Date = RealDate; global.fetch = realFetch; unloadFunctions(); if (w) await w.pg.close(); }
+}
+
 module.exports = {
   name: "P27 — v23.9: kunlik Telegram hisoboti, sotuvchi portali (telefon), brend nomi o'lchami",
   cases: [
     { name: "Hisobot matni: bugungi ko'rsatkichlar, sof foyda, kassalar (Shaxsiy yo'q), qarzlar, filiallar, HTML ekranlangan, bo'linadi", run: testReportText },
     { name: "Server (haqiqiy PostgreSQL): o'chiq/erta — yo'q; vaqti kelganda kuniga bir marta; xatoda qayta; ko'rish/yuborish faqat admin, token javobda yo'q", run: testServer },
+    { name: "Guruhlarga yetkazish: egasiga toliq, har filial guruhiga faqat oz bolimi; takror yuborilmaydi", run: testGroups },
     { name: "Sotuvchi (telefon): menyusiz panel, buyurtmalar qo'ng'irog'i, QR, tez sotiladiganlar, Oylik — Xarajat ichida, kassalar, kurs", run: testSellerPhone },
     { name: "Admin: brend nomi uzunligiga mos — qisqa katta, uzun kichik/ikki qator, kesilmaydi", run: testBrandFit },
   ],

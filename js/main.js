@@ -14358,6 +14358,22 @@ function xlImportSig(...parts) {   // FNV-1a — fayl mazmuni (filial, ta'minotc
   for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
   return h.toString(36) + ':' + str.length;
 }
+// v25.6.4: QAYTA YUKLASHDAN himoya. rows — kirim qilinadigan qatorlar ({ p: mahsulot, qty }).
+// «Bir xil fayl qayta yuklanmoqda» belgisi: shu mahsulotlarda xuddi shu miqdorli faol Excel kirimi allaqachon bor qatorlar kamida yarmi.
+// Qo'shimcha: faylning o'zida bir kod bir necha marta. Hech narsaga tegmaydi — faqat ogohlantirish matnini qaytaradi ('' — muammo yo'q).
+function xlDupCheck(rows) {
+  const have = new Map();   // mahsulot id → shu mahsulotdagi faol Excel partiyalarining miqdorlari
+  (S.batches || []).forEach(b => { if (b && b.status === 'active' && /excel/i.test(String(b.origin || ''))) { if (!have.has(b.pid)) have.set(b.pid, new Set()); have.get(b.pid).add(+b.qty); } });
+  const total = rows.length, same = rows.filter(r => have.has(r.p.id) && have.get(r.p.id).has(+r.qty)).length;
+  const cnt = new Map(); rows.forEach(r => cnt.set(r.p.sku, (cnt.get(r.p.sku) || 0) + 1));
+  const dupSkus = [...cnt].filter(([, n]) => n > 1).map(([k]) => k);
+  const out = [];
+  if (total && same >= Math.max(1, Math.ceil(total / 2)))
+    out.push(`⚠️ Bu fayl avval yuklangan ko'rinadi: ${same} / ${total} ta mahsulotda xuddi shu miqdorli Excel kirimi omborda allaqachon bor. Qayta yuklasangiz qoldiq ikki baravar bo'ladi.`);
+  if (dupSkus.length)
+    out.push(`⚠️ Faylda ${dupSkus.length} ta kod takrorlangan (${dupSkus.slice(0, 5).join(', ')}${dupSkus.length > 5 ? '…' : ''}) — har qator alohida kirim bo'ladi, qoldiq qo'shiladi.`);
+  return out.length ? out.join('\n\n') + '\n\nBaribir davom etasizmi? («Bekor» — hech narsa yozilmaydi)' : '';
+}
 function xlImportProgGet(sig, n) {
   try { const p = JSON.parse(localStorage.getItem(XL_PROG_KEY) || 'null');
     return p && p.sig === sig && Array.isArray(p.ids) && p.ids.length === n && Array.isArray(p.done) && Date.now() - (p.at || 0) < 7 * 864e5 ? p : null;
@@ -14526,6 +14542,14 @@ async function importBatchXlsx() {
     // qurilmada eslab qolinadi (sahifa yangilansa ham): qayta yuklanganda saqlangan qism IKKINCHI marta yozilmaydi
     const _sig = xlImportSig(S.branch, suppId, rows.map(r=>[r.p.sku, r.qty, Math.round(r.baseCostUsd*10000)]));
     const _prog = xlImportProgGet(_sig, rows.length);
+    // v25.6.4: qayta yuklashdan himoya — yarim qolgan importni DAVOM ettirishga (_prog) halal bermaydi; bekor qilinsa hech narsa yozilmaydi
+    if (!_prog) {
+      const dupMsg = xlDupCheck(rows);
+      if (dupMsg && !confirm(dupMsg)) {
+        restoreProducts(); restoreProducts = null;
+        toast('Import bekor qilindi — hech narsa yozilmadi', 'warning'); btnReset(); return;
+      }
+    }
     const _ids = _prog ? _prog.ids : fwStableIds('import', rows.map(r=>[r.p.id, r.qty, r.baseCostUsd]), rows.length);
     const prog = _prog || { sig: _sig, ids: _ids, done: [], bno: null };
     const bno = prog.bno || String((S.batchCounter||0)+1).padStart(2,'0');

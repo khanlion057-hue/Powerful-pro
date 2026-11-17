@@ -307,6 +307,7 @@ async function testFormulaInjectionExport() {
 }
 
 module.exports = {
+  _helpers: { withXlApp },
   name: "P46 — v24.5 (v23.10.2 P28 dan): Excel shablon va Kirim importi (haqiqiy ExcelJS), formula in'eksiyasi, qator chegarasi",
   cases: [
     { name: "Shablon: bitta fayl ikkala tugmada (Kirim «Shablon» + bosh qoldiq oynasi), Yo'riqnoma varag'i, NAMUNA qatori, tekshiruv qoidalari", run: testTemplate },

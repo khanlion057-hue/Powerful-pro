@@ -346,6 +346,13 @@ To'liq hisobot — `AUDIT-HISOBOT.md`. Qisqacha:
 > nimalar kam, to'ldiraylik". Ilova funksiyalari, biznes qoidalari, production bazasi
 > O'ZGARMADI (bazadan faqat o'qildi).
 
+## v25.6.4 — Excel kirimini qayta yuklashdan himoya
+
+- Bir xil fayl ikkinchi marta yuklansa (shu mahsulotlarda xuddi shu miqdorli Excel kirimi allaqachon bor qatorlar kamida yarmi) — aniq ogohlantirish: «Qayta yuklasangiz qoldiq ikki baravar bo'ladi». «Bekor» — hech narsa yozilmaydi (yangi mahsulotlar ham yaratilmaydi).
+- Faylning o'zida kod takrorlangan bo'lsa — ogohlantirish.
+- Yolg'on signal yo'q: boshqa miqdor, yangi mahsulot, yarim qolgan importni davom ettirish — so'ralmaydi.
+- Test: p98.
+
 ## v25.6.3 — Kunlik hisobot: Dillerlar kengaytirildi
 
 - «Dillerlar» bo'limi endi dillerlar jadvalidan o'qiladi (avval ilova JSON'idan — u yerda dillerlar yo'q, bo'lim umuman chiqmasdi): har diller — **qarz**, **bugungi to'lov** (Toshkent kuni; rad etilgan — manfiy yozuv bilan), **ombor qoldig'i** (dona va $); oxirida jami. Ko'p diller — alohida xabarlarga bo'linadi.

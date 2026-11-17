@@ -346,6 +346,13 @@ To'liq hisobot — `AUDIT-HISOBOT.md`. Qisqacha:
 > nimalar kam, to'ldiraylik". Ilova funksiyalari, biznes qoidalari, production bazasi
 > O'ZGARMADI (bazadan faqat o'qildi).
 
+## v25.5 — Rasmlar kartochka uslubida (admin + onlayn doʻkon)
+
+- **Rasm koʻrish oynasi** (Savdo, Mahsulotlar): oq yumaloq kartochka, rasm tepani toʻldiradi, rasm ostida kichik rasmlar tasmasi (tanlangani oq hoshiyada), pastda mahsulot nomi va kulrang izoh (kod · toifa). Surish, strelkalar, Esc — avvalgidek.
+- **Onlayn doʻkon**: mahsulot kartochkalari yumaloq, rasm toʻliq; bir nechta rasm boʻlsa — nuqtalar (bosish yoki surish bilan almashadi, oyna ochilmaydi). Mahsulot oynasida katta yumaloq rasm, ustida kichik rasmlar tasmasi, nom + izoh (brend · toifa · kod).
+- Rasmsiz mahsulotlar — avvalgidek arra chizmasi bilan.
+- Test: p93 (rasmlar), p94.
+
 ## Nimalar yetishmas edi
 1. **Baza sxemasi repo'da to'liq yo'q edi** — 20–27-migratsiyalar, hamkorlar v2, login
    xavfsizligi, `sale_checkout_atomic_v2` va boshqalar bazaga to'g'ridan-to'g'ri qo'llangan,

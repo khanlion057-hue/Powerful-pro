@@ -2755,7 +2755,7 @@ if (typeof document !== 'undefined') {
 // fwGallery([url, ...], sarlavha, boshlang'ich indeks). Oldinga/orqaga: tugma, klaviatura (← →), barmoq bilan surish; Esc — yopish.
 // Faqat https va data:image havolalar ko'rsatiladi.
 // ════════════════════════════════════════════════════════════
-function fwGallery(urls, title, start) {
+function fwGallery(urls, title, start, sub) {
   const list = (Array.isArray(urls) ? urls : [urls]).map(String).filter(u => /^(https:|data:image\/)/.test(u));
   if (!list.length) return;
   document.getElementById('fw-gal')?.remove();
@@ -2763,17 +2763,25 @@ function fwGallery(urls, title, start) {
   const prevFocus = document.activeElement;
   const ov = document.createElement('div'); ov.id = 'fw-gal'; ov.className = 'fw-gal'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); ov.setAttribute('aria-label', 'Rasmlar');
   const e = (t) => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  // Egasi namunasi: yumaloq oq karta — rasm tepani to'liq egallaydi, rasm USTIDA pastda kichik rasmlar qatori, ostida nom va izoh
   const paint = () => {
-    ov.innerHTML = `<div class="fw-gal-hd"><b class="fw-gal-t">${e(title || 'Rasm')}</b><span class="fw-gal-n">${i + 1} / ${list.length}</span><button type="button" class="fw-gal-x" aria-label="Yopish">×</button></div>
-      <div class="fw-gal-main">${list.length > 1 ? '<button type="button" class="fw-gal-prev" aria-label="Oldingi rasm">‹</button>' : ''}<img src="${e(list[i])}" alt="${e(title || '')}">${list.length > 1 ? '<button type="button" class="fw-gal-next" aria-label="Keyingi rasm">›</button>' : ''}</div>
-      ${list.length > 1 ? `<div class="fw-gal-th">${list.map((u, k) => `<button type="button" data-k="${k}" class="${k === i ? 'on' : ''}" aria-label="${k + 1}-rasm"><img src="${e(u)}" alt=""></button>`).join('')}</div>` : ''}`;
+    const many = list.length > 1;
+    ov.innerHTML = `<button type="button" class="fw-gal-x" aria-label="Yopish">×</button>
+      <div class="fw-gal-card">
+        <div class="fw-gal-main"><img src="${e(list[i])}" alt="${e(title || '')}">
+          ${many ? '<button type="button" class="fw-gal-prev" aria-label="Oldingi rasm">‹</button><button type="button" class="fw-gal-next" aria-label="Keyingi rasm">›</button>' : ''}
+          <span class="fw-gal-n">${i + 1} / ${list.length}</span>
+          ${many ? `<div class="fw-gal-th">${list.map((u, k) => `<button type="button" data-k="${k}" class="${k === i ? 'on' : ''}" aria-label="${k + 1}-rasm"><img src="${e(u)}" alt=""></button>`).join('')}</div>` : ''}
+        </div>
+        <div class="fw-gal-cap"><b class="fw-gal-t">${e(title || 'Rasm')}</b>${sub ? `<small>${e(sub)}</small>` : ''}</div>
+      </div>`;
   };
   const go = (d) => { i = (i + d + list.length) % list.length; paint(); };
   const close = () => { ov.remove(); document.removeEventListener('keydown', onKey, true); if (prevFocus && prevFocus.focus) try { prevFocus.focus({ preventScroll: true }); } catch (_) {} };
   const onKey = (ev) => { if (ev.key === 'Escape') { ev.stopPropagation(); close(); } else if (ev.key === 'ArrowRight') go(1); else if (ev.key === 'ArrowLeft') go(-1); };
   ov.addEventListener('click', (ev) => {
     const t = ev.target;
-    if (t.closest('.fw-gal-x') || t === ov || t.classList.contains('fw-gal-main')) return close();
+    if (t.closest('.fw-gal-x') || t === ov) return close();
     if (t.closest('.fw-gal-next')) return go(1);
     if (t.closest('.fw-gal-prev')) return go(-1);
     const th = t.closest('.fw-gal-th button'); if (th) { i = +th.dataset.k; paint(); }

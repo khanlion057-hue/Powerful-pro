@@ -150,7 +150,8 @@
   function card(p) {
     var inCart = CART[p.id] || 0, fav = FAV.indexOf(String(p.id)) >= 0;
     var pct = p.old ? Math.round((1 - p.price / p.old) * 100) : 0;
-    return '<article class="vt-pc"><button class="vt-pic" data-open="' + esc(p.id) + '" aria-label="' + esc(p.name) + '">' + pic(p)
+    return '<article class="vt-pc"><button class="vt-pic' + (p.img && p.img.length ? ' has' : '') + (p.img && p.img.length > 1 ? ' multi' : '') + '" data-open="' + esc(p.id) + '" aria-label="' + esc(p.name) + '">' + pic(p)
+      + (p.img && p.img.length > 1 ? '<span class="vt-dots">' + p.img.slice(0, 6).map(function (_, i) { return '<i data-dot="' + i + '"' + (i ? '' : ' class="on"') + '></i>'; }).join('') + '</span>' : '')
       + (pct > 0 ? '<span class="vt-tag">−' + pct + '%</span>' : '') + (p.stock <= 3 ? '<span class="vt-low">' + p.stock + ' ta qoldi</span>' : '') + '</button>'
       + '<button class="vt-fav' + (fav ? ' on' : '') + '" data-fav="' + esc(p.id) + '" aria-label="Sevimlilarga" aria-pressed="' + fav + '"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 6C19 16.5 12 21 12 21z"/></svg></button>'
       + '<div class="vt-pb">' + (p.brand ? '<span class="vt-br">' + esc(p.brand) + '</span>' : '') + '<button class="vt-nm" data-open="' + esc(p.id) + '">' + esc(p.name) + '</button>'
@@ -203,6 +204,30 @@
     if (LAST_FOCUS && LAST_FOCUS.focus) LAST_FOCUS.focus({ preventScroll: true });
   }
 
+  // Kartochkadagi rasm: nuqtani bosish yoki surish — keyingi rasm (mahsulot oynasi ochilmaydi)
+  function cardImg(picEl, k) {
+    var p = BYID[picEl.getAttribute('data-open')]; if (!p || !p.img || p.img.length < 2) return;
+    var n = Math.min(6, p.img.length); k = (k + n) % n;
+    var im = picEl.querySelector('img'); if (im) im.src = p.img[k];
+    picEl.setAttribute('data-k', k);
+    [].forEach.call(picEl.querySelectorAll('.vt-dots i'), function (d, i) { d.classList.toggle('on', i === k); });
+  }
+  document.addEventListener('click', function (e) {
+    var dot = e.target.closest && e.target.closest('.vt-dots i'); if (!dot) return;
+    e.preventDefault(); e.stopPropagation(); cardImg(dot.closest('.vt-pic'), +dot.getAttribute('data-dot'));
+  }, true);
+  var SW = null;
+  document.addEventListener('touchstart', function (e) { var el = e.target.closest && e.target.closest('.vt-pic.multi'); SW = el ? { el: el, x: e.touches[0].clientX, y: e.touches[0].clientY } : null; }, { passive: true });
+  document.addEventListener('touchend', function (e) {
+    if (!SW) return; var t = e.changedTouches[0], dx = t.clientX - SW.x, dy = t.clientY - SW.y, el = SW.el; SW = null;
+    if (Math.abs(dx) < 36 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    cardImg(el, (+el.getAttribute('data-k') || 0) + (dx < 0 ? 1 : -1));
+    el.setAttribute('data-swiped', Date.now());
+  }, { passive: true });
+  document.addEventListener('click', function (e) {   // surishdan keyingi «bosish» — oynani ochmasin
+    var el = e.target.closest && e.target.closest('.vt-pic.multi');
+    if (el && Date.now() - (+el.getAttribute('data-swiped') || 0) < 400) { e.preventDefault(); e.stopPropagation(); }
+  }, true);
   function openProduct(id) {
     var p = BYID[id]; if (!p) return;
     RECENT = [String(id)].concat(RECENT.filter(function (x) { return x !== String(id); })).slice(0, 12); lsSet(key('recent'), RECENT); recent();
@@ -210,9 +235,9 @@
     var q = Math.max(1, CART[id] || 1), imgs = p.img || [];
     var si = sawInfo(p), meta = [p.sku && 'Kod: ' + p.sku, p.brand, si.dia && 'Ø' + si.dia + ' mm', si.tooth && si.tooth + ' tish', si.mat].filter(Boolean).concat(p.specs || []);
     var ask = D.shop.tg ? 'https://t.me/' + encodeURIComponent(D.shop.tg) : D.shop.wa ? 'https://wa.me/' + D.shop.wa.replace(/\D/g, '') + '?text=' + encodeURIComponent(p.name + ' (' + p.sku + ') haqida') : '';
-    sheet('<div class="vt-big" id="vt-bigimg">' + pic(p) + '</div>'
-      + (imgs.length > 1 ? '<div class="vt-thumbs">' + imgs.map(function (u, i) { return '<button data-img="' + i + '" class="' + (i ? '' : 'on') + '"><img src="' + esc(u) + '" alt=""></button>'; }).join('') + '</div>' : '')
-      + (p.brand ? '<span class="vt-br">' + esc(p.brand) + '</span>' : '') + '<h2>' + esc(p.name) + '</h2>'
+    sheet('<div class="vt-hero' + (imgs.length ? ' has' : '') + '"><div class="vt-big" id="vt-bigimg">' + pic(p) + '</div>'
+      + (imgs.length > 1 ? '<div class="vt-thumbs">' + imgs.map(function (u, i) { return '<button data-img="' + i + '" class="' + (i ? '' : 'on') + '" aria-label="Rasm ' + (i + 1) + '"><img src="' + esc(u) + '" alt=""></button>'; }).join('') + '</div>' : '') + '</div>'
+      + '<h2>' + esc(p.name) + '</h2><p class="vt-sub">' + esc([p.brand, p.cat, p.sku].filter(Boolean).join(' · ')) + '</p>'
       + '<div class="vt-pr"><b style="font-size:22px">' + money(p.price) + '</b>' + (p.old ? '<s>' + money(p.old) + '</s>' : '') + '</div>'
       + '<div class="vt-meta">' + meta.map(function (m) { return '<span>' + esc(m) + '</span>'; }).join('') + '<span style="color:' + (p.stock <= 3 ? '#8a5a00' : '#13805b') + '">' + (p.stock <= 3 ? 'Kam qoldi: ' + p.stock + ' ta' : 'Omborda bor') + '</span></div>'
       + (p.desc ? '<p style="color:#555;font-size:14px">' + esc(p.desc) + '</p>' : '')

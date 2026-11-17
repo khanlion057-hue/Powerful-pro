@@ -4188,7 +4188,7 @@ function productUsageCheck(pid) {
 }
 
 // v25.4: ro'yxatdagi kichik rasm bosilganda — mahsulotning barcha rasmlari (rasm ko'rgich)
-function pmGallery(pid) { const p = (S.products || []).find(x => String(x.id) === String(pid)); if (p) fwGallery(fwProdImages(p), p.name, 0); }
+function pmGallery(pid) { const p = (S.products || []).find(x => String(x.id) === String(pid)); if (p) fwGallery(fwProdImages(p), p.name, 0, [p.sku, p.cat, p.brand].filter(Boolean).join(' · ')); }
 function pmCards(prods) {
   if (!prods.length) return `<div class="kr-empty pm-empty">${ICONF.inventory}<b>Mahsulot topilmadi</b><span>Qidiruv yoki filtrni oʻzgartiring, yoki yangi mahsulot qoʻshing.</span></div>`;
   const n = v => Math.round(+v||0).toLocaleString('en-US').replace(/,/g,' ');

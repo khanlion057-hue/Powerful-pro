@@ -248,7 +248,7 @@ function posSetCurT(c) { const s = _posLoadPrefs(); s.curTouched = true; try { l
 // Tanlov shu qurilmada saqlanadi (standart — o'chiq: ro'yxat tezroq va ixcham).
 function posImgOn() { try { return localStorage.getItem('fw_pos_img') === '1'; } catch (_) { return !!POS._img; } }
 function posToggleImg() { const v = !posImgOn(); POS._img = v; try { localStorage.setItem('fw_pos_img', v ? '1' : '0'); } catch (_) {} posRender(); }
-function posGallery(pid) { const p = POS.a.products().find(x => String(x.id) === String(pid)); if (p) fwGallery(fwProdImages(p), p.name, 0); }
+function posGallery(pid) { const p = POS.a.products().find(x => String(x.id) === String(pid)); if (p) fwGallery(fwProdImages(p), p.name, 0, [p.sku, p.cat].filter(Boolean).join(' · ')); }
 
 function posFilteredProducts() {
   const fav = posFavs();

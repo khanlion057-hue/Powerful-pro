@@ -3780,20 +3780,23 @@ button.pos-thumb{ cursor:zoom-in; }
 .pos-thumb img{ width:100%; height:100%; object-fit:contain; border-radius:8px; }
 .pos-thumb em, .pml-img em{ position:absolute; right:-4px; bottom:-4px; min-width:17px; height:17px; padding:0 4px; border-radius:9px; background:var(--gold,#E8961E); color:#1b1200; font-style:normal; font-weight:800; font-size:10.5px; display:grid; place-items:center; }
 .pml-img{ position:relative; } .pml-img.has{ cursor:zoom-in; }
-/* Rasm ko'rgich */
-.fw-gal{ position:fixed; inset:0; z-index:9500; background:rgba(12,13,16,.94); display:flex; flex-direction:column; color:#fff; }
-.fw-gal-hd{ display:flex; align-items:center; gap:10px; padding:10px 12px; }
-.fw-gal-t{ flex:1; min-width:0; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.fw-gal-n{ flex:none; font-size:13px; color:#d7b878; font-variant-numeric:tabular-nums; }
-.fw-gal-x{ flex:none; width:40px; height:40px; border-radius:50%; border:0; background:#ffffff1f; color:#fff; font-size:24px; line-height:1; cursor:pointer; }
-.fw-gal-main{ flex:1; min-height:0; display:flex; align-items:center; justify-content:center; position:relative; padding:0 8px; }
-.fw-gal-main img{ max-width:100%; max-height:100%; min-width:40%; object-fit:contain; border-radius:12px; background:#fff; }
-.fw-gal-prev, .fw-gal-next{ position:absolute; top:50%; transform:translateY(-50%); width:44px; height:44px; border-radius:50%; border:0; background:rgba(12,13,16,.62); color:#fff; box-shadow:0 0 0 1px #ffffff40; font-size:28px; line-height:1; cursor:pointer; z-index:1; }
+/* Rasm ko'rgich — egasi namunasi: yumaloq oq karta, rasm tepada to'liq, ustida kichik rasmlar, ostida nom */
+.fw-gal{ position:fixed; inset:0; z-index:9500; background:rgba(12,13,16,.72); backdrop-filter:blur(6px); display:grid; place-items:center; padding:16px; }
+.fw-gal-x{ position:absolute; right:14px; top:14px; width:42px; height:42px; border-radius:50%; border:0; background:#ffffff; color:#17181c; font-size:24px; line-height:1; cursor:pointer; box-shadow:0 6px 18px -6px #000a; z-index:2; }
+.fw-gal-card{ width:min(100%,460px); background:#fff; color:#17181c; border-radius:28px; overflow:hidden; box-shadow:0 30px 70px -20px #000c; animation:fwGalIn .22s ease-out; }
+@keyframes fwGalIn{ from{ transform:translateY(14px) scale(.97); opacity:.4; } }
+.fw-gal-main{ position:relative; aspect-ratio:1; max-height:62vh; width:100%; background:#f1efe9; border-radius:28px; overflow:hidden; }
+.fw-gal-main > img{ width:100%; height:100%; object-fit:cover; display:block; }
+.fw-gal-prev, .fw-gal-next{ position:absolute; top:50%; transform:translateY(-50%); width:40px; height:40px; border-radius:50%; border:0; background:#ffffffd9; color:#17181c; font-size:26px; line-height:1; cursor:pointer; box-shadow:0 4px 12px -4px #0008; }
 .fw-gal-prev{ left:10px; } .fw-gal-next{ right:10px; }
-.fw-gal-th{ display:flex; gap:8px; justify-content:center; padding:12px; overflow-x:auto; }
-.fw-gal-th button{ flex:none; width:56px; height:56px; border-radius:10px; border:2px solid transparent; background:#fff; padding:2px; cursor:pointer; opacity:.6; }
-.fw-gal-th button.on{ border-color:var(--gold,#E8961E); opacity:1; }
-.fw-gal-th img{ width:100%; height:100%; object-fit:contain; border-radius:6px; }
+.fw-gal-n{ position:absolute; right:12px; top:12px; background:rgba(12,13,16,.55); color:#fff; border-radius:99px; padding:3px 10px; font-size:12px; font-weight:700; font-variant-numeric:tabular-nums; }
+.fw-gal-th{ position:absolute; left:0; right:0; bottom:12px; display:flex; gap:8px; justify-content:center; padding:0 12px; }
+.fw-gal-th button{ flex:none; width:58px; height:58px; border-radius:14px; border:2px solid transparent; background:#fff; padding:0; overflow:hidden; cursor:pointer; opacity:.82; box-shadow:0 6px 14px -6px #000a; }
+.fw-gal-th button.on{ border-color:#fff; opacity:1; transform:scale(1.06); }
+.fw-gal-th img{ width:100%; height:100%; object-fit:cover; display:block; }
+.fw-gal-cap{ padding:16px 20px 20px; display:flex; flex-direction:column; gap:3px; }
+.fw-gal-t{ font-size:21px; font-weight:800; line-height:1.2; letter-spacing:-.01em; }
+.fw-gal-cap small{ color:#7a7d86; font-size:14px; }
 /* v25.4: diller «Pul yuborish» — xato, qarz yo'q, to'liq qarz */
 .dlp-err{ display:flex; align-items:center; justify-content:space-between; gap:10px; background:color-mix(in srgb,var(--red) 10%,transparent); color:var(--red); border-radius:12px; padding:10px 12px; margin-bottom:10px; font-size:13px; font-weight:600; }
 .dlp-nodebt{ display:flex; flex-direction:column; gap:4px; align-items:center; text-align:center; padding:18px 8px; }

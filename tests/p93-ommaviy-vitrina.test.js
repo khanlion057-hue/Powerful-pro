@@ -118,6 +118,44 @@ async function testBrowser() {
   } finally { await browser.close(); S.close(); }
 }
 
+// v25.5 — rasm uslubi: kartochkada rasm to'liq, nuqtalar (bosilsa rasm almashadi, oyna ochilmaydi); oynada rasm ustida kichik rasmlar tasmasi, nom + izoh
+async function testImages() {
+  const fx = fixture();
+  fx.main.products[0].images = ['https://img.test/a.png', 'https://img.test/b.png', 'https://img.test/c.png'];
+  fx.main.products[1].image = 'https://img.test/d.png';
+  const S = await startShop(fx);
+  const { chromium } = require('playwright');
+  const browser = await chromium.launch({ executablePath: fs.existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined, args: ['--no-sandbox'] });
+  try {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    const errors = []; page.on('pageerror', (e) => errors.push(e.message));
+    await page.route('https://img.test/**', (r) => r.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><rect width="40" height="40" fill="#ccc"/></svg>' }));
+    await page.goto(`http://127.0.0.1:${S.port}/dokon.html?s=powerful`);
+    await page.waitForSelector('.vt-pc');
+    const multi = page.locator('.vt-pic.multi');
+    assert.equal(await multi.count(), 1, 'nuqtalar — faqat bir nechta rasmli mahsulotda');
+    assert.equal(await multi.locator('.vt-dots i').count(), 3);
+    assert.equal(await page.locator('.vt-pic.has').count(), 2);
+    assert.ok(await page.locator('.vt-pic:not(.has) svg').count() > 0, 'rasmsiz — arra chizmasi');
+    const fill = await multi.evaluate((el) => { const a = el.getBoundingClientRect(), b = el.querySelector('img').getBoundingClientRect(); return Math.abs(a.width - b.width) < 1 && Math.abs(a.height - b.height) < 1 && getComputedStyle(el.querySelector('img')).objectFit; });
+    assert.equal(fill, 'cover', "rasm kartochka tepasini to'ldiradi");
+    await multi.locator('.vt-dots i').nth(2).click();
+    assert.match(await multi.locator('img').getAttribute('src'), /c\.png$/);
+    assert.equal(await multi.locator('.vt-dots i.on').count(), 1);
+    assert.equal(await page.locator('.vt-sheet h2').count(), 0, 'nuqta bosilganda oyna ochilmaydi');
+    await multi.click();
+    await page.waitForSelector('.vt-sheet h2');
+    assert.equal(await page.locator('.vt-hero .vt-thumbs button').count(), 3);
+    const over = await page.evaluate(() => { const h = document.querySelector('.vt-big').getBoundingClientRect(), t = document.querySelector('.vt-hero .vt-thumbs').getBoundingClientRect(); return t.top > h.top && t.bottom <= h.bottom; });
+    assert.ok(over, 'kichik rasmlar — katta rasm ustida, pastida');
+    await page.locator('.vt-hero .vt-thumbs button').nth(1).click();
+    assert.match(await page.locator('#vt-bigimg img').getAttribute('src'), /b\.png$/);
+    assert.equal(await page.locator('.vt-hero .vt-thumbs button.on').count(), 1);
+    assert.match(await page.locator('.vt-sub').textContent(), /PWR/);
+    assert.deepEqual(errors, []);
+  } finally { await browser.close(); S.close(); }
+}
+
 async function testStatic() {
   const root = path.join(__dirname, '..');
   const html = fs.readFileSync(path.join(root, 'dokon.html'), 'utf8');
@@ -134,6 +172,7 @@ module.exports = {
     { name: "Katalog: faqat yoqilgan do'kon, tannarx yo'q, narx serverda (1 000 ga yaxlit), chegirma, arxiv/tugagan — yo'q", run: testCatalog },
     { name: "Buyurtma: server narxi, tekshiruvlar, bot tuzog'i, yetkazish narxi va bepul chegara, versiya ziddiyati, holat — kalit bilan", run: testOrder },
     { name: "Brauzer: qidiruv, arra tanlash yordamchisi, savat → buyurtma (jami bir xil), telefon niqobi, Buyurtmalarim, sevimlilar, havola", run: testBrowser },
+    { name: "Rasmlar: kartochkada to'liq rasm va nuqtalar, oynada rasm ustida kichik rasmlar tasmasi, nom + izoh", run: testImages },
     { name: "Statik: sahifa bazaga to'g'ridan ulanmaydi, /dokon yo'naltirish, admin havolasi", run: testStatic },
   ],
 };

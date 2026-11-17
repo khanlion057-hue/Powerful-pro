@@ -64,7 +64,8 @@ function row(label, value) {
   if (l.length + 1 + v.length <= COL_W) return esc(l + ' '.repeat(COL_W - l.length - v.length) + v);
   return esc(l) + '\n' + esc(' '.repeat(Math.max(0, COL_W - v.length)) + v);
 }
-const pre = (rows) => '<pre>' + rows.join('\n') + '</pre>';
+const asc = (t) => String(t).replace(/[\u02BB\u02BC\u2018\u2019\u02B9]/g, "'").replace(/\u2212/g, '-').replace(/\u00D7/g, 'x').replace(/\u2026/g, '...');
+const pre = (rows) => '<pre>' + rows.map(asc).join('\n') + '</pre>';
 const cut = (s, n) => { s = String(s || ''); return s.length > n ? s.slice(0, n - 1) + '…' : s; };
 
 // Hisobot matni (Telegram HTML). Natija — xabarlar ro'yxati (har biri ≤ 3900 belgi).
@@ -72,7 +73,7 @@ const cut = (s, n) => { s = String(s || ''); return s.length > n ? s.slice(0, n 
 // «BUGUN» (savdo/foyda), «KASSALAR», «QARZLAR» (kim kimga qarzdorligi aniq); nom bo'lmasa — «ERP» o'rniga brend nomi.
 const WEEKDAYS = ['yakshanba', 'dushanba', 'seshanba', 'chorshanba', 'payshanba', 'juma', 'shanba'];
 const BRAND_DEFAULT = String(process.env.FW_BRAND_NAME || 'POWERFUL GROUP');
-const LINE = '─'.repeat(COL_W);
+const LINE = '-'.repeat(COL_W);
 function buildDailyReport(data, date, extra = {}) {
   const st = (data && data.settings) || {};
   const rate = num(st.usdUzs);
@@ -113,6 +114,12 @@ function buildDailyReport(data, date, extra = {}) {
   const top = [];
   if (extra.firma) {
     top.push(`🏦 <b>Bosh kassa</b>\n` + pre([row('Dollar', usd(extra.firma.USD)), row("Soʻm", uzs(extra.firma.UZS))]));
+  }
+  const dl = ((data && data.dealers) || []).filter((x) => x && x.name);
+  if (extra.firma && dl.length) {
+    const R = dl.slice(0, 15).map((x) => row(cut(x.name, 18), usd(num(x.debt))));
+    R.push(LINE); R.push(row('Jami qarz', usd(dl.reduce((a, x) => a + Math.max(0, num(x.debt)), 0))));
+    top.push(`🚚 <b>Dillerlar</b>\n` + pre(R));
   }
   const sum = [];
   if (order.length > 1) { sum.push(row(`Jami savdo (${total.count} chek)`, usd(total.revenue))); sum.push(row('Jami sof foyda', usd(total.profit - total.expense))); }

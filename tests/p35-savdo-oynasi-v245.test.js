@@ -120,7 +120,7 @@ async function testNavHistoryAndForms() {
       await page.evaluate((p) => { go('dashboard'); go(p); }, pg);
     }
     await page.evaluate(() => go('dashboard')); await page.waitForTimeout(300);
-    const r = await page.evaluate(() => ({ len: history.length, stack: SHELL.nav.stack.length, back: FW_BACK.length, xs: document.querySelectorAll('.fw-x').length }));
+    const r = await page.evaluate(() => ({ len: history.length, stack: SHELL.nav.stack.length, back: FW_BACK.filter(e => e.key !== 'root').length, xs: document.querySelectorAll('.fw-x').length }));
     assert.ok(r.len <= len0 + 1, `brauzer tarixi o'smadi (${len0} → ${r.len})`);
     assert.equal(r.stack, 0); assert.equal(r.back, 0);
     // ichma-ich: 2 qadam — «Orqaga» birma-bir

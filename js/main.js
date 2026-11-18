@@ -4030,7 +4030,7 @@ function pgMahsulotlar() {
     <div class="ox-hero-top"><span>Ombor</span><span class="ox-date">${n(active.length)} ta mahsulot</span></div>
     <div class="pmh-2"><div><span>Tannarxda</span><b>${usd(value)}</b></div><div title="Kassadagi chakana narx (butun $, soʻmda yaxlit) × qoldiq"><span>Sotuvda (kassa narxida)</span><b style="color:var(--sky)">${usd(sellV)}</b></div></div>
     <div class="pmh-3">${big('','Barcha mahsulotlar','gold',active.length)}${big('low','Kam','amber',low)}${big('out','Mavjud emas','red',out)}</div>
-    <div class="pmh-foot">Qoldiq: <b>${n(units)}</b> dona${arch?` · arxivda ${n(arch)}`:''}</div>
+    <div class="pmh-foot">Qoldiq: <b>${n(units)}</b> dona${arch?` · <button type="button" class="pm-archb${stF==='arch'?' on':''}" onclick="pmSetSt('arch')">arxivda ${n(arch)} ›</button>`:''}</div>
   </section>
 
   <div class="pm-top">
@@ -4052,10 +4052,7 @@ function pgMahsulotlar() {
     <button type="button" class="pm-sortb" onclick="pmSortSheet()" aria-label="Saralash" title="Saralash">${ICONF.sort}</button>
   </div>
 
-  <div class="pm-chips">
-    ${chip('','Hammasi','gold',active.length)}${chip('low','Kam qoldi','amber',low)}${chip('out','Mavjud emas','red',out)}${arch?chip('arch','Arxiv','text-muted',arch):''}
-  </div>
-  ${cats.length>1 ? `<div class="pm-cats">${['',...cats].map(c=>`<button class="pm-cat${catF===c?' on':''}" onclick="pmSetCat(${JSON.stringify(c).replace(/"/g,'&quot;')})">${c?esc(c):'Barcha kategoriya'}</button>`).join('')}</div>` : ''}
+  <div class="pm-cats">${cats.length>1 ? ['',...cats].map(c=>`<button class="pm-cat${catF===c?' on':''}" onclick="pmSetCat(${JSON.stringify(c).replace(/"/g,'&quot;')})">${c?esc(c):'Barcha kategoriya'}</button>`).join('') : ''}<button class="pm-cat pm-cat-edit" onclick="pmCatSheet()" aria-label="Kategoriyalarni boshqarish">✎ Kategoriyalar</button></div>
 
   ${(() => { const g = fwCanDelProducts() ? fwOrphanProducts().filter(p => !p.archived).length : 0;
     return g ? `<button class="pos-strip pm-ghost" onclick="fwCleanupOrphans(null);pgMahsulotlar()">${ICONF.warning}<span><b>${g}</b> ta mahsulot hech qayerda yoʻq (kirimi oʻchirilgan) — savdo roʻyxatidan tozalash</span>${ICONF.chevron}</button>` : ''; })()}
@@ -4066,6 +4063,28 @@ function pgMahsulotlar() {
 function pmSetSt(k){ S.pmSt = k; document.querySelectorAll('#pg-mahsulotlar .pm-chip, #pg-mahsulotlar .pmh-b').forEach(b=>b.classList.toggle('on', b.getAttribute('onclick')===`pmSetSt('${k}')`)); pmFilter(); }
 function pmSetCat(c){ S.pmCat = c; document.querySelectorAll('#pg-mahsulotlar .pm-cat').forEach(b=>b.classList.toggle('on', b.textContent===(c||'Barcha kategoriya'))); pmFilter(); }
 const PM_SORTS = { new:'Yangi qoʻshilganlar', name:'Nomi (A–Z)', stockAsc:'Qoldiq: kamdan koʻpga', stockDesc:'Qoldiq: koʻpdan kamga', price:'Narx: qimmatdan arzonga' };
+// Kategoriyalarni boshqarish: nomini oʻzgartirish (hamma mahsulotda), olib tashlash; yangisi — «Yangi mahsulot» formasida «+»
+function pmCatSheet() {
+  const act = S.products.filter(p => !p.archived), cnt = {};
+  S.products.forEach(p => { if (p.cat) cnt[p.cat] = (cnt[p.cat] || 0) + 1; });
+  const names = Object.keys(cnt).sort(), q = (c) => JSON.stringify(c).replace(/"/g, '&quot;');
+  openSheet({ ic: 'inventory', c: 'sky', title: 'Kategoriyalar', sub: `${names.length} ta`,
+    body: `<div class="bs-card">${names.length ? names.map(c => `<div class="dl-prow"><div><div class="dl-pname">${esc(c)}</div><div class="dl-pmeta">${cnt[c]} ta mahsulot</div></div>
+      <div style="display:flex;gap:6px"><button class="btn btn-ghost" onclick="pmCatRename(${q(c)})">Nomi</button><button class="btn btn-ghost" onclick="pmCatRemove(${q(c)})">Olib tashlash</button></div></div>`).join('') : '<div class="dl-pmeta" style="padding:12px 0">Hali kategoriya yoʻq</div>'}
+      <div class="dl-pmeta" style="padding-top:10px">Yangi kategoriya: «Yangi mahsulot» yoki mahsulotni tahrirlashda «+» ni bosing.</div></div>` });
+}
+function pmCatRename(c) {
+  const v = (prompt('Kategoriya yangi nomi', c) || '').replace(/\s+/g, ' ').trim().slice(0, 60); if (!v || v === c) return;
+  let n = 0; S.products.forEach(p => { if (p.cat === c) { p.cat = v; n++; } });
+  if (S.pmCat === c) S.pmCat = v;
+  save(); auditLog(`Kategoriya nomi: ${c} → ${v} (${n} ta mahsulot)`); toast(`✅ ${n} ta mahsulot yangilandi`); closeSheet(); pgMahsulotlar(); pmCatSheet();
+}
+function pmCatRemove(c) {
+  if (!confirm(`«${c}» kategoriyasi olib tashlansinmi? Mahsulotlar oʻchmaydi, faqat kategoriyasiz qoladi.`)) return;
+  let n = 0; S.products.forEach(p => { if (p.cat === c) { delete p.cat; n++; } });
+  if (S.pmCat === c) S.pmCat = '';
+  save(); auditLog(`Kategoriya olib tashlandi: ${c} (${n} ta mahsulot)`); toast(`✅ ${n} ta mahsulot kategoriyasiz`); closeSheet(); pgMahsulotlar(); pmCatSheet();
+}
 function pmSortSheet() {
   const cur = S.pmSort||'new';
   openSheet({ic:'sort', c:'sky', title:'Saralash', body:`<div class="bs-card pm-sorts">${Object.entries(PM_SORTS).map(([k,l])=>`<button class="pm-sort${k===cur?' on':''}" onclick="S.pmSort='${k}';closeSheet();pmFilter()"><span>${l}</span>${k===cur?ICONF.check:''}</button>`).join('')}</div>`});

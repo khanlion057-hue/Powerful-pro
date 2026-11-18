@@ -3846,3 +3846,5 @@ button.pos-thumb{ cursor:zoom-in; }
 .sf-pd-attrs div{ display:flex; justify-content:space-between; gap:12px; padding:6px 0; border-bottom:1px dashed #e2e8f0; }
 .sf-pd-attrs dt{ color:#64748b; } .sf-pd-attrs dd{ margin:0; font-weight:600; text-align:right; }
 .sf-gal-main > img, .sf-gal-main > video{ position:absolute; inset:0; width:100%; height:100%; }   /* rasm o'lchami qanday bo'lmasin — maydon sakramaydi */
+.pm-archb{ border:0; background:none; color:var(--sky); font:inherit; font-weight:700; cursor:pointer; padding:0 }
+.pm-cat-edit{ border-style:dashed !important }

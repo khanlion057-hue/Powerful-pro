@@ -147,8 +147,21 @@ async function testCatImgClient() {
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }
 }
+// v25.6.5: boshqaruv panelidagi havola matni HAQIQIY ishlaydigan manzil bo'lishi kerak (avval «host/slug» ko'rsatilib, u 404 berardi)
+async function testLinkText() {
+  const { browser, page, errors } = await openPage('index.html', { width: 390, height: 844, mobile: true, admin: true });
+  try {
+    await page.evaluate(SEED);
+    const r = await page.evaluate(() => { go('dokon'); const t = document.querySelector('.dk-link span')?.textContent || ''; return { t, url: shopPublicUrl(), slug: shopCfg().slug }; });
+    assert.ok(r.url.startsWith('http'), 'havola mavjud: ' + r.url);
+    assert.equal(r.t, r.url.replace(/^https?:\/\//, ''), "ko'rsatilgan matn = nusxalanadigan/ochiladigan havola");
+    assert.match(r.t, /\/dokon\?s=/, "haqiqiy manzil: /dokon?s=slug");
+    assert.deepEqual(errors, []);
+  } finally { await browser.close(); }
+}
 module.exports = { openPage, name: 'P63 — zamonaviy vitrina (v24.7)', cases: [
   { name: "bo'limlar, saralash, sevimlilar, mahsulot sahifasi, savat → sinov buyurtmasi; XSS yo'q", run: testStorefront },
   { name: "kategoriya rasmlari: server faqat https saqlaydi; vitrina doira, katalog va rasmsiz mahsulotda ko'rsatadi", run: testCatImgServer },
   { name: "kategoriya rasmlari oynasi va vitrinada ko'rinishi", run: testCatImgClient },
+  { name: "boshqaruv panelidagi havola matni — haqiqiy ishlaydigan manzil (/dokon?s=slug)", run: testLinkText },
 ] };

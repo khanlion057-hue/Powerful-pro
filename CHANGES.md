@@ -346,6 +346,12 @@ To'liq hisobot — `AUDIT-HISOBOT.md`. Qisqacha:
 > nimalar kam, to'ldiraylik". Ilova funksiyalari, biznes qoidalari, production bazasi
 > O'ZGARMADI (bazadan faqat o'qildi).
 
+## v25.6.5 — Ombor qoldig'i: 1000 qatorlik chegara tuzatildi
+
+- **Sabab:** Supabase (PostgREST) bir so'rovda eng ko'pi 1000 qator qaytaradi. Ledger yuklovchisi partiyalarni, savdolarni va balanslarni sahifalamasdan o'qigani uchun, o'chirilgan qatorlar bilan `batches` jadvali 1000 dan oshgach (4030), yangi partiyalarning bir qismi «bazada yo'q» deb topilib, qoldig'i 0 / «Tugagan» qilib yozilardi (806 mahsulotdan 10 tasi «Mavjud emas», qoldiq 15 899 o'rniga 16 009). Endi hammasi 1000 talik sahifalarda o'qiladi (`_lib/pgPaged.js`: ledger, tannarx/FIFO). Saqlangan noto'g'ri qiymatlar keyingi yuklash/saqlashda serverdagi haqiqiy qiymatga qaytadi.
+- Onlayn-do'kon sahifasidagi havola matni haqiqiy manzilni ko'rsatadi (`host/dokon?s=slug`); avval `host/slug` ko'rsatilib, u 404 berardi.
+- Test: p99 (ledger), p63 (havola matni).
+
 ## v25.6.4 — Excel kirimini qayta yuklashdan himoya
 
 - Bir xil fayl ikkinchi marta yuklansa (shu mahsulotlarda xuddi shu miqdorli Excel kirimi allaqachon bor qatorlar kamida yarmi) — aniq ogohlantirish: «Qayta yuklasangiz qoldiq ikki baravar bo'ladi». «Bekor» — hech narsa yozilmaydi (yangi mahsulotlar ham yaratilmaydi).

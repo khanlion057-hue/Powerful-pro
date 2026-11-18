@@ -195,7 +195,7 @@ function pgDokon() {
   <section class="dk-hero">
     <div class="dk-hero-id">
       <span class="dk-logo">${ICONF.store}</span>
-      <div><b>${esc(c.name)}</b><button class="dk-link" onclick="dkCopyLink()">${ICONF.link}<span>${esc(host)}/${esc(c.slug)}</span></button></div>
+      <div><b>${esc(c.name)}</b><button class="dk-link" onclick="dkCopyLink()">${ICONF.link}<span>${esc((shopPublicUrl() || `${host}/dokon?s=${c.slug}`).replace(/^https?:\/\//, ''))}</span></button></div>
     </div>
     <div class="dk-hero-acts">
       <button onclick="dkOpenStorefront()">${ICONF.launch}<span>Ochish</span></button>

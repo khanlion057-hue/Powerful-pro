@@ -8,6 +8,7 @@
 //   Qolganlarga mahsulot narxi TAYYOR holda beriladi (retailUsd / optUsd), tannarx maydonlari olib tashlanadi.
 // • Chegirma chegarasi: admin bo'lmagan xodim narxni asosdan ko'pi bilan settings.maxDiscountPct (standart 10)
 //   foizga tushiradi; asos — savdo rejimiga qarab (chakana / optom).
+const { selectAll } = require('./pgPaged');
 const DEFAULT_MARKUP = 25;
 const DEFAULT_OPT_MARKUP = 15;
 const DEFAULT_MAX_DISCOUNT = 10;
@@ -97,7 +98,8 @@ function discountViolation({ products, settings, items, discPct, mode, costMap, 
 async function dbFifoCostMap(admin, filial, pids) {
   const ids = [...new Set((pids || []).map(Number).filter(n => Number.isSafeInteger(n) && n > 0))];
   if (!ids.length) return new Map();
-  const { data, error } = await admin.from('batches').select('id,pid,qty,sold,cost_usd,status,batch_date,deleted_at').eq('filial', filial).in('pid', ids);
+  // v25.6.5: sahifalab (1000 qatorlik chegara) — o'chirilgan partiyalar to'planib, faollar kesilib qolmasin
+  const { data, error } = await selectAll(() => admin.from('batches').select('id,pid,qty,sold,cost_usd,status,batch_date,deleted_at').eq('filial', filial).in('pid', ids), 'id');
   if (error) throw error;
   return fifoCostMap(data || []);
 }

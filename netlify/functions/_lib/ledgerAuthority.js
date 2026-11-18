@@ -10,6 +10,7 @@
 // hech narsa buzilmaydi).
 // ════════════════════════════════════════════════════════════
 const { _isMissingRelation } = require('./cashAuthority');
+const { selectAll } = require('./pgPaged');
 
 const OFF_RECHECK_MS = 60 * 1000;
 let _state = { on: null, at: 0 };
@@ -32,16 +33,17 @@ const r4 = (v) => Math.round(num(v) * 10000) / 10000;
 // Bitta filialning haqiqiy qiymatlari
 async function loadLedger(admin, filial) {
   const [c, s, b, sl] = await Promise.all([
-    admin.from('customer_balances').select('customer_local_id,debt').eq('filial', filial),
-    admin.from('supplier_balances').select('supplier_local_id,debt,total_paid').eq('filial', filial),
-    admin.from('batches').select('*').eq('filial', filial),   // v24.6: barcha ustunlar — o'tkazma partiyalarini ro'yxatga qo'shish uchun
-    admin.from('sales').select('local_id,items,subtotal_usd,disc_pct,disc_usd,total_usd,paid_usd,debt_usd,profit_usd,status,edited_at').eq('filial', filial),
+    // v25.6.5: hammasi sahifalab (1000 qatorlik PostgREST chegarasi): avval kesilgan jadval yangi partiyalarni «yo'q» deb qoldig'ini 0 qilardi
+    selectAll(() => admin.from('customer_balances').select('customer_local_id,debt').eq('filial', filial), 'customer_local_id'),
+    selectAll(() => admin.from('supplier_balances').select('supplier_local_id,debt,total_paid').eq('filial', filial), 'supplier_local_id'),
+    selectAll(() => admin.from('batches').select('*').eq('filial', filial), 'id'),   // v24.6: barcha ustunlar — o'tkazma partiyalarini ro'yxatga qo'shish uchun
+    selectAll(() => admin.from('sales').select('local_id,items,subtotal_usd,disc_pct,disc_usd,total_usd,paid_usd,debt_usd,profit_usd,status,edited_at').eq('filial', filial), 'id'),
   ]);
   for (const r of [c, s, b]) if (r.error) throw r.error;
   // v25.1 (47): savdoning yaxlitlash maydonlari — 47 qo'llangan bo'lsa ular ham (bo'lmasa — avvalgi ustunlar)
   let slr = sl;
   if (!slr.error) {
-    const sx = await admin.from('sales').select('local_id,asl_jami_uzs,yaxlitlash_chegirmasi_uzs,tolangan_jami_uzs').eq('filial', filial);
+    const sx = await selectAll(() => admin.from('sales').select('local_id,asl_jami_uzs,yaxlitlash_chegirmasi_uzs,tolangan_jami_uzs').eq('filial', filial), 'id');
     if (!sx.error && Array.isArray(sx.data)) {
       const m = new Map(sx.data.map((r) => [String(r.local_id), r]));
       slr = { ...sl, data: (sl.data || []).map((r) => ({ ...r, ...(m.get(String(r.local_id)) || {}) })) };
@@ -63,7 +65,7 @@ async function loadLedger(admin, filial) {
   const customers = new Map((c.data || []).map(r => [String(r.customer_local_id), r2(r.debt)]));
   const suppliers = new Map((s.data || []).map(r => [String(r.supplier_local_id), { debt: r4(r.debt), paid: r4(r.total_paid) }]));
   // v25 (44): so'mdagi ta'minotchi — aniq qarz so'mda (ustun bo'lmasa — 44 qo'llanmagan, hammasi $ da)
-  const su = await admin.from('supplier_balances').select('supplier_local_id,currency,debt_uzs').eq('filial', filial).eq('currency', 'UZS');
+  const su = await selectAll(() => admin.from('supplier_balances').select('supplier_local_id,currency,debt_uzs').eq('filial', filial).eq('currency', 'UZS'), 'supplier_local_id');
   if (!su.error) (su.data || []).forEach(r => { const v = suppliers.get(String(r.supplier_local_id)); if (v) Object.assign(v, { debtCur: 'UZS', debtUzs: r2(r.debt_uzs) }); });
   const batches = new Map((b.data || []).map(r => [String(r.local_id), { qty: num(r.qty), sold: num(r.sold), status: r.status, costUsd: num(r.cost_usd),
     pid: num(r.pid), bno: r.bno || null, origin: r.origin || null, fromBranch: r.from_branch || null, date: r.batch_date ? String(r.batch_date).slice(0, 10) : null }]));

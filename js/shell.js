@@ -87,6 +87,13 @@ function shellNavTrack(page) {
       if (typeof fwBackPush === 'function') fwBackPush(e.key, () => { N.fromPop = true; try { go(e.page); } finally { N.fromPop = false; } });
     }
   }
+  else if (!prev && page !== 'dashboard') {
+    // v25.6.8: ilova qayta ochilganda (Android fonda yopgan sahifani manzildan tiklaydi) bo'lim to'g'ridan-to'g'ri ochiladi — «ortga yo'l» yo'q edi,
+    // «Orqaga» ilovadan chiqarib yuborardi. Endi tiklangan bo'limdan «Orqaga» — Bosh sahifaga (1 qadam).
+    const e = { page: 'dashboard', sheet: null, key: 'nav:' + (++N.seq) };
+    N.stack.push(e);
+    if (typeof fwBackPush === 'function') fwBackPush(e.key, () => { N.fromPop = true; try { go('dashboard'); } finally { N.fromPop = false; } });
+  }
   N.closed = null; N.cur = page;
 }
 function shellAfterNav() {}
@@ -94,7 +101,7 @@ function shellAfterNav() {}
 function shellBack() {
   // Bo'lim ichida ochiq qism (masalan, kirim formasi) bo'lsa — ✕ avval o'shani yopadi (bitta qadam, «Orqaga» kabi)
   const fb = typeof FW_BACK !== 'undefined' ? FW_BACK[FW_BACK.length - 1] : null;
-  if (fb && !String(fb.key).startsWith('nav:')) { const k = fb.key; try { fb.closeFn(); } catch (_) {} if (typeof fwBackDone === 'function') fwBackDone(k); return; }
+  if (fb && !/^(nav:|root$)/.test(String(fb.key))) { const k = fb.key; try { fb.closeFn(); } catch (_) {} if (typeof fwBackDone === 'function') fwBackDone(k); return; }
   const N = SHELL.nav, top = N.stack[N.stack.length - 1];
   go(top ? top.page : 'dashboard');
 }

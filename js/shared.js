@@ -1463,6 +1463,20 @@ if (typeof window !== 'undefined') window.addEventListener('popstate', () => {
   _fwSyncHash();
 });
 
+// v25.6.8: BOSH SAHIFADA «ORQAGA» ilovadan darhol chiqarib yubormaydi: 1-bosish — «Chiqish uchun yana bir marta bosing» (2,5 s), ikkinchisi — chiqish.
+// «root» — ro'yxatning ENG PASTKI yozuvi (ustiga oynalar/bo'limlar qo'yiladi); faqat boshqa hech narsa qolmaganda ishlaydi. 2,5 s o'tgach himoya qayta qo'yiladi.
+let _fwRootOn = false, _fwRootT = null;
+function _fwRootBack() {
+  try { if (typeof toast === 'function') toast('Chiqish uchun yana bir marta «Orqaga» bosing', 'warning'); } catch (_) {}
+  clearTimeout(_fwRootT);
+  _fwRootT = setTimeout(() => { if (_fwRootOn) fwBackRootInstall(); }, 2500);   // shu oynada himoya yo'q — ikkinchi «Orqaga» tizimga o'tadi (chiqadi)
+}
+function fwBackRootInstall() {
+  _fwRootOn = true;
+  if (!FW_BACK.some(e => e.key === 'root')) FW_BACK.unshift({ key: 'root', closeFn: _fwRootBack });
+  _fwGuardPush();
+}
+
 // v24.4: hujjat raqami — 0001 dan; «ro'yxat uzunligi + 1» emas, shu prefiksdagi ENG KATTA raqam + 1
 // (savdo o'chirilgach keyingi raqam mavjud chek raqami bilan takrorlanmasin). Masalan: INV-0001 … INV-0100.
 function fwNextDocNo(prefix, list, field) {
@@ -1590,6 +1604,7 @@ function ptSettingsOpen(o) {
         <label class="pos-lbl" for="pts-ph">Filial telefoni</label><input class="pos-in" id="pts-ph" maxlength="40" inputmode="tel" ${br.canEdit ? '' : 'disabled'} value="${esc(bs.phone || '')}">
         <label class="pos-lbl" for="pts-ad">Manzil</label><input class="pos-in" id="pts-ad" maxlength="200" ${br.canEdit ? '' : 'disabled'} value="${esc(bs.address || '')}">
         ${br.canEdit ? `<button class="pos-btn pri" onclick="ptSaveBranch(this)">Filial sozlamalarini saqlash</button>` : `<div class="pos-hint">Oʻzgartirish uchun administratorga murojaat qiling (ruxsat: sozlamalar).</div>`}` : ''}
+      ${PTS.quick === false ? '' : `<div class="pos-sec">TEZ KIRISH</div>${fwQuickSectionHtml({ canSetPin: !!(PTS.quickInfo || window.fwQuickInfoProvider), info: PTS.quickInfo, after: () => ptSettingsOpen() })}`}
       ${PTS.password ? `<div class="pos-sec">PAROL</div>
         <label class="pos-lbl" for="pts-pw1">Yangi parol (kamida 8 belgi)</label><input class="pos-in" id="pts-pw1" type="password" autocomplete="new-password" maxlength="72">
         <label class="pos-lbl" for="pts-pw2">Yangi parolni takrorlang</label><input class="pos-in" id="pts-pw2" type="password" autocomplete="new-password" maxlength="72">
@@ -2667,16 +2682,76 @@ function fwBranchOwn(k) {
     return o.r == null && o.o == null && o.max == null ? null : o;
   } catch (_) { return null; }
 }
-function fwBioAvail() { try { return !!(window.FwBio && typeof FwBio.available === 'function' && FwBio.available()); } catch (_) { return false; } }
+// v25.6.8: BARMOQ IZI. Ilova — TWA (Chrome); Android ko'prigi (window.FwBio) yo'q edi, shuning uchun barmoq izi hech qachon taklif qilinmasdi.
+// Endi brauzerning o'z imkoniyati: WebAuthn platforma autentifikatori (qurilmaning barmoq izi / yuz / ekran qulfi). Bu MAHALLIY qulf —
+// PIN bilan bir xil ishonch darajasi: server sessiyasi o'zgarmaydi (server har so'rovni avvalgidek tekshiradi). Ko'prik (FwBio) bo'lsa — u ustun.
+const FW_BIO_CRED = 'fw_bio_cred';
+let _fwWebAuthnOk = false;
+function fwBioProbe() {
+  try {
+    if (!(window.isSecureContext !== false && window.PublicKeyCredential && typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function' && navigator.credentials)) { _fwWebAuthnOk = false; return Promise.resolve(false); }
+    return PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().then(v => (_fwWebAuthnOk = !!v), () => (_fwWebAuthnOk = false));
+  } catch (_) { _fwWebAuthnOk = false; return Promise.resolve(false); }
+}
+function fwBioNative() { try { return !!(window.FwBio && typeof FwBio.available === 'function' && FwBio.available()); } catch (_) { return false; } }
+function fwBioAvail() { return fwBioNative() || _fwWebAuthnOk; }
+const _b64u = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const _unb64u = (s) => Uint8Array.from(atob(String(s).replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+async function _fwWebAuthnAuth() {
+  try {
+    const challenge = crypto.getRandomValues(new Uint8Array(32)), id = localStorage.getItem(FW_BIO_CRED);
+    if (!id) {   // birinchi marta — qurilmaning barmoq izi bilan ro'yxatdan o'tkaziladi
+      const cred = await navigator.credentials.create({ publicKey: {
+        rp: { name: 'Powerful PRO', id: location.hostname }, user: { id: crypto.getRandomValues(new Uint8Array(16)), name: 'tez-kirish', displayName: 'Tez kirish' },
+        challenge, pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+        authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'discouraged' }, timeout: 60000, attestation: 'none' } });
+      if (!cred || !cred.rawId) return false;
+      localStorage.setItem(FW_BIO_CRED, _b64u(cred.rawId)); return true;
+    }
+    const a = await navigator.credentials.get({ publicKey: { challenge, allowCredentials: [{ type: 'public-key', id: _unb64u(id), transports: ['internal'] }], userVerification: 'required', timeout: 60000 } });
+    return !!a;
+  } catch (_) { return false; }
+}
+function fwBioReset() { try { localStorage.removeItem(FW_BIO_CRED); } catch (_) {} }
 function fwBioAuth() {
+  if (!fwBioNative()) return _fwWebAuthnOk ? _fwWebAuthnAuth() : Promise.resolve(false);
   return new Promise(res => {
-    if (!fwBioAvail()) return res(false);
     const cb = '__fwBio' + Date.now(); let done = false;
     window[cb] = (ok) => { if (done) return; done = true; delete window[cb]; res(ok === true || ok === 'true' || ok === 1); };
     try { FwBio.authenticate(cb); } catch (_) { done = true; delete window[cb]; res(false); }
     setTimeout(() => { if (!done) { done = true; delete window[cb]; res(false); } }, 60000);
   });
 }
+if (typeof window !== 'undefined') fwBioProbe();
+
+// v25.6.8: SOZLAMALARDAGI «TEZ KIRISH» bo'limi — PIN va barmoq izi (yoqish/o'chirish). Admin va portallar (sotuvchi) uchun umumiy.
+// o.canSetPin — PIN o'rnatish tugmasi ko'rsatiladimi (uni o'rnatish uchun joriy foydalanuvchi ma'lumoti kerak: o.info() yoki fwQuickInfoProvider()).
+function fwQuickSectionHtml(o) {
+  o = o || {};
+  const q = fwQuickGet(), bio = fwBioAvail();
+  const rowH = (t, sub, btn) => `<div class="fw-qk-row"><span><b>${t}</b><small>${sub}</small></span>${btn}</div>`;
+  const b = (label, act, cls) => `<button type="button" class="${cls || 'pos-btn ghost'}" onclick="fwQuickAction('${act}')">${label}</button>`;
+  if (!q) return `<div class="fw-qk">${rowH('PIN oʻrnatilmagan', 'Login va parol oʻrniga 4 xonali PIN (va barmoq izi) bilan kirish', o.canSetPin === false ? '' : b('PIN oʻrnatish', 'pin-set', 'pos-btn pri'))}</div>`;
+  return `<div class="fw-qk">${rowH('PIN yoqilgan', 'Keyingi safar login va parol oʻrniga PIN bilan kirasiz', b('PINni oʻchirish', 'pin-off', 'pos-btn ghost red-t'))}
+    ${bio ? rowH(q.bio ? 'Barmoq izi yoqilgan' : 'Barmoq izi oʻchiq', q.bio ? 'Ilova ochilganda barmoq izi soʻraladi' : 'PIN oʻrniga barmoq izi bilan kirish', q.bio ? b('Barmoq izini oʻchirish', 'bio-off') : b('Barmoq izini yoqish', 'bio-on', 'pos-btn pri'))
+      : rowH('Barmoq izi', 'Bu qurilma yoki brauzerda barmoq izi qoʻllab-quvvatlanmaydi', '')}</div>`;
+}
+async function fwQuickAction(act, o) {
+  try {
+    if (act === 'bio-on') { if (await fwBioAuth()) { fwQuickBioMark(true); if (typeof toast === 'function') toast('✅ Barmoq izi bilan kirish yoqildi'); } else if (typeof toast === 'function') toast('Barmoq izi tasdiqlanmadi', 'error'); }
+    else if (act === 'bio-off') { const r = fwQuickGet(); if (r) { r.bio = false; localStorage.setItem(FWQK, JSON.stringify(r)); } fwBioReset(); if (typeof toast === 'function') toast('Barmoq izi bilan kirish oʻchirildi'); }
+    else if (act === 'pin-off') { if (typeof confirm !== 'function' || confirm('Tez kirish (PIN va barmoq izi) oʻchirilsinmi? Keyingi safar login va parol kerak boʻladi.')) { fwQuickClear(); fwBioReset(); try { localStorage.removeItem(FW_LAST_KEY); } catch (_) {} if (typeof toast === 'function') toast('Tez kirish oʻchirildi'); } }
+    else if (act === 'pin-set') {
+      const prov = (o && o.info) || (typeof window !== 'undefined' && window.fwQuickInfoProvider);
+      const info = prov ? await prov() : null;
+      if (!info) { if (typeof toast === 'function') toast('PIN oʻrnatish uchun tizimdan chiqib, login va parol bilan qayta kiring', 'error'); }
+      else { _fwQkForce = true; try { await fwQuickSetupOffer(info); } finally { _fwQkForce = false; } }
+    }
+  } catch (_) {}
+  if (typeof o === 'object' && o && typeof o.after === 'function') o.after();
+  else if (typeof window !== 'undefined' && typeof window.fwQuickAfter === 'function') window.fwQuickAfter();
+}
+let _fwQkForce = false;
 // To'liq ekran raqam klaviaturasi. Natija: '1234' (PIN), 'bio' (barmoq izi tasdiqlandi), null (login bilan kirish / keyinroq)
 function fwPinPad(o) {
   o = o || {};
@@ -2719,7 +2794,7 @@ function fwPinPad(o) {
 // To'liq login muvaffaqiyatli bo'lgach: PIN o'rnatishni taklif qilish (shu foydalanuvchi uchun allaqachon bo'lsa — so'ralmaydi)
 async function fwQuickSetupOffer(info) {
   try {
-    const cur = fwQuickGet(); if (cur && cur.uid && info && cur.uid === info.uid) return;
+    const cur = fwQuickGet(); if (!_fwQkForce && cur && cur.uid && info && cur.uid === info.uid) return;
     if (!(window.crypto && crypto.subtle)) return;
     let first = null;
     const pin = await fwPinPad({ title: 'Tez kirish uchun PIN', sub: 'Keyingi safar login va parol oʻrniga shu 4 xonali PIN bilan kirasiz', alt: 'Keyinroq',
@@ -2813,7 +2888,7 @@ function fwGallery(urls, title, start, sub) {
       </div>`;
   };
   const go = (d) => { i = (i + d + list.length) % list.length; paint(); };
-  const close = () => { ov.remove(); document.removeEventListener('keydown', onKey, true); if (prevFocus && prevFocus.focus) try { prevFocus.focus({ preventScroll: true }); } catch (_) {} };
+  const close = () => { ov.remove(); document.removeEventListener('keydown', onKey, true); if (typeof fwBackDone === 'function') fwBackDone('fwgal'); if (prevFocus && prevFocus.focus) try { prevFocus.focus({ preventScroll: true }); } catch (_) {} };   // v25.6.8: «Orqaga» ham yopadi
   const onKey = (ev) => { if (ev.key === 'Escape') { ev.stopPropagation(); close(); } else if (ev.key === 'ArrowRight') go(1); else if (ev.key === 'ArrowLeft') go(-1); };
   ov.addEventListener('click', (ev) => {
     const t = ev.target;
@@ -2826,7 +2901,8 @@ function fwGallery(urls, title, start, sub) {
   ov.addEventListener('touchstart', (ev) => { x0 = ev.touches[0].clientX; }, { passive: true });
   ov.addEventListener('touchend', (ev) => { if (x0 == null) return; const dx = ev.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 45 && list.length > 1) go(dx < 0 ? 1 : -1); }, { passive: true });
   document.addEventListener('keydown', onKey, true);
-  paint(); document.body.appendChild(ov);
+  paint(); if (typeof fwBackPush === 'function') fwBackPush('fwgal', () => { try { ov.remove(); document.removeEventListener('keydown', onKey, true); } catch (_) {} });
+  document.body.appendChild(ov);
 }
 // Mahsulot rasmlari (≤ 4): p.images, bo'lmasa p.image
 function fwProdImages(p) { if (!p) return []; const a = Array.isArray(p.images) ? p.images.filter(Boolean) : []; return (a.length ? a : (p.image ? [p.image] : [])).map(String).filter(u => /^(https:|data:image\/)/.test(u)); }

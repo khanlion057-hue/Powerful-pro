@@ -989,9 +989,10 @@ function dkOpenStorefront() {
   let ov = document.getElementById('sf-ov');
   if (!ov) { ov = document.createElement('div'); ov.id = 'sf-ov'; ov.className = 'sf-ov'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); document.body.appendChild(ov); }
   ov.hidden = false; document.body.classList.add('sf-lock');
+  if (typeof fwBackPush === 'function') fwBackPush('sf', sfClose);   // v25.6.8: «Orqaga» vitrinani yopadi (✕ kabi)
   sfRender();
 }
-function sfClose() { const ov = document.getElementById('sf-ov'); if (ov) { ov.hidden = true; ov.innerHTML = ''; } document.body.classList.remove('sf-lock'); SF = null; clearInterval(_sfTimer); if (S.page === 'dokon') pgDokon(); }
+function sfClose() { if (typeof fwBackDone === 'function') fwBackDone('sf'); const ov = document.getElementById('sf-ov'); if (ov) { ov.hidden = true; ov.innerHTML = ''; } document.body.classList.remove('sf-lock'); SF = null; clearInterval(_sfTimer); if (S.page === 'dokon') pgDokon(); }
 let _sfTimer = null;
 function sfProducts() {
   return S.products.filter(p => !p.archived && !p.directSale && sfStock(p.id) > 0);

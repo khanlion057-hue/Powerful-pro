@@ -235,6 +235,7 @@ function svOpenSettings() {
       save: async (v) => { const old = S.branchSettings; S.branchSettings = { ...(old || {}), ...v, updatedAt: new Date().toISOString() };
         try { await svSaveShopData(); } catch (e) { S.branchSettings = old; throw e; } } },
     password: async (pw) => { const { error } = await db.auth.updateUser({ password: pw }); if (error) throw new Error(error.message || 'Parol oʻzgarmadi'); },
+    quickInfo: async () => { try { const { data: { session } } = await db.auth.getSession(); const uid = session?.user?.id; if (!uid) return null; return { dest: 'seller', uid, staff: ME, name: ME.name }; } catch (_) { return null; } },   // v25.6.8: Sozlamalardan PIN o'rnatish
     pwTg: true, onLogout: svLogout });
 }
 function svBranchLabel() {
@@ -408,6 +409,7 @@ function svAllowedTabs() {
 }
 
 function svShowApp() {
+  if (typeof fwBackRootInstall === 'function') fwBackRootInstall();   // v25.6.8: Bosh sahifada «Orqaga» — chiqish tasdig'i (oynalar avval yopiladi)
   document.documentElement.classList.remove('fw-booting');
   document.getElementById('sv-login').style.display = 'none';
   document.getElementById('sv-app').style.display = 'flex';

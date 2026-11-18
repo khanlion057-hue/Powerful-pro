@@ -127,6 +127,7 @@ function dlShowLogin() {
 }
 
 function dlShowApp() {
+  if (typeof fwBackRootInstall === 'function') fwBackRootInstall();   // v25.6.8: Bosh sahifada «Orqaga» — chiqish tasdig'i
   document.documentElement.classList.remove('fw-booting');
   document.getElementById('dl-login').style.display = 'none';
   document.getElementById('dl-app').style.display = 'flex';
@@ -765,6 +766,7 @@ function dlOpenSettings() {
   ptSettingsOpen({ who: ME.name, role: 'Diller' + (ME.region ? ' · ' + ME.region : ''), filial: dlFilialLabel(),
     stats: [['Qarzim', (+ME.debt_usd || 0) > 0 ? 'toʻlanishi kerak' : 'qarz yoʻq', fmtUsd(+ME.debt_usd || 0)], ['Omborim', fwNumSafe(stockN) + ' dona', fmtUsd(stockV)]],
     password: async (pw) => { const { error } = await db.auth.updateUser({ password: pw }); if (error) throw new Error(error.message || 'Parol oʻzgarmadi'); },
+    quick: false,   // diller portalida tez kirish (PIN/barmoq izi) yo'q — bo'lim ko'rsatilmaydi
     onLogout: dlLogout });
 }
 async function dlLogout() {

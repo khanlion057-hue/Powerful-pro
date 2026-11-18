@@ -62,8 +62,20 @@ async function testPricing() {
   assert.ok(m.size >= 800, "tannarx xaritasi barcha mahsulotlar uchun (1000 qatorda to'xtamaydi): " + m.size);
 }
 
+// v25.6.9: tezlik — baza boshqa qit'ada (har so'rov ~0,2–0,3 s): sahifalar va qo'shimcha so'rovlar ketma-ket emas, PARALLEL bo'lishi kerak
+async function testParallelSpeed() {
+  const rows = [];
+  for (let i = 1; i <= 4030; i++) rows.push(batchRow(i, i <= 3224 ? 'deleted' : 'active'));
+  const base = fakeAdmin({ customer_balances: [], supplier_balances: [], batches: rows, sales: [], stock_writeoffs: [], customer_credit_balances: [] });
+  const admin = { calls: base.calls, from(t) { const q = base.from(t); const orig = q.then; q.then = (ok, bad) => new Promise((r) => setTimeout(r, 80)).then(() => orig.call(q, ok, bad)); return q; } };
+  const t0 = Date.now(); const led = await LA.loadLedger(admin, 'baza'); const ms = Date.now() - t0;
+  assert.equal(led.batches.size, 4030, 'natija o\u02bbzgarmagan');
+  assert.ok(ms < 420, `ketma-ket emas, parallel: ${ms} ms (80 ms/so\u02bbrov; ketma-ket ~900 ms bo\u02bblardi)`);
+}
+
 module.exports = { name: "P99 — ledger: PostgREST 1000 qator chegarasi (v25.6.5)", cases: [
   { name: "4030 partiya va 1500 savdo — hammasi o'qiladi (sahifalab)", run: testLoadAll },
   { name: "yangi partiyalar yolg'on «Tugagan» (qoldiq 0) bo'lmaydi", run: testNoFalseEmpty },
   { name: "tannarx (FIFO) xaritasi ham 1000 dan oshgan jadvalda to'liq", run: testPricing },
+  { name: "tezlik: sahifalar va qo'shimcha so'rovlar parallel (ketma-ket kutish yo'q)", run: testParallelSpeed },
 ] };

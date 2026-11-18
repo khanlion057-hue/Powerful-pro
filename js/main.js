@@ -12747,6 +12747,10 @@ function pgSozlamalar() {
       row({ic:'qr', c:'sky', t:'Skaner', sub:'Shtrix-kod va QR', val: fwScanMode()==='usb' ? 'USB / Bluetooth' : 'Telefon kamerasi', on:"stScanSheet()"}),
     ])}
 
+    ${group('Xavfsizlik · shu qurilma', [
+      row({ic:'lock', c:'purple', t:'Tez kirish: PIN va barmoq izi', sub:'Login va parol oʻrniga', val: (()=>{ const q = fwQuickGet(); return !q ? 'Oʻchiq' : (q.bio && fwBioAvail()) ? 'PIN + barmoq izi' : 'PIN'; })(), on:"stQuickSheet()"}),
+    ])}
+
     ${group(`${brL} · chek va printer`, [
       rb({ic:'print', c:'blue', t:'Chek o\u02bblchami', sub:'Faqat shu filial', val:`${[58,72,80].includes(pw)?pw:72} mm`, on:"stPrinterSheet()"}),
       rb({ic:'bluetooth', c:'sky', t:'Chek printeri', sub:'Faqat shu filial', val: fwPrintCfg('printerName') ? esc(fwPrintCfg('printerName')) : 'Tizim printeri', on:"stPrinterSheet()"}),
@@ -12802,6 +12806,20 @@ function pgSozlamalar() {
 
 // ── Sozlamalar: kichik oynalar ──
 // ── Pastdan chiquvchi oyna (bottom sheet) — namunadagi uslub ──
+// v25.6.8: Sozlamalar → Xavfsizlik → «Tez kirish» (PIN va barmoq izi)
+function stQuickSheet() {
+  openSheet({ ic:'lock', c:'purple', title:'Tez kirish', sub:'PIN va barmoq izi — shu qurilmada',
+    body:`<div class="bs-card">${fwQuickSectionHtml({ canSetPin: true, after: () => { stQuickSheet(); if (S.page === 'sozlamalar') pgSozlamalar(); } })}</div>
+      <p class="bs-info">${ICONF.info}<span>Bu qurilmaning oʻz qulfi: server hisobingiz va parolingiz oʻzgarmaydi. Barmoq izi uchun qurilmada barmoq izi saqlangan boʻlishi kerak.</span></p>` });
+}
+// Joriy foydalanuvchining tez kirish ma'lumoti (Sozlamalardan PIN o'rnatish uchun): admin paneli
+window.fwQuickInfoProvider = async () => {
+  try {
+    const { data: { session } } = await _db.auth.getSession(); const uid = session?.user?.id; if (!uid) return null;
+    const sid = sessionStorage.getItem('bp_staff_id');
+    return { dest: 'admin', branch: S.branch || 'baza', staffId: sid ? Number(sid) : null, uid, name: CURRENT_USER?.name || S.settings?.ownerName || 'Admin' };
+  } catch (_) { return null; }
+};
 function openSheet({ic, c='blue', title, sub='', body='', foot=''}) {
   let ov = document.getElementById('bs-ov');
   if (!ov) { ov = document.createElement('div'); ov.id='bs-ov'; ov.className='bs-ov'; ov.hidden=true; ov.addEventListener('click', e=>{ if(e.target===ov) closeSheet(); }); document.body.appendChild(ov); }
@@ -14913,6 +14931,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const _wantedPage = _startPage && document.getElementById('pg-'+_startPage) ? _startPage : 'dashboard';
   go((PAGE_VIEW_PERMISSION[_wantedPage] && !hasPerm(PAGE_VIEW_PERMISSION[_wantedPage])) ? 'dashboard' : _wantedPage);
   updateSidebarUser();
+  if (typeof fwBackRootInstall === 'function') fwBackRootInstall();   // v25.6.8: Bosh sahifada «Orqaga» — chiqish tasdig'i
   if (CUR.lastRateDate !== td()) { setTimeout(()=>openRateModal(false), 500); }
   // v25: «Onlayn rejim faol» xabari har ochilishda pastki tugmani yopardi — endi faqat oflayn/onlayn o'zgarganda (pastdagi belgi)
 

@@ -346,6 +346,13 @@ To'liq hisobot — `AUDIT-HISOBOT.md`. Qisqacha:
 > nimalar kam, to'ldiraylik". Ilova funksiyalari, biznes qoidalari, production bazasi
 > O'ZGARMADI (bazadan faqat o'qildi).
 
+## v25.6.8 — Barmoq izi, «Orqaga» tugmasi, tezroq yuklash
+
+- **Barmoq izi (Sozlamalar → Xavfsizlik → «Tez kirish»):** ilova TWA (Chrome) bo'lgani uchun Android ko'prigi (`FwBio`) hech qachon yo'q edi — barmoq izi taklif qilinmasdi. Endi brauzerning WebAuthn platforma autentifikatori (qurilmaning barmoq izi / ekran qulfi) ishlatiladi. Sozlamalarda: PIN o'rnatish/o'chirish, barmoq izini yoqish/o'chirish (admin va sotuvchi portali). Mahalliy qulf — server sessiyasi o'zgarmaydi.
+- **«Orqaga» (telefon) = ✕:** ilova qayta ochilganda (Android sahifani manzildan tiklaydi) tiklangan bo'limdan «Orqaga» ilovadan chiqarib yuborardi — endi Bosh sahifaga. Bosh sahifada «Orqaga» darhol chiqarmaydi: «Chiqish uchun yana bir marta bosing» (2,5 s). Vitrina va rasm ko'rgich ham «Orqaga» bilan yopiladi.
+- **Tezlik:** ledger yuklovchisi — qo'shimcha so'rovlar va sahifalar ketma-ket emas, parallel (baza boshqa qit'ada: har ketma-ket so'rov ~0,2–0,3 s).
+- Test: p102, p103, p99.
+
 ## v25.6.7 — Xodim/diller yaratish xatosining sababi ko'rinadi
 
 - Xodim yoki diller hisobi yaratilmasa, endi xatoning haqiqiy sababi (qisqartirilgan) va ma'lum holat uchun yo'l-yo'riq ko'rinadi. Avval faqat «Xodim yaratishda xatolik» chiqib, sabab yashirin edi (prod'da `auth.users` dagi begona trigger `column "full_name" of relation "staff" does not exist` bilan 9 marta 500 bergan).

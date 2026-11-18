@@ -3,6 +3,7 @@
 // o'z filialiga majburan bog'lanadi (admin bo'lmasa).
 const { getAdminClient, json, methodGuard, parseBody, requireStaffAuth, escapeLike, serverError } = require('./_lib/supabaseAdmin');
 
+const { authFailText } = require('./_lib/authErr');
 const DEALER_EMAIL_DOMAIN = 'dillers.biznespro.local';
 
 exports.handler = async (event) => {
@@ -52,7 +53,8 @@ exports.handler = async (event) => {
 
     return json({ dealer: dealerRow }, 200);
   } catch (e) {
-    return json({ error: "Diller yaratishda xatolik" }, 500);
+    console.error('[create-dealer]', e && e.message);
+    return json({ error: authFailText(e, 'Diller yaratishda xatolik') }, 500);   // v25.6.7: haqiqiy sabab ko'rinadi
   }
 };
 

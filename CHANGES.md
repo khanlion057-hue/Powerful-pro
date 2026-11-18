@@ -346,6 +346,11 @@ To'liq hisobot — `AUDIT-HISOBOT.md`. Qisqacha:
 > nimalar kam, to'ldiraylik". Ilova funksiyalari, biznes qoidalari, production bazasi
 > O'ZGARMADI (bazadan faqat o'qildi).
 
+## v25.6.7 — Xodim/diller yaratish xatosining sababi ko'rinadi
+
+- Xodim yoki diller hisobi yaratilmasa, endi xatoning haqiqiy sababi (qisqartirilgan) va ma'lum holat uchun yo'l-yo'riq ko'rinadi. Avval faqat «Xodim yaratishda xatolik» chiqib, sabab yashirin edi (prod'da `auth.users` dagi begona trigger `column "full_name" of relation "staff" does not exist` bilan 9 marta 500 bergan).
+- Test: p101.
+
 ## v25.6.6 — «Sotuvda» summasi kassa narxida
 
 - Mahsulotlar sahifasi va bosh sahifadagi «Sotuvda» (ombor qoldig'ining sotuv qiymati) endi **kassadagi haqiqiy chakana narx** bilan hisoblanadi (butun $ ga yaxlitlangan, so'mda qadamga) — avval yaxlitlanmagan «tannarx × (1 + ustama%)» ko'rsatilib, kassada chiqadigan pulga mos kelmas, adashtirardi. Kassada narxi $0 bo'lib qoladigan (juda arzon tannarx) mahsulot — 0. Yorlig'i: «Sotuvda (kassa narxida)».

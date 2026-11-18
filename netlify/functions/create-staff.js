@@ -3,6 +3,7 @@
 // Filial — chaqiruvchining o'z filialiga majburan bog'lanadi (admin bo'lmasa).
 const { getAdminClient, json, methodGuard, parseBody, requireStaffAuth, escapeLike, serverError } = require('./_lib/supabaseAdmin');
 
+const { authFailText } = require('./_lib/authErr');
 const STAFF_EMAIL_DOMAIN = 'staff.biznespro.local';
 
 exports.handler = async (event) => {
@@ -56,7 +57,8 @@ exports.handler = async (event) => {
 
     return json({ staff: staffRow }, 200);
   } catch (e) {
-    return json({ error: "Xodim yaratishda xatolik" }, 500);
+    console.error('[create-staff]', e && e.message);
+    return json({ error: authFailText(e, 'Xodim yaratishda xatolik') }, 500);   // v25.6.7: haqiqiy sabab ko'rinadi
   }
 };
 

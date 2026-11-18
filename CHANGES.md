@@ -346,6 +346,11 @@ To'liq hisobot — `AUDIT-HISOBOT.md`. Qisqacha:
 > nimalar kam, to'ldiraylik". Ilova funksiyalari, biznes qoidalari, production bazasi
 > O'ZGARMADI (bazadan faqat o'qildi).
 
+## v25.6.6 — «Sotuvda» summasi kassa narxida
+
+- Mahsulotlar sahifasi va bosh sahifadagi «Sotuvda» (ombor qoldig'ining sotuv qiymati) endi **kassadagi haqiqiy chakana narx** bilan hisoblanadi (butun $ ga yaxlitlangan, so'mda qadamga) — avval yaxlitlanmagan «tannarx × (1 + ustama%)» ko'rsatilib, kassada chiqadigan pulga mos kelmas, adashtirardi. Kassada narxi $0 bo'lib qoladigan (juda arzon tannarx) mahsulot — 0. Yorlig'i: «Sotuvda (kassa narxida)».
+- Test: p100.
+
 ## v25.6.5 — Ombor qoldig'i: 1000 qatorlik chegara tuzatildi
 
 - **Sabab:** Supabase (PostgREST) bir so'rovda eng ko'pi 1000 qator qaytaradi. Ledger yuklovchisi partiyalarni, savdolarni va balanslarni sahifalamasdan o'qigani uchun, o'chirilgan qatorlar bilan `batches` jadvali 1000 dan oshgach (4030), yangi partiyalarning bir qismi «bazada yo'q» deb topilib, qoldig'i 0 / «Tugagan» qilib yozilardi (806 mahsulotdan 10 tasi «Mavjud emas», qoldiq 15 899 o'rniga 16 009). Endi hammasi 1000 talik sahifalarda o'qiladi (`_lib/pgPaged.js`: ledger, tannarx/FIFO). Saqlangan noto'g'ri qiymatlar keyingi yuklash/saqlashda serverdagi haqiqiy qiymatga qaytadi.

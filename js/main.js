@@ -1591,6 +1591,18 @@ function sellPrice(p, cost) {
   return cost * (1 + pct/100);
 }
 
+// v25.6.6: KASSADAGI haqiqiy chakana narx (pos.js posUnitUsd bilan bir xil qoida): butun $ ga yaxlitlanadi (basePrice), so'mda esa qadamga.
+// «Sotuvda» (ombor qoldig'ining sotuv qiymati) shu narx bilan hisoblanadi — avvalgi yaxlitlanmagan «tannarx × ustama» kassada chiqadigan pulga mos kelmasdi.
+// Kassada narxi $0 bo'lib qoladigan (arzon tannarx) mahsulot — 0.
+function fwShelfUsd(p, cost) {
+  if (!(cost > 0)) return 0;
+  const base = Math.round(sellPrice(p, cost));
+  if (!(base > 0)) return 0;
+  const rate = +CUR.usdUzs || 0, usdMode = typeof POS !== 'undefined' && POS && POS.cur === 'USD';
+  if (usdMode || !(rate > 0) || typeof posRound !== 'function') return base;
+  return posRound(base * rate) / rate;
+}
+
 function optPrice(p, cost) {
   const own = typeof fwBranchOwn === 'function' ? fwBranchOwn(S.branch) : null;
   const pct = own && own.o != null ? own.o : (p && p.optMarkupPct!=null) ? p.optMarkupPct : 15;
@@ -2712,7 +2724,7 @@ function _dsStock() {
   let cost = 0, sell = 0, units = 0, low = 0, out = 0, all = 0;
   (S.products||[]).filter(p=>!p.archived && !p.directSale).forEach(p=>{
     all++; const st = getStock(p.id); const c = getCostFIFO(p.id);
-    units += st; cost += st*c; sell += st*(c>0 ? sellPrice(p, c) : 0);
+    units += st; cost += st*c; sell += st*fwShelfUsd(p, c);
     if (st <= 0) out++; else if (st <= (+p.minStock||0)) low++;
   });
   return { cost, sell, units, low, out, all };
@@ -2748,7 +2760,7 @@ function dashSheet(key) {
     openSheet({ ic:'inventory', c:'purple', title:'Mahsulotlar', sub:'Ombor qoldigʻi — tannarxda va sotuv narxida',
       body:`<section class="ox-hero fw-hero" style="--hc:var(--sky);margin:0">
           <div class="ox-hero-top"><span>Ombor</span><span class="ox-date">${esc(branchName(S.branch))}</span></div>
-          <div class="ds-two"><div><span>Tannarxda</span><b>${fwMoneyUsd(k.cost)}</b></div><div><span>Sotuvda</span><b style="color:var(--sky)">${fwMoneyUsd(k.sell)}</b></div></div>
+          <div class="ds-two"><div><span>Tannarxda</span><b>${fwMoneyUsd(k.cost)}</b></div><div title="Kassadagi chakana narx (butun $, soʻmda yaxlit) × qoldiq"><span>Sotuvda (kassa narxida)</span><b style="color:var(--sky)">${fwMoneyUsd(k.sell)}</b></div></div>
           <div class="ds-chips">${chip('',k.all,'Barcha mahsulotlar','sky')}${chip('low',k.low,'Kam','amber')}${chip('out',k.out,'Mavjud emas','red')}</div>
           <p class="fk-note">Qoldiq: <b>${k.units.toLocaleString('en-US').replace(/,/g,' ')} dona</b></p></section>
         <div class="ds-tools">
@@ -4007,7 +4019,7 @@ function pgMahsulotlar() {
   const usd = v => '$'+(Math.round((+v||0)*100)/100).toLocaleString('en-US',{maximumFractionDigits:2}).replace(/,/g,' ');
   const n = v => Math.round(+v||0).toLocaleString('en-US').replace(/,/g,' ');
   let units=0, value=0, sellV=0, low=0, out=0;
-  active.forEach(p=>{ if (p.directSale) return; const st=getStock(p.id), c=getCostFIFO(p.id); units+=st; value+=st*c; sellV+=st*sellPrice(p,c); if(st===0) out++; else if(st<=p.minStock) low++; });
+  active.forEach(p=>{ if (p.directSale) return; const st=getStock(p.id), c=getCostFIFO(p.id); units+=st; value+=st*c; sellV+=st*fwShelfUsd(p,c); if(st===0) out++; else if(st<=p.minStock) low++; });
   const arch = all.length - active.length;
   const cats = [...new Set(active.map(p=>p.cat).filter(Boolean))].sort();
   const stF = S.pmSt||'', catF = S.pmCat||'';
@@ -4016,7 +4028,7 @@ function pgMahsulotlar() {
   el.innerHTML = `
   <section class="ox-hero pm-hero" aria-label="Ombor">
     <div class="ox-hero-top"><span>Ombor</span><span class="ox-date">${n(active.length)} ta mahsulot</span></div>
-    <div class="pmh-2"><div><span>Tannarxda</span><b>${usd(value)}</b></div><div><span>Sotuvda</span><b style="color:var(--sky)">${usd(sellV)}</b></div></div>
+    <div class="pmh-2"><div><span>Tannarxda</span><b>${usd(value)}</b></div><div title="Kassadagi chakana narx (butun $, soʻmda yaxlit) × qoldiq"><span>Sotuvda (kassa narxida)</span><b style="color:var(--sky)">${usd(sellV)}</b></div></div>
     <div class="pmh-3">${big('','Barcha mahsulotlar','gold',active.length)}${big('low','Kam','amber',low)}${big('out','Mavjud emas','red',out)}</div>
     <div class="pmh-foot">Qoldiq: <b>${n(units)}</b> dona${arch?` · arxivda ${n(arch)}`:''}</div>
   </section>

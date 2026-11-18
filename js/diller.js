@@ -289,7 +289,7 @@ function dlPayHtml() {
   const st = { pending: ['Kassir tasdigʻi kutilmoqda', 'amber'], accepted: ['Qabul qilindi', 'emerald'], rejected: ['Rad etildi — qarz qaytdi', 'red'] };
   const errBox = DLPAY.err ? `<div class="dlp-err" role="alert"><span>${esc(DLPAY.err)}</span><button type="button" class="dl-btn" id="dlp-retry" onclick="dlPayRetry()" style="margin:0;width:auto;padding:8px 14px">Qayta urinish</button></div>` : '';
   const form = !(debt > 0)
-    ? `<div class="dlp-nodebt"><b>Qarzingiz yoʻq</b><span>Hozir pul yuborish shart emas. Qarzga mahsulot olganingizda shu yerdan toʻlaysiz.</span></div>`
+    ? `<div class="dlp-nodebt"><b>Qarzingiz yoʻq</b><span>Hozir pul yuborish shart emas. Qarz paydo boʻlganda shu yerda summa kiritish maydoni va «Toʻliq qarz» tugmasi chiqadi.</span></div>`
     : `<div class="dlp-rate" style="margin-bottom:10px">${DLPAY.rate ? `Bugungi kurs: 1 $ = ${fwNum(DLPAY.rate)} soʻm — yuborilgan zahoti shu kurs qotiriladi` : (DLPAY.loading ? 'Kurs yuklanmoqda…' : (DLPAY.err ? 'Kurs yuklanmadi' : 'Kurs belgilanmagan — hozircha faqat dollarda yuborish mumkin'))}</div>
       <div class="dlp-pay-types" role="radiogroup">${DLPAY_TYPES.map(([k, l, ic]) => `<button type="button" role="radio" aria-checked="${type === k}" class="${type === k ? 'on' : ''}" ${noRate && k !== 'cash_usd' ? 'disabled title="Kurs belgilanmagan"' : ''} onclick="dlPaySetType('${k}')"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="${ic}"/></svg>${l}</button>`).join('')}</div>
       <div class="me-amt"><input class="dl-input" id="dlp-amt" type="number" min="0" step="any" inputmode="decimal" placeholder="Summa" value="${esc(DLPAY.amt || '')}" oninput="dlPayKeep();dlPayCalc()" style="margin:0;font-size:17px;font-weight:700;padding-right:54px"><i>${unit}</i></div>
@@ -361,6 +361,14 @@ function dlSaleAdd(pid, d) {
   if (q > 0) DLC.cart[pid] = { ...cur, qty: q }; else delete DLC.cart[pid];
   if (document.getElementById('dlc-ov')) dlSaleCartPaint(); else dlRenderContent();
 }
+function dlSaleSet(pid, v) {
+  const r = STOCK.find(x => x.pid === pid); if (!r) return;
+  const want = Math.max(0, Math.floor(parseFloat(v) || 0)), have = +r.qty || 0;
+  if (want > have) toast(`Omboringizda ${have} dona bor`, 'warning');
+  const q = Math.min(have, want), cur = DLC.cart[pid] || { qty: 0, price: dlPriceOf(pid) };
+  if (q > 0) DLC.cart[pid] = { ...cur, qty: q }; else delete DLC.cart[pid];
+  if (document.getElementById('dlc-ov')) dlSaleCartPaint(); else dlRenderContent();
+}
 function dlSaleHtml() {
   if (!STOCK.length) return `<div class="dl-card"><div class="dls-empty">Omboringizda sotiladigan mahsulot yoʻq — «Buyurtma» boʻlimidan soʻrang</div></div>`;
   const q = (DLC.q || '').trim().toLowerCase();
@@ -374,7 +382,7 @@ function dlSaleRowsHtml(rows) {
   return rows.length ? rows.map(r => { const c = DLC.cart[r.pid]; return `<div class="dls-row${c ? ' in' : ''}">
       ${dlThumbHtml(r.pid)}
       <div class="dls-t"><b>${esc(r.name || 'Mahsulot')}</b><small>${r.sku ? esc(r.sku) + ' · ' : ''}${fmtUsd(dlPriceOf(r.pid))} · omborda ${+r.qty || 0} dona</small></div>
-      ${c ? `<span class="pos-step"><button onclick="dlSaleAdd(${r.pid},-1)" aria-label="Kamaytirish">−</button><b>${c.qty}</b><button onclick="dlSaleAdd(${r.pid},1)" aria-label="Koʻpaytirish">+</button></span>`
+      ${c ? `<span class="pos-step"><button onclick="dlSaleAdd(${r.pid},-1)" aria-label="Kamaytirish">−</button><input class="pos-qty-in" type="number" inputmode="numeric" min="0" max="${+r.qty || 0}" value="${c.qty}" onchange="dlSaleSet(${r.pid},this.value)" onfocus="this.select()" aria-label="Miqdor"><button onclick="dlSaleAdd(${r.pid},1)" aria-label="Koʻpaytirish">+</button></span>`
           : `<button class="pos-add" onclick="dlSaleAdd(${r.pid},1)" aria-label="Savatga qoʻshish">+</button>`}
     </div>`; }).join('') : `<div class="dls-empty">Topilmadi</div>`;
 }
@@ -404,7 +412,7 @@ function dlSaleCartPaint() {
         return `<div class="pos-line${bad ? ' low' : ''}">
           <div class="pos-line-t"><b>${esc(x.r.name || 'Mahsulot')}</b><b>${fmtUsd(x.qty * x.price)}</b></div>
           <div class="pos-line-c">
-            <span class="pos-step"><button onclick="dlSaleAdd(${x.pid},-1)" aria-label="Kamaytirish">−</button><b>${x.qty}</b><button onclick="dlSaleAdd(${x.pid},1)" aria-label="Koʻpaytirish">+</button></span>
+            <span class="pos-step"><button onclick="dlSaleAdd(${x.pid},-1)" aria-label="Kamaytirish">−</button><input class="pos-qty-in" type="number" inputmode="numeric" min="0" max="${+x.r.qty || 0}" value="${x.qty}" onchange="dlSaleSet(${x.pid},this.value)" onfocus="this.select()" aria-label="Miqdor"><button onclick="dlSaleAdd(${x.pid},1)" aria-label="Koʻpaytirish">+</button></span>
             <label class="pos-in-wrap dlc-pr"><span>$</span><input class="pos-in" type="number" inputmode="decimal" step="0.01" min="0" value="${x.price.toFixed(2)}" onchange="dlSalePrice(${x.pid},this.value)" aria-label="Dona narxi"></label>
             <button class="pos-tag red" onclick="delete DLC.cart[${x.pid}];dlSaleCartPaint()" aria-label="Oʻchirish">✕</button>
           </div>
@@ -570,23 +578,29 @@ async function dlRefreshCatalog() {
 function dlImgOf(pid) { const c = CATALOG.find(x => x.id === pid); return fwImgSafe(c && c.image); }
 function dlThumbHtml(pid) {
   const u = dlImgOf(pid);
-  return `<div class="dl-pthumb">${u ? `<img src="${esc(u)}" alt="" loading="lazy" onerror="this.remove()">` : '📦'}</div>`;
+  return `<div class="dl-pthumb"${u ? ` role="button" tabindex="0" style="cursor:zoom-in" onclick="dlImgOpen(${+pid})" aria-label="Rasmni toʻliq koʻrish"` : ''}>${u ? `<img src="${esc(u)}" alt="" loading="lazy" onerror="this.remove()">` : '📦'}</div>`;
+}
+// v25.6.9: rasm ustiga bosilsa — toʻliq koʻrish (galereya)
+function dlImgOpen(pid) {
+  const u = dlImgOf(pid); if (!u || typeof fwGallery !== 'function') return;
+  const c = CATALOG.find(x => x.id === pid) || {};
+  fwGallery([u], c.name || 'Mahsulot', 0, c.sku || '');
 }
 
 function dlRenderOrderList() {
   const q = (document.getElementById('dl-order-search')?.value || '').toLowerCase();
   const list = document.getElementById('dl-order-list');
   if (!list) return;
-  const filtered = q ? multiFieldSearch(CATALOG, q, p=>[p.name, p.sku, p.brand, p.cat]) : CATALOG;
+  const filtered = q ? dlOrderFilter(q) : CATALOG;
   list.innerHTML = filtered.length ? filtered.slice(0, 60).map(p => {
     const qty = ORDER_CART[p.id] || 0;
     return `<div class="dl-prow">
       <div style="display:flex;align-items:center;gap:10px;min-width:0">${dlThumbHtml(p.id)}<div style="min-width:0">
-        <div class="dl-pname">${p.sku?`<code style="color:var(--gold)">${esc(p.sku)}</code> `:''}${esc(p.name)}</div>
-        <div class="dl-pmeta">Omborda: ${p.qty} dona</div>
+        <div class="dl-pname">${esc(p.name)}</div>
+        <div class="dl-pmeta">${p.sku ? `<code style="color:var(--gold)">${esc(p.sku)}</code> · ` : ''}Omborda: ${p.qty} dona</div>
       </div></div>
       <div style="display:flex;align-items:center;gap:8px">
-        ${qty ? `<span class="pos-step"><button onclick="dlCartAdjust(${p.id},-1,${p.qty})" aria-label="Kamaytirish">−</button><b>${qty}</b><button onclick="dlCartAdjust(${p.id},1,${p.qty})" aria-label="Koʻpaytirish">+</button></span>`
+        ${qty ? `<span class="pos-step"><button onclick="dlCartAdjust(${p.id},-1,${p.qty})" aria-label="Kamaytirish">−</button><input class="pos-qty-in" type="number" inputmode="numeric" min="0" max="${p.qty}" value="${qty}" onchange="dlCartSet(${p.id},this.value,${p.qty})" onfocus="this.select()" aria-label="Miqdor"><button onclick="dlCartAdjust(${p.id},1,${p.qty})" aria-label="Koʻpaytirish">+</button></span>`
               : `<button class="pos-add" onclick="dlCartAdjust(${p.id},1,${p.qty})" aria-label="Buyurtmaga qoʻshish">+</button>`}
       </div>
     </div>`;
@@ -598,6 +612,20 @@ function dlRenderOrderList() {
       : `<div style="text-align:center;padding:20px;color:var(--text-muted)">Qidiruv bo'yicha mahsulot topilmadi</div>`);
 }
 
+// Qidiruv: avval nom boʻyicha, keyin artikul/brend/kategoriya
+function dlOrderFilter(q) {
+  const byName = [], rest = [];
+  for (const p of multiFieldSearch(CATALOG, q, p => [p.name, p.sku, p.brand, p.cat])) (String(p.name || '').toLowerCase().includes(q) ? byName : rest).push(p);
+  return byName.concat(rest);
+}
+function dlCartSet(pid, v, maxQty) {
+  const n = Math.max(0, Math.min(+maxQty || 0, Math.floor(parseFloat(v) || 0)));
+  if (n > 0) ORDER_CART[pid] = n; else delete ORDER_CART[pid];
+  const sv = document.getElementById('dl-order-search')?.value || '';
+  document.getElementById('dl-content').innerHTML = dlOrderTabHtml();
+  const i = document.getElementById('dl-order-search'); if (i) i.value = sv;
+  dlRenderOrderList();
+}
 function dlCartAdjust(pid, delta, maxQty) {
   const cur = ORDER_CART[pid] || 0;
   const next = Math.max(0, Math.min(maxQty, cur + delta));

@@ -1055,3 +1055,9 @@ tests/p1.2-rounding-currency.test.js        — YANGI
   (bu DB sxema o'zgarishi bo'lgani uchun, alohida so'rov bilan qilinadi).
 - Kirim (purchase) uchun bank-fee rate snapshot (`bank_fee_rate_used`) —
   hozircha faqat joriy % ishlatiladi.
+
+## v25.6.9 — Diller portali
+- Buyurtma va Sotuv: miqdorni raqam bilan yozish mumkin (ombordagidan oshmaydi), +/− qoladi.
+- Mahsulot rasmi bosilsa — toʻliq koʻrish (galereya).
+- Buyurtmada nom asosiy, artikul ikkinchi qatorda; qidiruvda nom boʻyicha topilganlar oldinda.
+- «Pul yuborish»: qarz yoʻq boʻlsa tushuntirish aniqroq (qarz boʻlganda summa maydoni chiqadi).

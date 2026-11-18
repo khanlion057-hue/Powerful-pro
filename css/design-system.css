@@ -2716,6 +2716,8 @@ button.pc-tile{ cursor:pointer; }
 .pos-step{ flex:none; display:inline-flex; align-items:center; border:1px solid var(--border); border-radius:12px; overflow:hidden; background:var(--bg-card); }
 .pos-step button{ width:38px; height:40px; border:0; background:var(--bg-hover); font:inherit; font-size:19px; font-weight:700; color:var(--text-primary); cursor:pointer; }
 .pos-step b, .pos-step .pos-qv{ min-width:34px; text-align:center; font-weight:800; font-size:14px; background:var(--bg-card) !important; }
+.pos-step .pos-qty-in{ width:46px; height:40px; border:0; text-align:center; font-weight:800; font-size:14px; background:var(--bg-card); color:var(--text-primary); padding:0; -moz-appearance:textfield; }
+.pos-step .pos-qty-in::-webkit-outer-spin-button,.pos-step .pos-qty-in::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
 .pos-more, .pos-empty{ text-align:center; color:var(--text-muted); font-size:13px; padding:18px 10px; }
 .pos-empty.sm{ padding:10px; }
 .pos-bar-wrap{ position:sticky; bottom:calc(10px + env(safe-area-inset-bottom)); z-index:20; margin-top:-74px; }

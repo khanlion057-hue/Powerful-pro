@@ -5257,7 +5257,7 @@ function filialOrdersHtml() {
       <div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:8px">📨 Bazaga yuborilgan soʻrovlarim</div>
       ${mine.map(o=>`<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:6px 0;border-bottom:1px solid var(--border-light)">
         <span>${fmtD(o.createdAt)} — ${o.items.length} xil mahsulot</span>
-        <span class="badge badge-${o.status==='approved'?'success':o.status==='rejected'?'danger':'warning'}">${stLabel[o.status]}</span>
+        <span><span class="badge badge-${o.status==='approved'?'success':o.status==='rejected'?'danger':'warning'}">${stLabel[o.status]}</span>${o.status==='rejected'?` <button class="btn btn-ghost btn-sm" onclick="deleteFilialOrder('${o.id}')" aria-label="Oʻchirish">🗑</button>`:''}</span>
       </div>`).join('')}
     </div>`;
   }
@@ -5656,6 +5656,12 @@ async function approveFilialOrder(orderId) {
   toast(`✅ Buyurtma berildi! ${res.cnt} ta mahsulot ${branchName(order.fromBranch)}ga oʻtkazildi.`);
 }
 
+function deleteFilialOrder(orderId) {
+  const o = (S.filialOrders||[]).find(x=>x.id===orderId);
+  if (!o || o.status!=='rejected' || !confirm("Rad etilgan soʻrov oʻchirilsinmi?")) return;
+  S.filialOrders = S.filialOrders.filter(x=>x.id!==orderId);
+  auditLog(`🗑 Rad etilgan soʻrov oʻchirildi (${branchName(o.fromBranch)})`); save(); pgOmbor();
+}
 function rejectFilialOrder(orderId) {
   if (S.branch !== 'baza') { toast('Bu amal faqat Bazadan bajariladi!','error'); return; }
   const order = (S.filialOrders||[]).find(o=>o.id===orderId);
@@ -9829,6 +9835,7 @@ function dillerOrdersHtml() {
         <button class="btn btn-danger btn-sm" style="flex:1;justify-content:center" onclick="rejectDealerOrder(${o.id})">❌ Rad etish</button>
         <button class="btn btn-success btn-sm" style="flex:1;justify-content:center" onclick="approveDealerOrder(${o.id})">✅ Tasdiqlash va yuborish</button>
       </div>` : ''}
+      ${o.status==='rejected' ? `<div style="margin-top:8px"><button class="btn btn-ghost btn-sm" onclick="deleteDealerOrder(${o.id})">🗑 Oʻchirish</button></div>` : ''}
     </div>`;
   };
   return `
@@ -9929,6 +9936,19 @@ async function approveDealerOrder(orderId) {
   dlAuditDealer(d.id, 'order_approve', null, { orderId, items, totalCost });
 }
 
+async function deleteDealerOrder(orderId) {
+  const order = (S.dealerOrders||[]).find(o=>o.id===orderId);
+  if (!order || order.status!=='rejected') return;
+  if (!confirm("Rad etilgan buyurtma butunlay oʻchirilsinmi?")) return;
+  try {
+    const res = await authFetch('/.netlify/functions/dealer-order-status', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ orderId, action:'delete' }) });
+    const r = await res.json().catch(()=>({}));
+    if (!res.ok) throw new Error(r.error || 'Oʻchmadi');
+    S.dealerOrders = S.dealerOrders.filter(o=>o.id!==orderId);
+    dlAuditDealer(order.dealer_id, 'order_delete', null, { orderId });
+    toast('🗑 Buyurtma oʻchirildi'); dillerRenderTab();
+  } catch(e) { toast('⚠️ '+e.message, 'error'); }
+}
 async function rejectDealerOrder(orderId) {
   if (!confirm("Bu buyurtmani rad etasizmi?")) return;
   const order = (S.dealerOrders||[]).find(o=>o.id===orderId);
@@ -15466,6 +15486,11 @@ function frBranchPrice(pid, to, mode) {
   const pct = mode === 'debt' ? 0 : (typeof flItemPct === 'function' ? flItemPct(to, pid) : 0);
   return Math.round(opt * (1 - pct / 100) * 10000) / 10000;
 }
+function frThumb(pid) {
+  const p = S.products.find(x => x.id === +pid), u = p && typeof fwImgSafe === 'function' ? fwImgSafe(p.image) : '';
+  return u ? `<span class="dl-pthumb" role="button" tabindex="0" style="cursor:zoom-in" onclick="fwGallery([${JSON.stringify(u).replace(/"/g,'&quot;')}],${JSON.stringify(p.name||'').replace(/"/g,'&quot;')},0,${JSON.stringify(p.sku||'').replace(/"/g,'&quot;')})" aria-label="Rasmni toʻliq koʻrish"><img src="${esc(u)}" alt="" loading="lazy" onerror="this.remove()"></span>` : '';
+}
+function frSetCat(c) { if (FR.form) { FR.form.cat = c; frFormRender(); } }
 function frFormRender() {
   const f = FR.form; if (!f) return;
   const isReq = f.type === 'req', me = S.branch, src = isReq ? f.from : me;
@@ -15475,7 +15500,7 @@ function frFormRender() {
     const pr = frProd(it.pid), srcSt = frStockIn(src, it.pid), mine = isReq ? frStockIn(me, it.pid) : getStock(it.pid);
     const cap = isReq ? 1e7 : Math.min(getStock(it.pid), it.max != null ? it.max : 1e7);
     const price = !isReq && me === 'baza' && f.to !== 'baza' ? frBranchPrice(it.pid, f.to, f.mode) : null;
-    return `<div class="fr-it"><div class="fr-it-t"><b>${esc(pr.sku ? pr.sku + ' ' : '')}${esc(pr.name)}</b>
+    return `<div class="fr-it">${frThumb(it.pid)}<div class="fr-it-t"><b>${esc(pr.name)}</b>${pr.sku ? `<small>${esc(pr.sku)}</small>` : ''}
         <small>${isReq ? `${srcSt != null ? `${esc(branchName(src))}da: <b>${frN(srcSt)}</b> · ` : ''}menda: ${frN(mine || 0)} · 30 kunda sotildi: ${frN(frSold30(it.pid))}`
           : `Omborda: <b>${frN(mine)}</b>${it.max != null ? ` · soʻralgan qolgani: ${frN(it.max)}` : ''}${price != null ? ` · ${f.mode === 'debt' ? 'narx' : 'filial narxi (optom − %)'}: ${CUR.fmtUsd(price)}` : ''}`}</small></div>
       <span class="pos-step"><button onclick="frQty(${i},-1)" aria-label="Kamaytirish">−</button><input type="number" inputmode="decimal" min="0" max="${cap}" value="${it.qty}" onchange="frQty(${i},0,this.value)"><button onclick="frQty(${i},1)" aria-label="Koʻpaytirish">+</button></span>
@@ -15490,7 +15515,7 @@ function frFormRender() {
         <button class="${f.mode !== 'debt' ? 'on' : ''}" onclick="FR.form.mode='consign';frFormRender()"><b>Sotish uchun</b><small>Qarz — filial <b>sotganda</b>, optom − ${typeof flPct === 'function' ? flPct(f.to) : 0}% xizmat. Sotilmagani qaytariladi.</small></button>
         <button class="${f.mode === 'debt' ? 'on' : ''}" onclick="FR.form.mode='debt';frFormRender()"><b>Qarzga</b><small>Qarz — filial <b>qabul qilganda</b>, optom narxda. Tovar filialniki.</small></button>
       </div>` : ''}
-    ${t ? '' : `<div class="st-eyebrow">Mahsulotlar</div><div class="kr-search">${ICONF.search}<input type="search" id="fr-q" placeholder="Nomi, kodi yoki shtrix-kod" autocomplete="off" oninput="frSearch(this.value)"></div><div id="fr-res" class="fr-res"></div>`}
+    ${t ? '' : `<div class="st-eyebrow">Mahsulotlar</div>${(() => { const cs = [...new Set(S.products.filter(p => !p.archived && !p.directSale && p.cat).map(p => p.cat))].sort(); return cs.length > 1 ? `<div class="pm-cats" style="margin:0 0 8px">${['', ...cs].map(c => `<button class="pm-cat${(f.cat || '') === c ? ' on' : ''}" onclick="frSetCat(${JSON.stringify(c).replace(/"/g, '&quot;')})">${c ? esc(c) : 'Barcha kategoriya'}</button>`).join('')}</div>` : ''; })()}<div class="kr-search">${ICONF.search}<input type="search" id="fr-q" placeholder="Nomi, kodi yoki shtrix-kod" autocomplete="off" oninput="frSearch(this.value)"></div><div id="fr-res" class="fr-res"></div>`}
     ${rows || `<div class="fr-empty">${t ? 'Joʻnatiladigan qolgan mahsulot yoʻq' : 'Mahsulot qoʻshing'}</div>`}
     ${isReq ? `<div class="fr-2"><div><div class="st-eyebrow">Muhimlik</div><div class="bs-seg"><button class="${f.prio === 'normal' ? 'on' : ''}" onclick="FR.form.prio='normal';frFormRender()">Oddiy</button><button class="${f.prio === 'urgent' ? 'on' : ''}" onclick="FR.form.prio='urgent';frFormRender()">Shoshilinch</button></div></div>
       <div><div class="st-eyebrow">Qachongacha kerak</div><input class="form-control" type="date" value="${esc(f.needBy)}" onchange="FR.form.needBy=this.value"></div></div>` : ''}
@@ -15501,9 +15526,9 @@ function frFormRender() {
 }
 function frSearch(q) {
   const f = FR.form, box = document.getElementById('fr-res'); if (!f || !box) return;
-  q = String(q || '').trim(); if (!q) { box.innerHTML = ''; return; }
-  const base = S.products.filter(p => !p.archived && !p.directSale && (f.type === 'req' || getStock(p.id) > 0));
-  const res = productSearchMatch(base, q).slice(0, 8);
+  q = String(q || '').trim(); if (!q && !f.cat) { box.innerHTML = ''; return; }
+  const base = S.products.filter(p => !p.archived && !p.directSale && (f.type === 'req' || getStock(p.id) > 0) && (!f.cat || p.cat === f.cat));
+  const res = (q ? productSearchMatch(base, q) : base).slice(0, 12);
   box.innerHTML = res.length ? res.map(p => `<button onclick="frAdd(${p.id})"><b>${esc(p.name)}</b><small>${esc(p.sku || '')}${f.type === 'ship' ? ` · omborda ${frN(getStock(p.id))}` : ''}</small></button>`).join('') : '<div class="fr-empty">Topilmadi</div>';
 }
 function frAdd(pid) {

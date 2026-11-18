@@ -12,7 +12,8 @@ exports.handler = async (event) => {
   if (!body) return json({ error: "Noto'g'ri so'rov formati" }, 400);
 
   const { orderId, status, items } = body;
-  if (!orderId || !['approved', 'rejected'].includes(status)) {
+  const isDelete = body.action === 'delete';   // v25.6.9: rad etilgan buyurtmani oʻchirish
+  if (!orderId || (!isDelete && !['approved', 'rejected'].includes(status))) {
     return json({ error: 'orderId va to\'g\'ri status (approved/rejected) majburiy' }, 400);
   }
 
@@ -39,6 +40,13 @@ exports.handler = async (event) => {
       if (!dealer || dealer.filial !== auth.filial) {
         return json({ error: "Boshqa filial buyurtmasiga ruxsatingiz yo'q" }, 403);
       }
+    }
+
+    if (isDelete) {
+      if (order.status !== 'rejected') return json({ error: "Faqat rad etilgan buyurtmani oʻchirish mumkin" }, 409);
+      const { error: dErr } = await admin.from('dealer_orders').delete().eq('id', orderId).eq('status', 'rejected');
+      if (dErr) throw dErr;
+      return json({ ok: true, deleted: orderId }, 200);
     }
 
     // v10 (F11): faqat "pending" holatdagi buyurtma tasdiqlanadi/rad etiladi (qayta

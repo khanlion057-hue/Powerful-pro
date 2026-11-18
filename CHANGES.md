@@ -1062,3 +1062,5 @@ tests/p1.2-rounding-currency.test.js        — YANGI
 - Buyurtmada nom asosiy, artikul ikkinchi qatorda; qidiruvda nom boʻyicha topilganlar oldinda.
 - «Pul yuborish»: qarz yoʻq boʻlsa tushuntirish aniqroq (qarz boʻlganda summa maydoni chiqadi).
 - Mahsulotlar: pastdagi takroriy «Hammasi / Kam qoldi / Mavjud emas» qatori olib tashlandi (tepadagi katta tugmalar qoldi; Arxiv — «arxivda N» havolasi). Yangi «✎ Kategoriyalar» tugmasi: nomini oʻzgartirish va olib tashlash.
+- Rad etilgan diller buyurtmasini (admin) va rad etilgan filial soʻrovini (filial) oʻchirish tugmasi. Server: dealer-order-status `action:'delete'` — faqat rad etilgan.
+- Diller buyurtmasida kategoriya filtri; filial «Tovar soʻrash» oynasida kategoriya filtri, nom asosiy, rasmni bosib toʻliq koʻrish.

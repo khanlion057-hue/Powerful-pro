@@ -12790,6 +12790,10 @@ function pgSozlamalar() {
       row({ic:'lock', c:'purple', t:'Tez kirish: PIN va barmoq izi', sub:'Login va parol oʻrniga', val: (()=>{ const q = fwQuickGet(); return !q ? 'Oʻchiq' : (q.bio && fwBioAvail()) ? 'PIN + barmoq izi' : 'PIN'; })(), on:"stQuickSheet()"}),
     ])}
 
+    ${group('Telegram · soʻrov boti', [
+      row({ic:'send', c:'sky', t:'Botdan hisobot soʻrash', sub:'/foyda, /xarajat, /qarz, /kassa, /ombor', on:"tgqOpen()"}),
+    ])}
+
     ${own ? group('Administrator · dastlabki sinov', [
       row({ic:'trash', c:'red', t:'Sinov maʼlumotlarini tozalash', sub:'Faqat kirim qoladi · parol bilan', danger:true, on:"trialResetOpen()"}),
     ]) : ''}
@@ -12900,6 +12904,34 @@ const THEME_META = {
   mono:{name:'Monoxrom', sub:'Oq-qora mavzu'},
   'mono-light':{name:'Monoxrom (yorugʻ)', sub:'Qora urgʻuli oq mavzu'},
 };
+// ── v25.6.9: TELEGRAM SO'ROV BOTI — xodimni ulash (kod), administrator uchun bot sozlash ──
+async function tgqCall(body) {
+  const r = await authFetch('/.netlify/functions/telegram-query', { method: 'POST', body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || j.ok === false) throw new Error(j.error || 'Server xatosi');
+  return j;
+}
+async function tgqOpen() {
+  let st = null;
+  if (_fwIsOwner()) { try { st = await tgqCall({ action: 'status' }); } catch (e) { toast(e.message, 'error'); return; } }
+  openSheet({ ic: 'send', c: 'sky', title: 'Telegram soʻrov boti', sub: st ? (st.set ? `Bot: @${esc(st.bot || '?')} · ulangan: ${st.links}` : 'Sozlanmagan') : '',
+    body: `<div class="fr-form"><p class="bs-note">Botga <b>/foyda</b> (bugun, hafta, oy), <b>/xarajat</b>, <b>/qarz</b>, <b>/kassa</b>, <b>/ombor</b>, <b>/mahsulot nom</b> yozib hisobot soʻraysiz. Faqat ruxsatingiz bor maʼlumot chiqadi; filial xodimi faqat oʻz filialini koʻradi.</p>
+      <div id="tgq-out"></div>
+      ${_fwIsOwner() ? `<div class="st-eyebrow">Administrator: bot tokeni (BotFather → yangi bot)</div><input class="form-control" id="tgq-token" autocomplete="off" placeholder="123456:ABC..."><button class="bs-btn ghost" onclick="tgqSetup(this)">Botni sozlash</button><p class="bs-note">Hisobot botidan ALOHIDA yangi bot oching — shunda hisobotlar va investor ulash buzilmaydi.</p>` : ''}
+    </div>`, foot: `<div class="fr-foot"><button class="bs-btn" onclick="tgqCode(this)">Ulash kodini olish</button></div>` });
+}
+async function tgqCode(btn) {
+  if (btn) btn.disabled = true;
+  try { const r = await tgqCall({ action: 'link_code' }); const o = document.getElementById('tgq-out');
+    if (o) o.innerHTML = `<div class="bs-card"><div class="dk-kv"><span>Bot</span><b>@${esc(r.bot || '?')}</b></div><div class="dk-kv"><span>Kod (${r.minutes} daqiqa)</span><b style="font-size:22px;letter-spacing:3px">${esc(r.code)}</b></div></div><p class="bs-note">Botni oching va yozing: <b>/start ${esc(r.code)}</b></p>`;
+  } catch (e) { toast(e.message, 'error'); } finally { if (btn) btn.disabled = false; }
+}
+async function tgqSetup(btn) {
+  const t = (document.getElementById('tgq-token')?.value || '').trim(); if (!t) { toast('Tokenni kiriting', 'error'); return; }
+  if (btn) btn.disabled = true;
+  try { const r = await tgqCall({ action: 'setup', token: t }); document.getElementById('tgq-token').value = ''; toast('✅ Bot sozlandi: @' + r.bot); tgqOpen(); }
+  catch (e) { toast(e.message, 'error'); } finally { if (btn) btn.disabled = false; }
+}
 // ── v25.6.9: DASTLABKI SINOVNI TOZALASH (faqat administrator, parol bilan, boshlanishdan 6 oy ichida) ──
 const TRS = { st: null, counts: null, busy: false };
 async function trialCall(body) {

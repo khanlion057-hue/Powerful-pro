@@ -1,0 +1,35 @@
+// P110 — v25.6.9: Telegram so'rov boti webhook (maxfiy kalit, ulash kodi, ruxsat, filial cheklovi)
+const assert = require('node:assert/strict');
+const SA = require('../netlify/functions/_lib/supabaseAdmin.js');
+const DR = require('../netlify/functions/_lib/dailyReportRun.js');
+const DATA = { settings: { usdUzs: 12500 }, products: [], dealers: [], branchStore: {
+  baza: { sales: [{ date: new Date().toISOString().slice(0, 10), totalUsd: 100, profitUsd: 40 }], expenses: [], customers: [], suppliers: [], cashboxes: [], batches: [] },
+  f729: { sales: [{ date: new Date().toISOString().slice(0, 10), totalUsd: 7, profitUsd: 3 }], expenses: [], customers: [], suppliers: [], cashboxes: [], batches: [] } } };
+const store = { tg_query_bot: { token: '123456:ABCDEFGHIJKLMNOPQRSTUVWXYZ_abc', secret: 'S3CRET', links: {}, codes: { '123456': { staffId: 2, exp: Date.now() + 60000 } } } };
+const staff = { 1: { id: 1, name: 'Ega', role: 'admin', filial: 'baza', active: true }, 2: { id: 2, name: 'Kassir', role: 'staff', filial: 'f729', active: true }, 3: { id: 3, name: 'Yopiq', role: 'staff', filial: 'f729', active: true } };
+const perms = { 2: ['hisobot.view'], 3: [] };
+const fakeAdmin = { from: (t) => ({
+  select() { return this; }, eq(c, v) { this._v = v; return this; }, in(c, ids) { this._ids = ids; return this; },
+  maybeSingle: async function () { if (t === 'app_data') return { data: store[this._id] ? { data: store[this._id] } : null }; if (t === 'staff') return { data: staff[this._v] || null }; return { data: null }; },
+  then(res) { if (t === 'staff_roles') return res({ data: perms[this._v] ? [{ role_id: this._v }] : [] }); if (t === 'role_permissions') return res({ data: ((perms[(this._ids || [])[0]]) || []).map((k) => ({ permissions: { key: k } })) }); return res({ data: [] }); },
+  upsert: async (row) => { store[row.id] = row.data; return { error: null }; } }) };
+// app_data uchun id ni eslab qolish
+const origFrom = fakeAdmin.from; fakeAdmin.from = (t) => { const q = origFrom(t); const eq = q.eq; q.eq = function (c, v) { if (t === 'app_data' && c === 'id') this._id = v; return eq.call(this, c, v); }; return q; };
+SA.getAdminClient = () => fakeAdmin; DR.loadAll = async () => ({ data: DATA, extra: {} });
+const sent = []; global.fetch = async (url, o) => { const body = JSON.parse(o.body); sent.push({ m: url.split('/').pop(), body }); return { json: async () => ({ ok: true, result: { username: 'testbot' } }) }; };
+const H = require('../netlify/functions/telegram-query.js').handler;
+const upd = (chat, text, secret = 'S3CRET') => H({ httpMethod: 'POST', headers: { 'x-telegram-bot-api-secret-token': secret }, body: JSON.stringify({ message: { chat: { id: chat, type: 'private' }, text } }) });
+async function run() {
+  assert.equal((await upd(10, '/foyda', 'XATO')).statusCode, 404, 'noto\'g\'ri maxfiy kalit');
+  await upd(10, '/foyda'); assert.match(sent.at(-1).body.text, /Avval ulang/);
+  await upd(10, '/start 000000'); assert.match(sent.at(-1).body.text, /noto'g'ri/);
+  await upd(10, '/start 123456'); assert.match(sent.at(-1).body.text, /Ulandi/);
+  assert.equal(store.tg_query_bot.links['10'].staffId, 2); assert.equal(store.tg_query_bot.codes['123456'], undefined, 'kod bir martalik');
+  await upd(10, '/foyda oy'); const t = sent.at(-1).body.text; assert.match(t, /729/); assert.doesNotMatch(t, /Baza/, 'filial xodimi boshqa filialni ko\'rmaydi');
+  await upd(10, '/xarajat'); assert.match(sent.at(-1).body.text, /ruxsatingiz yo'q/);
+  store.tg_query_bot.links['11'] = { staffId: 1 }; await upd(11, '/foyda oy'); assert.match(sent.at(-1).body.text, /Baza/, 'admin hammasini ko\'radi');
+  store.tg_query_bot.links['12'] = { staffId: 3 }; await upd(12, '/foyda'); assert.match(sent.at(-1).body.text, /ruxsatingiz yo'q/);
+  const n = sent.length; await H({ httpMethod: 'POST', headers: { 'x-telegram-bot-api-secret-token': 'S3CRET' }, body: JSON.stringify({ message: { chat: { id: -100, type: 'group' }, text: '/foyda' } }) });
+  assert.equal(sent.length, n, 'guruhda javob berilmaydi');
+}
+module.exports = { name: 'P110 — Telegram soʻrov boti', cases: [{ name: 'webhook: maxfiy kalit, /start kod, ruxsat, filial cheklovi, guruh e\'tiborsiz', run }] };

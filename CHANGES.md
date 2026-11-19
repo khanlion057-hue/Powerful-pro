@@ -1067,3 +1067,4 @@ tests/p1.2-rounding-currency.test.js        — YANGI
 - Investor hisoboti (bot/PDF): yillik davr «2025-2026» (oldingi yil + shu yil), «Kelishilgan foiz» qatori. Filiallarda ham bir xil (hamkorlar har filialniki).
 - Sozlamalar (admin): «Sinov maʼlumotlarini tozalash» — sana kiritiladi, boshlanishdan 6 oy ichida, parol + «TOZALASH» bilan. Kirim/mahsulot/roʻyxatlar qoladi, balans 0. 49-migratsiya (fw_trial_reset) va trial-reset funksiyasi.
 - Telegram bot soʻrov buyruqlari (1-qadam): _lib/botQuery.js — /foyda, /xarajat, /qarz, /kassa, /ombor, /mahsulot (davr, filial cheklovi). Webhook va xodimni ulash — keyingi qadam.
+- Telegram soʻrov boti (2-qadam): telegram-query funksiyasi (webhook, maxfiy kalit, /start KOD ulash, ruxsat va filial cheklovi), Sozlamalar → «Botdan hisobot soʻrash». Alohida bot tokeni kerak (BotFather).

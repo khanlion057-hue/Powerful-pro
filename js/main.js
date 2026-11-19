@@ -4052,7 +4052,7 @@ function pgMahsulotlar() {
     <button type="button" class="pm-sortb" onclick="pmSortSheet()" aria-label="Saralash" title="Saralash">${ICONF.sort}</button>
   </div>
 
-  <div class="pm-cats">${cats.length>1 ? ['',...cats].map(c=>`<button class="pm-cat${catF===c?' on':''}" onclick="pmSetCat(${JSON.stringify(c).replace(/"/g,'&quot;')})">${c?esc(c):'Barcha kategoriya'}</button>`).join('') : ''}<button class="pm-cat pm-cat-edit" onclick="pmCatSheet()" aria-label="Kategoriyalarni boshqarish">✎ Kategoriyalar</button></div>
+  <div class="pm-cats"><button class="pm-cat pm-cat-edit" onclick="pmCatSheet()" aria-label="Kategoriyalarni boshqarish">✎</button>${cats.length>1 ? ['',...cats].map(c=>`<button class="pm-cat${catF===c?' on':''}" onclick="pmSetCat(${JSON.stringify(c).replace(/"/g,'&quot;')})">${c?esc(c):'Barcha kategoriya'}</button>`).join('') : ''}</div>
 
   ${(() => { const g = fwCanDelProducts() ? fwOrphanProducts().filter(p => !p.archived).length : 0;
     return g ? `<button class="pos-strip pm-ghost" onclick="fwCleanupOrphans(null);pgMahsulotlar()">${ICONF.warning}<span><b>${g}</b> ta mahsulot hech qayerda yoʻq (kirimi oʻchirilgan) — savdo roʻyxatidan tozalash</span>${ICONF.chevron}</button>` : ''; })()}

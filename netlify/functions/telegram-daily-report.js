@@ -67,6 +67,19 @@ async function runEvents(admin, st, now) {
       await onceSend(admin, 'tg-month-dealer', ym + ':' + x.dealerId, tok, c, [x.text]);
     }
   }
+  // v25.6.9: oy yakuni — har FILIAL guruhiga o'z hisoboti (foyda, xarajat, qarz, kassa); egasining guruhiga — umumiy
+  if (now.hour >= remindHourOf(st) && now.date.slice(8, 10) === '01' && evtOn(st, 'month')) {
+    const ym = new Date(Date.parse(now.date) - 864e5).toISOString().slice(0, 7), d = await data(), BQ = require('./_lib/botQuery');
+    const mk = (filial) => [BQ.foyda(d, 'otgan', { today: now.date, filial }), BQ.xarajat(d, 'otgan', { today: now.date, filial }), BQ.qarz(d, { filial }), BQ.kassa(d, { filial })];
+    const sent = new Set();
+    if (st.tgBranchChats && typeof st.tgBranchChats === 'object') {
+      for (const k of Object.keys(d.branchStore || {})) {
+        const c = ownBranch(k); if (!c) continue; sent.add(c);
+        await onceSend(admin, 'tg-month-branch', ym + ':' + k, tok, c, mk(k));
+      }
+    }
+    const main = String(st.tgChatId || ''); if (main && !sent.has(main)) await onceSend(admin, 'tg-month-branch', ym + ':all', tok, main, mk(null));
+  }
   // Filial guruhlariga kunlik hisobot — faqat o'z filiali bo'limi (Bosh kassa va dillerlar — faqat egasining hisobotida)
   if (st.tgDaily && now.hour >= hourOf(st) && st.tgBranchChats && typeof st.tgBranchChats === 'object') {
     const d = await data();

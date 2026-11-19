@@ -1068,3 +1068,4 @@ tests/p1.2-rounding-currency.test.js        — YANGI
 - Sozlamalar (admin): «Sinov maʼlumotlarini tozalash» — sana kiritiladi, boshlanishdan 6 oy ichida, parol + «TOZALASH» bilan. Kirim/mahsulot/roʻyxatlar qoladi, balans 0. 49-migratsiya (fw_trial_reset) va trial-reset funksiyasi.
 - Telegram bot soʻrov buyruqlari (1-qadam): _lib/botQuery.js — /foyda, /xarajat, /qarz, /kassa, /ombor, /mahsulot (davr, filial cheklovi). Webhook va xodimni ulash — keyingi qadam.
 - Telegram soʻrov boti (2-qadam): telegram-query funksiyasi (webhook, maxfiy kalit, /start KOD ulash, ruxsat va filial cheklovi), Sozlamalar → «Botdan hisobot soʻrash». Alohida bot tokeni kerak (BotFather).
+- Filial guruhlariga: tovar kirimi, oʻtkazma (soʻrov/joʻnatma/qabul) xabarlari; oy yakunida har filial guruhiga oʻz hisoboti (foyda, xarajat, qarz, kassa) va egasiga umumiy. Sozlama: tgEvt.stock=false — oʻchirish.

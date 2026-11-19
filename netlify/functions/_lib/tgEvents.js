@@ -52,7 +52,7 @@ function chatsFor(st, kind, ctx = {}) {
   const overview = dealerKind ? (chatList(st.tgDealerChats).length ? chatList(st.tgDealerChats) : main) : main;
   const own = ctx.own === false ? null : dealerKind ? (ctx.dealerId != null ? mapChat(st.tgDealerChatMap, ctx.dealerId) : null)
     : (ctx.filial ? mapChat(st.tgBranchChats, ctx.filial) : null);
-  const list = [...(own ? [own] : []), ...((copyMain || !own) ? overview : [])];
+  const list = ctx.onlyOwn ? (own ? [own] : []) : [...(own ? [own] : []), ...((copyMain || !own) ? overview : [])];
   return [...new Set(list)];
 }
 
@@ -257,5 +257,42 @@ async function monthDealerReports(admin, st, ym) {
 // Eslatmani filiallarga bo'lish: { filial: [...] } — filial guruhiga faqat o'z mijozlari
 function dueByBranch(list) { const m = {}; for (const x of list) (m[x.filial] = m[x.filial] || []).push(x); return m; }
 
+
+// ── 6) v25.6.9: FILIAL GURUHI — tovar KIRIMI va O'TKAZMALAR (so'rov / jo'natish / qabul) ──
+// Faqat miqdor va nom (tannarx va narx YO'Q). Har filial guruhiga faqat o'zi qatnashgan amal.
+async function productNames(main) { const m = {}; ((main && main.products) || []).forEach((p) => { if (p && p.id != null) m[p.id] = p.name || p.sku || ('#' + p.id); }); return m; }
+function qtyLines(list, names) {
+  const by = {}; (list || []).forEach((i) => { const k = Number(i.pid); by[k] = (by[k] || 0) + num(i.qty); });
+  const rows = Object.entries(by).sort((a, z) => z[1] - a[1]), total = rows.reduce((a, [, q]) => a + q, 0);
+  const lines = rows.slice(0, 12).map(([pid, q]) => row(cut(names[pid] || ('#' + pid), 22), sp(q, 2)));
+  if (rows.length > 12) lines.push('... yana ' + (rows.length - 12) + ' xil');
+  return { lines, kinds: rows.length, total };
+}
+async function notifyStockIn(admin, args) {
+  try {
+    const { st, main } = await loadSettings(admin);
+    if (!evtOn(st, 'stock') || args.reason === 'opening') return;
+    const names = await productNames(main), q = qtyLines((args.batches || []).map((b) => ({ pid: b.pid, qty: b.qty })), names);
+    if (!q.kinds) return;
+    const title = args.reason === 'import' ? 'Excel kirim' : args.reason === 'dealer_return' ? 'Dillerdan qaytgan tovar' : 'Tovar kirimi';
+    const text = [`📥 <b>${title}</b> · ${esc(branchName(st, args.filial))}${args.staffName ? ' · ' + esc(args.staffName) : ''}`, pre([...q.lines, LINE, row(`Jami (${q.kinds} xil)`, sp(q.total, 2) + ' dona')])].join('\n');
+    await send(st, 'stock', text, { filial: args.filial, admin });
+  } catch (e) { console.warn('[tgEvents] stock', e && e.message); }
+}
+async function notifyTransfer(admin, args) {
+  try {
+    const { st, main } = await loadSettings(admin);
+    if (!evtOn(st, 'stock')) return;
+    const p = args.payload || {}, names = await productNames(main), q = qtyLines(p.items, names);
+    const me = args.filial, other = String(args.kind === 'tr_request' ? p.from : p.to || '');
+    const FIL = /^[A-Za-z0-9_-]{1,40}$/, kinds = { tr_request: ['📨', "Tovar so'rovi"], tr_ship: ['🚚', "Tovar jo'natildi"], tr_receive: ['📦', 'Tovar qabul qilindi'] };
+    const k = kinds[args.kind]; if (!k || (!q.kinds && args.kind !== 'tr_receive')) return;
+    const mk = (who, dir) => [`${k[0]} <b>${k[1]}</b>`, `🏢 ${esc(branchName(st, me))}${other && FIL.test(other) ? ` ${dir} ${esc(branchName(st, other))}` : ''}${args.staffName ? ' · ' + esc(args.staffName) : ''}`,
+      ...(q.kinds ? [pre([...q.lines, LINE, row(`Jami (${q.kinds} xil)`, sp(q.total, 2) + ' dona')])] : [])].join('\n');
+    await send(st, 'stock', mk(me, args.kind === 'tr_request' ? '←' : '→'), { filial: me, admin });
+    if (other && FIL.test(other) && other !== me && args.kind !== 'tr_receive') await send(st, 'stock', mk(other, args.kind === 'tr_request' ? '←' : '→'), { filial: other, admin, onlyOwn: true });
+  } catch (e) { console.warn('[tgEvents] transfer', e && e.message); }
+}
+
 module.exports = { brandOf, notifyCreditSale, notifyCustomerPayment, notifyDealerOp, notifyDealerPayment, dueList, remindText, monthDealerReports, dueByBranch, mapChat,
-  creditSaleText, evtOn, chatsFor, send, loadSettings };
+  creditSaleText, evtOn, chatsFor, send, loadSettings, notifyStockIn, notifyTransfer };

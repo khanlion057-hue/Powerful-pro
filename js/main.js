@@ -14310,6 +14310,10 @@ function xlShowErrors(errs) {
     <div style="max-height:320px;overflow:auto;font-size:12.5px;line-height:1.6;background:var(--bg-secondary);border-radius:10px;padding:10px 12px">${errs.slice(0,100).map(e=>`• ${esc(e)}`).join('<br>')}${errs.length>100?`<br>… va yana ${errs.length-100} ta`:''}</div></div>
     <div class="modal-footer"><button class="btn btn-primary" onclick="closeModal()">Tushunarli</button></div>`);
 }
+// v25.6.9: shablon valyutaga qarab — tannarx sarlavhasida valyuta aniq yoziladi (so'm / yuan / dollar aralashib ketmasin)
+const XL_COST_HEAD = { USD: 'Tannarx ($, 1 dona)', CNY: 'Tannarx (¥ yuan, 1 dona)', UZS: "Tannarx (so'm, 1 dona)" };
+const XL_CUR_NAME = { USD: 'dollar ($)', CNY: 'yuan (¥)', UZS: "so'm" };
+function xlHeaderCur(h) { const t = String(h == null ? '' : xlText(h)).toLowerCase(); return /¥|yuan|cny/.test(t) ? 'CNY' : /so.?m|uzs/.test(t) ? 'UZS' : /\$|usd|dollar/.test(t) ? 'USD' : null; }
 const XL_HEADERS = ['Rasm','SKU (Kod)','Nomi','Kategoriya','Brend','Miqdor','Tannarx ($, 1 dona)','Chakana narxi ($)','Optom narxi ($)','Rang','Rang HEX','Variant guruhi'];
 // v25.6: RANGLAR — oxirgi 3 ta ixtiyoriy ustun (J, K, L). Mavjud 9 ustun joyi o'zgarmagan; eski fayllarda bu ustunlar yo'q — bo'sh deb olinadi.
 // Bir xil «Variant guruhi» = bitta mahsulotning ranglari (vitrinada bitta karta). Noto'g'ri HEX — qator xatosi.
@@ -14360,12 +14364,13 @@ async function fwXlSave(wb, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-async function fwBuildXlTemplate() {
+async function fwBuildXlTemplate(cur = 'USD') {
+  if (!XL_COST_HEAD[cur]) cur = 'USD';
   const wb = new ExcelJS.Workbook();
   wb.creator = fwBrand().name || 'ERP';
   const ws = wb.addWorksheet('Shablon', { views:[{ state:'frozen', ySplit:1 }] });
-  ws.addRow(XL_HEADERS);
-  ws.addRow(['', 'NAMUNA-001', "Namuna — bu qator import qilinmaydi", 'Elektronika', 'Samsung', 70, 15.1, 18.88, 17.37, 'Qora', '#111111', 'NAMUNA-GURUH']);
+  ws.addRow(XL_HEADERS.map((h, i) => i === 6 ? XL_COST_HEAD[cur] : h));
+  ws.addRow(['', 'NAMUNA-001', "Namuna — bu qator import qilinmaydi", 'Elektronika', 'Samsung', 70, cur === 'CNY' ? 108 : cur === 'UZS' ? 193000 : 15.1, 18.88, 17.37, 'Qora', '#111111', 'NAMUNA-GURUH']);
   const head = ws.getRow(1);
   head.font = { bold:true, color:{argb:'FF1C2433'} }; head.height = 30; head.alignment = { vertical:'middle', wrapText:true };
   head.eachCell(c=>{ c.fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FFEFF1F5'}}; c.border={bottom:{style:'thin',color:{argb:'FFD0D5DD'}}}; });
@@ -14387,8 +14392,8 @@ async function fwBuildXlTemplate() {
    ["Nomi (C)","Yangi mahsulot uchun majburiy. Bor mahsulotda bo'sh qolsa — nomi o'zgarmaydi."],
    ["Kategoriya, Brend (D, E)","Ixtiyoriy. Bo'sh qolsa — o'zgarmaydi (yangi mahsulotda «Boshqa»)."],
    ["Miqdor (F)","Omborda hozir bor (bosh qoldiq) yoki kirim qilinadigan son. «dona» mahsulotda — butun son. Bo'sh yoki 0 — omborga tushmaydi, faqat mahsulot ma'lumoti yangilanadi."],
-   ["Tannarx (G)","1 dona narxi, $ da. Miqdor yozilgan bo'lsa — majburiy."],
-   ["Chakana / Optom narxi (H, I)","Ixtiyoriy, $ da. Yozilsa — ustama foizi shu narxga moslab qayta hisoblanadi."],
+   ["Tannarx (G)",`1 dona narxi — FAQAT ${XL_CUR_NAME[cur]} da (bu shablon shu valyuta uchun). Miqdor yozilgan bo'lsa — majburiy. Boshqa valyutada kirim qilmoqchi bo'lsangiz — o'sha valyutaning shablonini yuklab oling: bir faylda valyutalar aralashmaydi.`],
+   ["Chakana / Optom narxi (H, I)","Ixtiyoriy, HAR DOIM $ da (tannarx valyutasidan qat'i nazar). Yozilsa — ustama foizi shu narxga moslab qayta hisoblanadi."],
    ["Rang, Rang HEX, Variant guruhi (J, K, L)","Ixtiyoriy. Rang nomi (masalan Qora), rang kodi (#111111) va guruh. Bir xil «Variant guruhi» yozilgan qatorlar — bitta mahsulotning ranglari: onlayn-do'konda bitta kartada rang nuqtalari bo'lib chiqadi. Har rang — o'z SKU, narx va qoldig'i bilan alohida qator."],
    ["",""],
    ["Muhim","Import avval BUTUN faylni tekshiradi: biror qatorda xato bo'lsa, hech narsa yozilmaydi va xatolar qator raqami bilan ko'rsatiladi."],
@@ -14397,13 +14402,19 @@ async function fwBuildXlTemplate() {
   ].forEach((r,i)=>{ const row = g.addRow(r); row.alignment = { wrapText:true, vertical:'top' }; if (i===0) row.font = { bold:true }; });
   return wb;
 }
-async function exportProductShablon() {
-  await fwXlSave(await fwBuildXlTemplate(), 'shablon.xlsx');
-  toast("✅ Shablon yuklab olindi. «Yo'riqnoma» varag'ini o'qing; namuna qatori (NAMUNA-…) import qilinmaydi.");
+async function exportProductShablon(cur) {
+  cur = XL_COST_HEAD[cur] ? cur : 'USD';
+  await fwXlSave(await fwBuildXlTemplate(cur), cur === 'USD' ? 'shablon.xlsx' : `shablon_${cur === 'CNY' ? 'yuan' : 'som'}.xlsx`);
+  toast(`✅ Shablon (${XL_CUR_NAME[cur]}) yuklab olindi. «Yo'riqnoma» varag'ini o'qing; namuna qatori (NAMUNA-…) import qilinmaydi.`);
 }
-const exportImportTemplate = exportProductShablon; // Kirim sahifasidagi "Shablon" tugmasi ham aynan shu faylni beradi
-// «Excel orqali bosh qoldiq» oynasidagi «Shablonni yuklab olish» — Kirim sahifasidagi bilan bir xil fayl (v24.5)
-function downloadExcelTemplate() { return exportProductShablon(); }
+// Kirim sahifasidagi «Shablon» tugmasi — avval valyutani tanlaydi (so'm / yuan / dollar aralashmasin)
+function exportImportTemplate() {
+  openSheet({ ic: 'download', c: 'sky', title: 'Kirim shabloni', sub: 'Qaysi valyutada kirim qilasiz?',
+    body: `<div class="bs-card pm-sorts">${['USD', 'CNY', 'UZS'].map(c => `<button class="pm-sort" onclick="closeSheet();exportProductShablon('${c}')"><span><b>${XL_CUR_NAME[c]}</b><br><small>Tannarx ustuni: ${esc(XL_COST_HEAD[c])}</small></span>${ICONF.download}</button>`).join('')}</div>
+      <p class="bs-note">Har valyuta — alohida shablon. Faylni yuklaganda ham valyuta tekshiriladi, shuning uchun so'm bilan yuan aralashib ketmaydi.</p>` });
+}
+// «Excel orqali kirim» oynasidagi «Shablonni yuklab olish» — oynada tanlangan valyuta bilan
+function downloadExcelTemplate() { return exportProductShablon(document.getElementById('ei-cur')?.value || 'USD'); }
 
 // Mavjud mahsulotlarni (rasmlari bilan) TO'G'RIDAN-TO'G'RI kirim shablon formatida eksport qilish —
 // faqat "Miqdor" va "Tannarx" ustunlarini to'ldirib, qayta yuklash orqali kirim qilish uchun
@@ -14533,6 +14544,11 @@ function openExcelImportModal() {
         Fayl avval toʻliq tekshiriladi: xato boʻlsa — hech narsa yozilmaydi.</p>
       <button type="button" class="btn btn-ghost" style="width:100%;justify-content:center;margin-bottom:12px" onclick="downloadExcelTemplate()">📥 Shablonni yuklab olish</button>
       <div class="form-group">
+        <label class="form-label" for="ei-cur">Tannarx valyutasi</label>
+        <select class="form-control" id="ei-cur" onchange="document.getElementById('ei-cur-note').textContent='Shablon va fayl shu valyutada: '+XL_COST_HEAD[this.value]"><option value="USD">Dollar ($)</option><option value="CNY">Yuan (¥)</option><option value="UZS">So'm</option></select>
+        <small class="bs-note" id="ei-cur-note" style="display:block;margin-top:6px">Shablon va fayl shu valyutada: ${XL_COST_HEAD.USD}</small>
+      </div>
+      <div class="form-group">
         <label class="form-label" for="ei-supp">Taʼminotchi (ixtiyoriy)</label>
         <select class="form-control" id="ei-supp" onchange="eiSuppNote()">
           <option value="">— taʼminotchisiz (bosh qoldiq) —</option>
@@ -14614,6 +14630,9 @@ async function importBatchXlsx() {
     const rErr = xlRowsGuard(ws); if (rErr) { btnReset(); xlShowErrors([rErr]); return; }
     const imgMap = wsImagesByRow(wb, ws);
     const off = detectColOffset(ws);
+    // v25.6.9: fayl sarlavhasidagi valyuta tanlangan valyutaga mos bo'lishi shart (so'm / yuan / dollar aralashmasin)
+    const fileCur = xlHeaderCur(ws.getRow(1).getCell(6 + off).value);
+    if (fileCur && fileCur !== curSel) { btnReset(); xlShowErrors([`Fayl «${XL_CUR_NAME[fileCur]}» shabloni, siz esa «${XL_CUR_NAME[curSel] || curSel}» tanladingiz. Valyutani to'g'rilang yoki mos shablonni yuklab oling.`]); return; }
 
     // v24.5 (v23.10 dan): avval BUTUN fayl o'qiladi va tekshiriladi — xato bo'lsa hech narsa o'zgarmaydi.
     // Avval parseInt/parseFloat edi: «o'n», «12a», formula obyekti → jimgina 0 (qator kirimsiz o'tib ketardi),
@@ -14724,7 +14743,7 @@ async function importBatchXlsx() {
     // va qo'lda Kirim bilan bir xil asos: tovar narxi + Xitoy ichki yo'lkirasi (CNY)
     const feeRate = curSel==='CNY' ? (CUR.BANK_FEE || 0) : 0;
     rows.forEach(r=>{
-      let costUsd = curSel==='CNY' ? (r.priceNative/CUR.usdCny) : r.priceNative;
+      let costUsd = curSel==='CNY' ? (r.priceNative/CUR.usdCny) : curSel==='UZS' ? (CUR.usdUzs > 0 ? r.priceNative/CUR.usdUzs : 0) : r.priceNative;
       r.goodsUsd = costUsd; // ta'minotchiga to'lanadigan tovar qiymati (dona)
       const bankFeePerUnit = (costUsd + freightPerUnit) * feeRate;
       r.baseCostUsd = costUsd + bankFeePerUnit + freightPerUnit;

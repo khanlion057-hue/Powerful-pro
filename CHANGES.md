@@ -1071,3 +1071,4 @@ tests/p1.2-rounding-currency.test.js        — YANGI
 - Filial guruhlariga: tovar kirimi, oʻtkazma (soʻrov/joʻnatma/qabul) xabarlari; oy yakunida har filial guruhiga oʻz hisoboti (foyda, xarajat, qarz, kassa) va egasiga umumiy. Sozlama: tgEvt.stock=false — oʻchirish.
 - Xarajatga chek rasmi: forma «Chek rasmi», ro'yxatda 📎 — to'liq ko'rish (faqat https havola saqlanadi).
 - Sozlamalar → «Botlar va avtomatik vazifalar»: guruhlar (egasi/filial/diller) holati va soʻrov boti qoʻshildi; docs/BOTLAR.md oddiy tilda.
+- Kirim shabloni valyuta bo'yicha: dollar / yuan / so'm (sarlavhada valyuta aniq), Kirim «Shablon» tugmasi valyuta so'raydi, Excel oynasida valyuta tanlanadi; fayl valyutasi tanlanganga mos bo'lmasa import rad etiladi (aralashmaydi).

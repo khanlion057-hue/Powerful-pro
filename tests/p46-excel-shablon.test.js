@@ -81,7 +81,7 @@ async function testTemplate() {
       let dl = []; const realClick = HTMLAnchorElement.prototype.click;
       HTMLAnchorElement.prototype.click = function () { dl.push(this.download); };
       const blobs = []; const realCreate = URL.createObjectURL; URL.createObjectURL = (b) => { blobs.push(b); return realCreate(b); };
-      await exportImportTemplate();     // Kirim sahifasidagi «Shablon»
+      exportImportTemplate(); document.querySelector('#bs-ov .pm-sort').click(); await new Promise(r => setTimeout(r, 400));     // Kirim «Shablon» → valyuta tanlash (birinchi — dollar)
       openExcelImportModal();           // «Excel orqali bosh qoldiq» oynasi
       const btn = [...document.querySelectorAll('#modal-ov button')].find(b => /Shablonni yuklab olish/.test(b.textContent));
       btn.click(); await new Promise(r => setTimeout(r, 300));

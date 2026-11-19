@@ -11870,6 +11870,7 @@ function pgXarajatlar() {
           <datalist id="ex-person-list">${(S.salaryPeople||[]).map(p=>`<option value="${esc(p.name)}">`).join('')}</datalist>
         </div>`}
         <div class="form-group"><label class="form-label">Izoh ${isDokon?'':'<span style="color:var(--red)">*majburiy</span>'}</label><input class="form-control" id="ex-dsc" placeholder="Xarajat haqida..."></div>
+        <div class="form-group"><label class="form-label">Chek rasmi <span style="color:var(--text-muted);font-weight:400">(ixtiyoriy)</span></label><input class="form-control" id="ex-photo" type="file" accept="image/*"></div>
         <div class="form-group"><label class="form-label">Kassa</label><select class="form-control" id="ex-box">${S.cashboxes.map(k=>`<option value="${k.id}">${k.icon} ${esc(k.name)}</option>`).join('')}${fwFirmaAvailable()?FW_FIRMA_OPT:''}</select></div>
         <button class="btn btn-primary" id="ex-submit-btn" onclick="addExpense()" style="width:100%;justify-content:center">${ICONF.add} Xarajat kiritish</button>
       </div>
@@ -11888,7 +11889,7 @@ function pgXarajatlar() {
                 <td><span class="badge badge-warning" data-excat="${esc(String(e.id))}" style="max-width:220px;white-space:normal;word-break:break-word">${esc(fwExpCatLabel(e))}</span>${isKirim?' <span class="badge" style="background:rgba(14,168,118,.12);color:var(--emerald)">kirim</span>':''}</td>
                 <td style="color:${isKirim?'var(--emerald)':'var(--red)'};font-weight:700">${isKirim?'+':'−'}${CUR.fmtUsd(e.amtUsd||CUR.toUsd(e.amount||0))}${e.cur==='UZS'?` <span style="color:var(--text-muted);font-weight:400;font-size:10px">(${CUR.fmtUzs(e.amount||0)})</span>`:''}</td>
                 <td style="color:var(--text-muted);font-size:11px">${esc(e.person||'—')}</td>
-                <td style="color:var(--text-muted)">${esc(e.desc||e.description||'')}</td>
+                <td style="color:var(--text-muted)">${esc(e.desc||e.description||'')}${e.receipt ? ` <button class="btn btn-ghost btn-sm btn-icon" onclick="exReceiptOpen(${e.id})" title="Chek rasmi" aria-label="Chek rasmini koʻrish">📎</button>` : ''}</td>
                 <td style="white-space:nowrap">
                   <button class="btn btn-ghost btn-sm btn-icon" onclick="openEditExpense(${e.id})" title="Tahrirlash" aria-label="Tahrirlash">${ICONF.edit}</button>
                   <button class="btn btn-ghost btn-sm btn-icon" onclick="deleteExpenseRow(${e.id})" title="Oʻchirish" aria-label="Oʻchirish">${ICONF.trash}</button>
@@ -12076,6 +12077,22 @@ function hamkorKindChange() {
   }
 }
 
+// Chek rasmi: faylni o'qiydi, saqlagichga yuklaydi; faqat https havola saqlanadi (base64 app_data'ni og'irlashtirmasin)
+async function exReceiptUpload(expId) {
+  const file = document.getElementById('ex-photo')?.files?.[0];
+  if (!file) return null;
+  try {
+    const dataUrl = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = rej; r.readAsDataURL(file); });
+    const url = await uploadImageToStorage(dataUrl, 'x' + expId);
+    if (url && /^https:/.test(url)) return url;
+    toast('⚠️ Chek rasmi yuklanmadi — xarajat rasmsiz saqlandi', 'warning');
+  } catch (_) { toast('⚠️ Chek rasmi yuklanmadi', 'warning'); }
+  return null;
+}
+function exReceiptOpen(id) {
+  const e = (S.expenses || []).find(x => x.id === id); if (!e || !e.receipt || typeof fwGallery !== 'function') return;
+  fwGallery([e.receipt], fwExpCatLabel(e), 0, `${fmtD(e.date)} · ${CUR.fmtUsd(e.amtUsd || 0)}`);
+}
 async function addExpense() {
   const raw = parseAmt(document.getElementById('ex-amt')?.value);
   if (raw<=0) { toast('Summa kiriting!','error'); return; }
@@ -12134,7 +12151,8 @@ async function addExpense() {
   }
 
   const _expId = viaFirma ? S._exFk.id : expId; S._exFk = null;
-  S.expenses.push({ id:_expId, date:td(), cat, catId, amtUsd:usd, amount:raw, cur, desc, person, boxId:bid, turi, partnerId, kind: turi==='hamkor' ? kind : undefined, rate: cur==='UZS' ? CUR.usdUzs : null,
+  const receipt = await exReceiptUpload(_expId);   // v25.6.9: chek rasmi (ixtiyoriy) — yuklanmasa xarajat baribir yoziladi
+  S.expenses.push({ id:_expId, date:td(), cat, catId, amtUsd:usd, amount:raw, cur, desc, person, boxId:bid, turi, partnerId, ...(receipt ? { receipt } : {}), kind: turi==='hamkor' ? kind : undefined, rate: cur==='UZS' ? CUR.usdUzs : null,
     ...(viaFirma ? { source:'firma_kassa', fkEntryId, fkCur:cur } : {}) });
 
   // Hamkor yozuvi — darhol shu hamkorning o'z hisobiga (SUMMA/invested) ta'sir qiladi

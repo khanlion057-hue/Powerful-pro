@@ -15663,7 +15663,7 @@ async function prtTg(action, extra) {
   return j;
 }
 function prtRange(mode, ym, y) {
-  if (mode === 'year') return [`${y}-01-01`, `${y}-12-31`, `${y}-yil`];
+  if (mode === 'year') return [`${+y - 1}-01-01`, `${y}-12-31`, `${+y - 1}-${y}`];   // v25.6.9: yillik davr — oldingi yil + shu yil (2025-2026)
   const [Y, M] = ym.split('-').map(Number), last = new Date(Y, M, 0).getDate();
   return [`${ym}-01`, `${ym}-${String(last).padStart(2, '0')}`, monthLabel(ym)];
 }
@@ -15696,7 +15696,7 @@ function openPartnerReport(pid, mode) {
     <div class="bs-seg"><button class="${PRT.mode === 'month' ? 'on' : ''}" onclick="openPartnerReport(${pid},'month')">Oylik</button><button class="${PRT.mode === 'year' ? 'on' : ''}" onclick="openPartnerReport(${pid},'year')">Yillik</button></div>
     ${PRT.mode === 'month' ? `<input class="form-control" type="month" value="${esc(PRT.ym)}" max="${td().slice(0, 7)}" onchange="PRT.ym=this.value||PRT.ym;openPartnerReport(${pid})">`
       : `<div class="fr-chips">${years.map(y => `<button class="${y === PRT.y ? 'on' : ''}" onclick="PRT.y='${y}';openPartnerReport(${pid})">${y}</button>`).join('')}</div>`}
-    <div class="bs-card">${row('Davr', esc(label))}${row('Boshida hisobi', CUR.fmtUsd(st.opening))}${row('Kirim (qoʻshgan)', '+' + CUR.fmtUsd(st.kirim), 'emerald')}
+    <div class="bs-card">${row('Davr', esc(label))}${!p.isFounder && p.keepPct != null ? row('Kelishilgan foiz (foydadan)', (100 - (+p.keepPct || 0)) + '%') : ''}${row('Boshida hisobi', CUR.fmtUsd(st.opening))}${row('Kirim (qoʻshgan)', '+' + CUR.fmtUsd(st.kirim), 'emerald')}
       ${row('Xarajat / olgan', '−' + CUR.fmtUsd(st.xarajat), 'red')}${row('Foyda ulushi (taqsimot)', (st.foyda >= 0 ? '+' : '') + CUR.fmtUsd(st.foyda), st.foyda >= 0 ? 'emerald' : 'red')}
       ${row('Oxirida hisobi', CUR.fmtUsd(st.closing), 'gold')}</div>
     ${p.tgChat ? `<p class="bs-note">Telegram: ${esc(p.tgName || p.tgUser || 'ulangan')} — hisobot shu chatga yuboriladi.</p>` : `<p class="bs-note">Investor Telegramga hali ulanmagan — «Telegramga ulash» bilan havola yuboring.</p>`}
@@ -15706,7 +15706,7 @@ function openPartnerReport(pid, mode) {
 function partnerReportHtml(pid) {
   const [start, end, label] = prtRange(PRT.mode, PRT.ym, PRT.y);
   const st = partnerStatement(pid, start, end), p = st.p, B = fwBrand();
-  return { title: `${p.name} — ${PRT.mode === 'year' ? 'yillik' : 'oylik'} hisobot (${label})`, file: `hisobot_${p.name}_${PRT.mode === 'year' ? PRT.y : PRT.ym}`,
+  return { title: `${p.name} — ${PRT.mode === 'year' ? 'yillik' : 'oylik'} hisobot (${label})`, file: `hisobot_${p.name}_${PRT.mode === 'year' ? (+PRT.y - 1) + '-' + PRT.y : PRT.ym}`,
     html: `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${esc(p.name)} — ${esc(label)}</title>
   <style>body{font-family:Arial,sans-serif;font-size:12.5px;margin:28px;color:#111}h2{margin:0 0 4px}.mut{color:#666}.sum{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
   .sum div{flex:1 1 140px;border:1px solid #e5e7eb;border-radius:10px;padding:8px 10px}.sum b{display:block;font-size:15px;margin-top:2px}
@@ -15714,7 +15714,7 @@ function partnerReportHtml(pid) {
   .p{color:#0ea876;font-weight:bold}.m{color:#e23d3d;font-weight:bold}</style></head><body>
   <h2>${esc(B.name)} — investor hisoboti</h2><div class="mut">${esc(p.name)} · ${p.isFounder ? 'Taʼsischi' : 'Investor'} · ${esc(branchName(S.branch))} · ${esc(label)} (${fmtD(start)} – ${fmtD(end)})</div>
   <div class="sum"><div>Boshida hisobi<b>${CUR.fmtUsd(st.opening)}</b></div><div>Kirim<b class="p">+${CUR.fmtUsd(st.kirim)}</b></div><div>Xarajat / olgan<b class="m">−${CUR.fmtUsd(st.xarajat)}</b></div>
-    <div>Foyda ulushi<b class="${st.foyda >= 0 ? 'p' : 'm'}">${st.foyda >= 0 ? '+' : ''}${CUR.fmtUsd(st.foyda)}</b></div><div>Oxirida hisobi<b>${CUR.fmtUsd(st.closing)}</b></div><div>Ulush (hozir)<b>${st.share.toFixed(2)}%</b></div></div>
+    <div>Foyda ulushi<b class="${st.foyda >= 0 ? 'p' : 'm'}">${st.foyda >= 0 ? '+' : ''}${CUR.fmtUsd(st.foyda)}</b></div><div>Oxirida hisobi<b>${CUR.fmtUsd(st.closing)}</b></div><div>Ulush (hozir)<b>${st.share.toFixed(2)}%</b></div>${!p.isFounder && p.keepPct != null ? `<div>Kelishilgan foiz<b>${100 - (+p.keepPct || 0)}%</b></div>` : ''}</div>
   ${st.pers.length ? `<h3>Foyda taqsimoti</h3><table><thead><tr><th>Oy</th><th>Korxona foydasi</th><th>Ulush</th><th>Sizga</th></tr></thead><tbody>
     ${st.pers.map(({ per, row }) => `<tr><td>${fmtD(per.start)} – ${fmtD(per.end)}</td><td>${CUR.fmtUsd(per.totalProfit || 0)}</td><td>${(+row.pct || 0).toFixed(2)}%</td><td class="${row.foydaPlus >= 0 ? 'p' : 'm'}">${row.foydaPlus >= 0 ? '+' : ''}${CUR.fmtUsd(row.foydaPlus || 0)}</td></tr>`).join('')}</tbody></table>` : ''}
   <h3>Harakatlar</h3><table><thead><tr><th>Sana</th><th>Izoh</th><th>Miqdor</th><th>Hisobi</th></tr></thead><tbody>

@@ -65,6 +65,7 @@ async function withXlApp(fn, mockRoutes = []) {
       window.__xlImportModal = async (buf, suppId) => {
         document.querySelectorAll('#ei-host').forEach(e => e.remove());
         openExcelImportModal();
+        if (suppId) { const k = document.getElementById('ei-kind'), sp0 = S.suppliers.find((x) => x.id === suppId); k.value = sp0 && sp0.isConsignment ? 'consign' : 'supplier'; k.dispatchEvent(new Event('change')); }
         if (suppId) { const sel = document.getElementById('ei-supp'); sel.value = String(suppId); sel.dispatchEvent(new Event('change')); window.__eiNote = document.getElementById('ei-supp-note').textContent; }
         const dt = new DataTransfer(); dt.items.add(new File([buf], 'qoldiq.xlsx')); document.getElementById('ei-file').files = dt.files;
         await importBatchXlsx();

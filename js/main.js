@@ -14391,7 +14391,7 @@ async function fwBuildXlTemplate(cur = 'USD') {
    ["SKU (Kod) (B)","MAJBURIY. Mahsulot kodi. Bazada bor kod — mahsulot yangilanadi, yangi kod — yangi mahsulot yaratiladi."],
    ["Nomi (C)","Yangi mahsulot uchun majburiy. Bor mahsulotda bo'sh qolsa — nomi o'zgarmaydi."],
    ["Kategoriya, Brend (D, E)","Ixtiyoriy. Bo'sh qolsa — o'zgarmaydi (yangi mahsulotda «Boshqa»)."],
-   ["Miqdor (F)","Omborda hozir bor (bosh qoldiq) yoki kirim qilinadigan son. «dona» mahsulotda — butun son. Bo'sh yoki 0 — omborga tushmaydi, faqat mahsulot ma'lumoti yangilanadi."],
+   ["Miqdor (F)","Omborda hozir bor (bosh qoldiq) yoki kirim qilinadigan son. «dona» mahsulotda — butun son. Bo'sh yoki 0 — omborga tovar tushmaydi, lekin mahsulot yoziladi. Omborda yo'q mahsulotlarning sotuv narxini oldindan belgilash uchun: Miqdor = 0, Tannarx va Chakana/Optom narxni yozing — ustama shundan hisoblanadi."],
    ["Tannarx (G)",`1 dona narxi — FAQAT ${XL_CUR_NAME[cur]} da (bu shablon shu valyuta uchun). Miqdor yozilgan bo'lsa — majburiy. Boshqa valyutada kirim qilmoqchi bo'lsangiz — o'sha valyutaning shablonini yuklab oling: bir faylda valyutalar aralashmaydi.`],
    ["Chakana / Optom narxi (H, I)","Ixtiyoriy, HAR DOIM $ da (tannarx valyutasidan qat'i nazar). Yozilsa — ustama foizi shu narxga moslab qayta hisoblanadi."],
    ["Rang, Rang HEX, Variant guruhi (J, K, L)","Ixtiyoriy. Rang nomi (masalan Qora), rang kodi (#111111) va guruh. Bir xil «Variant guruhi» yozilgan qatorlar — bitta mahsulotning ranglari: onlayn-do'konda bitta kartada rang nuqtalari bo'lib chiqadi. Har rang — o'z SKU, narx va qoldig'i bilan alohida qator."],
@@ -14535,14 +14535,25 @@ async function importProducts(input) {
 // Valyuta, Xitoy xarajati va bojxona maydonlari olib tashlandi — ular oddiy «Kirim qo'shish» formasida.
 // v24.6: ta'minotchi tanlovi qaytarildi (egasi talabi) — tanlansa partiyalar unga bog'lanadi va qarz yoziladi.
 // importBatchXlsx() hisob mantig'i o'zgarmagan (maydonlar bo'lmasa — $, ta'minotchisiz, qo'shimcha xarajatsiz).
+// Kirim turi o'zgarganda: taʼminotchi ro'yxati shu turga moslanadi (bosh qoldiq — taʼminotchisiz; konsignatsiya — faqat konsignatsiya taʼminotchilari)
+function eiKindChange() {
+  const kind = document.getElementById('ei-kind')?.value || 'opening', sel = document.getElementById('ei-supp'), note = document.getElementById('ei-supp-note'); if (!sel) return;
+  [...sel.options].forEach(o => { if (!o.value) { o.hidden = kind !== 'opening'; return; } const cons = o.dataset.cons === '1'; o.hidden = kind === 'opening' || (kind === 'consign' ? !cons : cons); });
+  if (kind === 'opening' || sel.selectedOptions[0]?.hidden) sel.value = kind === 'opening' ? '' : ([...sel.options].find(o => o.value && !o.hidden)?.value || '');
+  if (note) note.textContent = kind === 'opening' ? "Bosh qoldiq: taʼminotchi qarzi yozilmaydi." : kind === 'consign' ? "Konsignatsiya: tovar taʼminotchiniki — qarz tovar SOTILGANDA yoziladi. Konsignatsiya taʼminotchisini tanlang." : "Taʼminotchidan xarid: tannarx × miqdor taʼminotchi qarziga yoziladi.";
+}
 function openExcelImportModal() {
   modal(`
     <div class="modal-header"><div class="modal-title">📤 Excel orqali kirim</div><button class="modal-close" onclick="closeModal()">×</button></div>
     <div class="modal-body">
-      <p class="bs-note" style="margin:0 0 12px">Omborda hozir bor tovarlarni bir yoʻla kiritish. Shablonni yuklab oling, toʻldiring va shu yerga yuklang.
+      <p class="bs-note" style="margin:0 0 12px">Excel orqali kirim: bosh qoldiq, taʼminotchidan xarid yoki <b>konsignatsiya</b> (sotish uchun olingan tovar). Shablonni yuklab oling, toʻldiring va shu yerga yuklang. <b>Miqdor 0 boʻlsa</b> ham mahsulot va sotuv narxi yoziladi (omborga tovar tushmaydi).
         Ustunlar: <b>Kod · Nomi · Kategoriya · Brend · Miqdor · Tannarx ($) · Chakana ($) · Optom ($)</b>. Yangi kod — yangi mahsulot boʻlib qoʻshiladi.
         Fayl avval toʻliq tekshiriladi: xato boʻlsa — hech narsa yozilmaydi.</p>
       <button type="button" class="btn btn-ghost" style="width:100%;justify-content:center;margin-bottom:12px" onclick="downloadExcelTemplate()">📥 Shablonni yuklab olish</button>
+      <div class="form-group">
+        <label class="form-label" for="ei-kind">Kirim turi</label>
+        <select class="form-control" id="ei-kind" onchange="eiKindChange()"><option value="opening">Bosh qoldiq (taʼminotchisiz)</option><option value="supplier">Taʼminotchidan xarid</option><option value="consign">📋 Konsignatsiya — sotish uchun olingan</option></select>
+      </div>
       <div class="form-group">
         <label class="form-label" for="ei-cur">Tannarx valyutasi</label>
         <select class="form-control" id="ei-cur" onchange="document.getElementById('ei-cur-note').textContent='Shablon va fayl shu valyutada: '+XL_COST_HEAD[this.value]"><option value="USD">Dollar ($)</option><option value="CNY">Yuan (¥)</option><option value="UZS">So'm</option></select>
@@ -14552,7 +14563,7 @@ function openExcelImportModal() {
         <label class="form-label" for="ei-supp">Taʼminotchi (ixtiyoriy)</label>
         <select class="form-control" id="ei-supp" onchange="eiSuppNote()">
           <option value="">— taʼminotchisiz (bosh qoldiq) —</option>
-          ${(S.suppliers||[]).map(s=>`<option value="${s.id}">${esc(s.name)}${s.isConsignment?' (📋 konsignatsiya)':''}</option>`).join('')}
+          ${(S.suppliers||[]).map(s=>`<option value="${s.id}" data-cons="${s.isConsignment?1:0}">${esc(s.name)}${s.isConsignment?' (📋 konsignatsiya)':''}</option>`).join('')}
         </select>
         <small class="bs-note" id="ei-supp-note" style="display:block;margin-top:6px">Taʼminotchi tanlanmasa — qarz yozilmaydi.</small>
       </div>
@@ -14565,6 +14576,7 @@ function openExcelImportModal() {
       <button class="btn btn-ghost" onclick="closeModal()">Bekor</button>
       <button class="btn btn-primary" id="ei-submit-btn" onclick="importBatchXlsx()">📤 Yuklash</button>
     </div>`);
+  eiKindChange();
 }
 
 // v24.6 (egasi talabi): Excel kirimda taʼminotchi tanlanadi — tovar summasi (tannarx × miqdor) uning qarziga yoziladi
@@ -14612,7 +14624,11 @@ async function importBatchXlsx() {
   const fErr = xlFileGuard(f); if (fErr) { toast('⛔ ' + fErr, 'error'); return; }
 
   const curSel = document.getElementById('ei-cur')?.value || 'USD';
-  const suppId = parseInt(document.getElementById('ei-supp')?.value||0) || null;
+  const eiKind = document.getElementById('ei-kind')?.value || null;   // yo'q (eski oyna/test) — avvalgi xulq
+  let suppId = parseInt(document.getElementById('ei-supp')?.value||0) || null;
+  if (eiKind === 'opening') suppId = null;
+  if (eiKind === 'consign') { const sp = suppId && S.suppliers.find(x => x.id === suppId); if (!sp || !sp.isConsignment) { toast('Konsignatsiya uchun konsignatsiya taʼminotchisini tanlang', 'error'); return; } }
+  if (eiKind === 'supplier' && !suppId) { toast('Taʼminotchini tanlang', 'error'); return; }
   const freightYuan = parseFloat(document.getElementById('ei-freight')?.value||0) || 0;
   const customsUsd = parseFloat(document.getElementById('ei-customs')?.value||0) || 0;
   const customsMethod = document.getElementById('ei-customs-method')?.value || 'per_unit';
@@ -14659,7 +14675,8 @@ async function importBatchXlsx() {
       if (qty > 0 && unit === 'dona' && !Number.isInteger(qty)) errs.push(`${rowNumber}-qator (${sku}): «dona» mahsulot miqdori butun son bo'lishi kerak — ${qty}`);
       const valsOk = !bad(qty) && !bad(price);   // noto'g'ri qiymat allaqachon qayd etilgan — o'zaro tekshiruv ortiqcha
       if (valsOk && qty > 0 && !(price > 0)) errs.push(`${rowNumber}-qator (${sku}): miqdor bor, tannarx yo'q`);
-      if (valsOk && !(qty > 0) && price > 0) errs.push(`${rowNumber}-qator (${sku}): tannarx bor, miqdor yo'q`);
+      // v25.6.9: miqdor 0 bo'lsa ham mahsulot yoziladi; tannarx + chakana/optom narx — sotuv narxini (ustamani) belgilaydi, omborga hech narsa tushmaydi
+      if (valsOk && !(qty > 0) && (chakana > 0 || optim > 0) && !(price > 0) && !(existing && getCostFIFO(existing.id) > 0)) errs.push(`${rowNumber}-qator (${sku}): narx yozilgan, lekin tannarx yo'q — sotuv narxi tannarxga nisbatan hisoblanadi. «Tannarx» ustunini ham yozing`);
       const vc = xlVariantCols(v, off, rowNumber, sku, errs);
       seen.set(sku, true);
       plan.push({ vc, rowNumber, sku, name, cat, brand, qty: qty > 0 ? Math.round(qty*1000)/1000 : 0, priceNative: price || 0, chakana: chakana || 0, optim: optim || 0, img: imgMap[rowNumber] || null });
@@ -14671,7 +14688,7 @@ async function importBatchXlsx() {
       return;
     }
     const rows = [];
-    let newProdCnt = 0, updProdCnt = 0, imgCnt = 0;
+    let newProdCnt = 0, updProdCnt = 0, imgCnt = 0, priceOnlyCnt = 0;
     const pendingImgUploads2 = [];
     // v24.5 (v23.10 dan): server kirimni rad etsa — mahsulotlar ro'yxati aynan oldingi holatiga qaytadi (hech narsa yozilmaydi)
     // (obyektlar o'zi saqlanadi — boshqa havolalar, masalan savat, eskirib qolmasin)
@@ -14698,6 +14715,15 @@ async function importBatchXlsx() {
       fwApplyVariant(p, r.vc);
       if (r.img) { pendingImgUploads2.push({ p, prev: p.image || null, img: r.img }); p.image = r.img; imgCnt++; }
       if (r.qty > 0 && r.priceNative > 0) rows.push({p, qty:r.qty, priceNative:r.priceNative, chakana:r.chakana, optim:r.optim});
+      else if (!(r.qty > 0) && (r.chakana > 0 || r.optim > 0)) {
+        // omborda yo'q mahsulot: sotuv narxi — berilgan tannarx (yoki mavjud FIFO tannarx) asosida ustama sifatida saqlanadi
+        const ref = r.priceNative > 0 ? (curSel==='CNY' ? r.priceNative/CUR.usdCny : curSel==='UZS' ? (CUR.usdUzs > 0 ? r.priceNative/CUR.usdUzs : 0) : r.priceNative) : getCostFIFO(p.id);
+        if (ref > 0) {
+          if (r.chakana > 0) p.markupPct = Math.round(((r.chakana/ref)-1)*1000000)/10000;
+          if (r.optim > 0) p.optMarkupPct = Math.round(((r.optim/ref)-1)*1000000)/10000;
+          priceOnlyCnt++;
+        }
+      }
     }
     // v24.6: rasmlar 6 tadan PARALLEL yuklanadi (avval birma-bir — 1000 rasmda juda sekin edi).
     // Yuklanmagan rasm — eski rasm qoladi; xom base64 bazaga (app_data) YOZILMAYDI (avval qolib, saqlashni og'irlashtirib/buzardi).
@@ -14718,14 +14744,12 @@ async function importBatchXlsx() {
       await uploadImgs();
       save(); closeModal(); pgKirim();
       modal(`
-        <div class="modal-header"><div class="modal-title">⚠️ Kirim QILINMADI</div><button class="modal-close" onclick="closeModal()">×</button></div>
+        <div class="modal-header"><div class="modal-title">✅ Mahsulotlar yozildi (omborga tovar tushmadi)</div><button class="modal-close" onclick="closeModal()">×</button></div>
         <div class="modal-body">
-          <div style="background:rgba(226,61,61,.08);border:1px solid rgba(226,61,61,.3);border-radius:10px;padding:14px;font-size:13px;line-height:1.6">
-            <strong>${newProdCnt} ta yangi mahsulot yaratildi</strong>, ${updProdCnt} ta yangilandi — <strong>lekin hech qanday tovar omborga tushmadi!</strong>
-            <br><br>
-            Sababi: Excel faylingizda <strong>"Miqdor"</strong> yoki <strong>"Tannarx"</strong> ustunlari bo'sh yoki 0 edi. Mahsulot yozuvi yaratiladi, lekin miqdor/narxsiz kirim qilib bo'lmaydi.
-            <br><br>
-            ✅ <strong>Nima qilish kerak:</strong> Excel faylingizga qaytib, har bir qatorga <strong>Miqdor</strong> va <strong>Tannarx</strong> qiymatlarini kiritib, qayta import qiling.
+          <div style="background:rgba(14,168,118,.08);border:1px solid rgba(14,168,118,.3);border-radius:10px;padding:14px;font-size:13px;line-height:1.6">
+            <strong>${newProdCnt} ta yangi mahsulot yaratildi</strong>, ${updProdCnt} ta yangilandi${priceOnlyCnt ? `, <strong>${priceOnlyCnt} tasiga sotuv narxi belgilandi</strong>` : ''}.
+            <br><br>Faylda «Miqdor» 0 yoki bo'sh edi, shuning uchun <strong>omborga tovar tushmadi</strong> — bu xato emas: omborda yo'q mahsulotlar ro'yxatini va sotuv narxlarini oldindan kiritish mumkin.
+            <br><br>Tovar kelganda — shu mahsulotlarga <strong>Miqdor va Tannarx</strong> yozib, kirim qiling: narx (ustama) avval belgilangan bo'lsa, qayta yozish shart emas.
           </div>
         </div>
         <div class="modal-footer">

@@ -1072,3 +1072,4 @@ tests/p1.2-rounding-currency.test.js        — YANGI
 - Xarajatga chek rasmi: forma «Chek rasmi», ro'yxatda 📎 — to'liq ko'rish (faqat https havola saqlanadi).
 - Sozlamalar → «Botlar va avtomatik vazifalar»: guruhlar (egasi/filial/diller) holati va soʻrov boti qoʻshildi; docs/BOTLAR.md oddiy tilda.
 - Kirim shabloni valyuta bo'yicha: dollar / yuan / so'm (sarlavhada valyuta aniq), Kirim «Shablon» tugmasi valyuta so'raydi, Excel oynasida valyuta tanlanadi; fayl valyutasi tanlanganga mos bo'lmasa import rad etiladi (aralashmaydi).
+- Excel kirim: «Kirim turi» (bosh qoldiq / ta'minotchidan / konsignatsiya — sotish uchun olingan); miqdor 0 bo'lsa ham mahsulot va sotuv narxi (ustama) yoziladi, omborga tovar tushmaydi; tannarxsiz narx — aniq xato.

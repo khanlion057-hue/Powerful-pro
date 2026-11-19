@@ -1,67 +1,76 @@
-# Botlar ro'yxati (v25.6.9)
+# Botlar — oddiy tushuntirish (v25.6.9)
 
-Tizimda **3 ta Telegram bot** ishlaydi. Token faqat serverda saqlanadi, brauzerga qaytmaydi.
-Ularning Telegram nomlari (taxminiy moslik — bot nomlari kodda yozilmagan, tekshirib tasdiqlang):
+Tizimga **3 ta bot** ulanadi. @Powerful_yukxisobot — boshqa maqsad uchun, bu tizimga **ulanmagan**, tegilmaydi.
 
-| Bot | Vazifa | Token qayerda |
+| Bot | Nima qiladi (bir gapda) | Hozirgi nom |
 |---|---|---|
-| **@Powerful_hisobot** (hisobot boti) | Hisobotlar, hodisalar, investor hujjatlari, zaxira, parol tiklash, mijoz xabarlari | `settings.tgBotToken` |
-| **@Powerful_onlaynbot** (onlayn do'kon boti) | Onlayn do'kon buyurtmalari va yangi mahsulot e'loni | `settings.shopBotToken` |
-| **@Powerful_yukxisobot** (yuk hisobi) | **Boshqa maqsad uchun** — bu tizimga ULANMAGAN, tegilmaydi | — |
-| **So'rov boti** (yangi, hali ochilmagan) | Xodim botdan /foyda, /xarajat... so'raydi | alohida: `app_data` qatori `tg_query_bot` |
-
-## 1) Hisobot boti — kim nimani oladi
-| Xabar | Qachon | Kim oladi | Ichida nima |
-|---|---|---|---|
-| Kunlik hisobot | har kuni belgilangan soatda (standart 21:00) | **Egasi** guruhi — hamma filial + bosh kassa + dillerlar; **har filial guruhi** — faqat o'z filiali | savdo, foyda, xarajat, kassalar, qarzlar, top xodim/mahsulot |
-| Nasiya savdo | darhol | egasi guruhi + shu **filial** guruhi (+ mijozning o'zi, agar botga ulangan bo'lsa) | mijoz, mahsulotlar, qarz, qaytarish sanasi |
-| Mijoz qarz to'lovi | darhol | egasi + filial guruhi (+ mijoz) | summa, qolgan qarz |
-| Nasiya eslatmasi | har kuni 9:00 (sozlanadi) | egasi + filial guruhi | bugun / muddati o'tgan qarzlar |
-| Diller oldi-berdisi, to'lovi | darhol | egasi (dillerlar guruhi) + **shu dillerning** guruhi | tovar yuborildi/qaytdi, to'lov qabul/rad |
-| Diller oy yakuni | har oyning 1-kuni | egasi: hammasi; **har diller:** faqat o'zi | oy bo'yicha jo'natma, savdo, to'lov, qarz |
-| Tovar kirimi (v25.6.9) | kirim/import | egasi + shu filial guruhi | nom va miqdor (narx yo'q) |
-| O'tkazma (v25.6.9) | so'rov / jo'natish / qabul | egasi + ikkala filial guruhi | nom va miqdor |
-| Filial oy yakuni (v25.6.9) | har oyning 1-kuni | **har filial:** faqat o'zi; egasi: umumiy | foyda, xarajat, qarz, kassa |
-| Investor hisoboti | tugma bilan (oylik/yillik) | **shu investorning** shaxsiy chati | boshlang'ich, kirim, foyda ulushi, kelishilgan foiz |
-| Zaxira nusxa | har kuni | egasining **shaxsiy** chati (`tgBackupChat`) | .json.gz fayl |
-| Parol tiklash kodi | so'ralganda | **shu xodimning** o'zi | 6 xonali kod |
-| Texnik ogohlantirish, tizim holati | xato yoki kunlik | egasi guruhi | xatolar, sekin javoblar, baza hajmi |
-
-To'liq (hammasini) ko'radigan: **faqat egasi guruhi** (`tgChatId`). Filial guruhi — o'z filiali; diller guruhi — o'z dillerining ma'lumoti. Boshqa filial/diller ma'lumoti hech qachon yuborilmaydi.
-
-## 2) Onlayn do'kon boti (@Powerful_onlaynbot)
-- Yangi onlayn buyurtma — **egasi guruhi + shu filial guruhi** (mijoz, telefon, mahsulot, yetkazish).
-- Yangi mahsulot e'loni — belgilangan **kanal/guruhlarga** (rasm, nom, narx, havola).
-- Kim to'liq: egasi.
-
-## 3) So'rov boti (xodim so'raydi; v25.6.9) — YANGI bot ochish kerak
-(@Powerful_yukxisobot bunga ishlatilmaydi — u boshqa maqsad uchun.)
-Buyruqlar: `/foyda`, `/xarajat` (bugun · kecha · hafta · oy · otgan), `/qarz`, `/kassa`, `/ombor`, `/mahsulot nom`, `/yordam`.
-- Ulash: Sozlamalar → «Botdan hisobot so'rash» → kod → botga `/start KOD`.
-- **Egasi (admin):** hamma filial. **Xodim:** faqat o'z filiali va faqat ruxsati bor buyruq
-  (`hisobot.view` — foyda, `xarajatlar.view`, `mijozlar.view` — qarz, `kassalar.view`, `ombor.view`).
-- Faqat shaxsiy chatda javob beradi; guruhda jim.
-
-## Yangi bot kerak bo'lsa
-- **Xodimlar uchun alohida bildirishnoma boti** (masalan kassirga «kassa yopilmadi» eslatma) — kerak bo'lsa qo'shiladi.
-- **Mijozlar uchun alohida bot** (hozir mijoz xabarlari hisobot boti orqali boradi) — mijoz bilan brend nomi bilan yozishish uchun.
-Har yangi bot: BotFather → token → Sozlamalarda saqlanadi; hisobot botiga **webhook qo'yilmaydi** (investor ulash va parol tiklash `getUpdates` ishlatadi).
+| **1. Hisobot boti** | Hamma hisobot va xabarlarni guruhlarga **o'zi yuboradi** | @Powerful_hisobot |
+| **2. Onlayn do'kon boti** | Onlayn buyurtma va yangi mahsulot haqida xabar beradi | @Powerful_onlaynbot |
+| **3. So'rov boti** (yangi) | Xodim botdan **o'zi so'raydi**: «bu oy foyda qancha?» | hali ochilmagan |
 
 ---
-# Yangi botlar: nomlar va BotFather qadamlari
 
-Telegram botni **faqat egasi** @BotFather orqali yarata oladi (menda sizning Telegram akkauntingiz yo'q). Quyida tayyor nomlar, tavsif va buyruqlar — nusxalab qo'yasiz.
-Foydalanuvchi nomi (@...) `bot` bilan tugashi va band bo'lmasligi shart; band bo'lsa raqam qo'shing.
+## 1. Hisobot boti
+**Vazifa:** hisobotlar, nasiya, to'lov, diller, kirim, o'tkazma, investor, zaxira — hammasini avtomatik yuboradi.
 
-| # | Bot | Ko'rinadigan nom | Taklif etilgan @nom | Vazifa |
-|---|---|---|---|---|
-| 1 | Hisobot boti | Powerful · Hisobot | @PowerfulGroup_hisobot_bot | kunlik/oylik hisobot, nasiya, diller, kirim, o'tkazma, investor, zaxira |
-| 2 | Onlayn do'kon boti | Powerful · Onlayn do'kon | @PowerfulGroup_dokon_bot | onlayn buyurtma va yangi mahsulot e'loni |
-| 3 | So'rov boti | Powerful · So'rov | @PowerfulGroup_sorov_bot | xodim /foyda, /xarajat, /qarz, /kassa, /ombor so'raydi |
+**Qaysi guruh/chatlarga ulanadi** (Sozlamalar → Telegram):
+| Kimga | Nimani oladi | Qayerda kiritiladi |
+|---|---|---|
+| **Egasi guruhi** (1 ta) | **Hammasini**: barcha filial, bosh kassa, dillerlar | «Guruh» (chat ID) |
+| **Har filial guruhi** (filial soni qadar) | Faqat **o'z filiali**: kunlik hisobot, nasiya, qarz to'lovi, eslatma, tovar kirimi, o'tkazma, oy yakuni | «Filial guruhlari» |
+| **Har diller guruhi** (diller soni qadar) | Faqat **o'z dillerining**: tovar olish/qaytarish, to'lov, oy yakuni | «Diller guruhlari» |
+| **Dillerlar umumiy guruhi** (ixtiyoriy) | Barcha dillerlar bo'yicha umumiy | «Barcha dillerlar umumiy guruhi» |
+| **Mijoz** (shaxsiy chat) | Faqat **o'zining** nasiya/to'lov/eslatmasi | Mijoz kartasi → «Botga ulash» |
+| **Investor** (shaxsiy chat) | Faqat **o'zining** hisoboti (oylik/yillik) | Hamkorlar → hisobot → «Telegramga ulash» |
+| **Egasi shaxsiy chati** | Har kuni **zaxira nusxa** fayli | Sozlamalar → Zaxira |
+| **Xodim** (shaxsiy chat) | Parol tiklash **kodi** | Parolni unutdim |
 
-## Har bot uchun (BotFather'da)
-1. `/newbot` → ko'rinadigan nom → @nom → **token** (maxfiy, hech kimga bermang).
-2. `/setdescription` — jadvaldagi «Vazifa» matni; `/setuserpic` — Powerful logotipi (`assets/brand-logo.jpg`).
-3. So'rov boti uchun buyruqlar ilovadan o'zi o'rnatiladi (Sozlamalar → «Botdan hisobot so'rash» → token → «Botni sozlash»). Onlayn do'kon botida — Onlayn-do'kon → Bot → token; buyruqlar «sozlash» tugmasi bilan.
-4. Hisobot boti: Sozlamalar → Telegram → token va guruhni tanlash; **webhook qo'ymang**.
-5. Guruhlarga qo'shing: botni guruh a'zosi qiling (egasi guruhi, har filial va har diller guruhi) va guruh ID sini Sozlamalar'da kiriting.
+**Muhim qoida:** filial guruhiga boshqa filial ma'lumoti, diller guruhiga boshqa diller ma'lumoti **hech qachon** chiqmaydi. «Asosiy guruhga nusxa» yoqilgan bo'lsa, egasi hammasini bir joyda ham ko'radi.
+
+**Qachon yuboradi:**
+- Darhol: nasiya savdo, qarz to'lovi, diller amali, tovar kirimi, o'tkazma.
+- Har kuni: kunlik hisobot (standart 21:00), nasiya eslatmasi (9:00), zaxira.
+- Har oyning 1-kuni: filial va diller oy yakuni hisoboti.
+
+**Ehtiyot:** bu botga **webhook qo'yilmaydi** (investor va parol tiklash shunga bog'liq).
+
+---
+
+## 2. Onlayn do'kon boti
+**Vazifa:** do'kondan yangi buyurtma kelsa xabar beradi; yangi mahsulot qo'shilsa e'lon qiladi.
+
+| Kimga | Nimani oladi |
+|---|---|
+| **Egasi guruhi** + **shu filial guruhi** | Yangi buyurtma: mijoz, telefon, mahsulotlar, yetkazish |
+| **E'lon kanali/guruhlari** (ixtiyoriy) | Yangi mahsulot: rasm, nom, narx, havola |
+
+Ulash: Onlayn-do'kon → Bot → token.
+
+---
+
+## 3. So'rov boti (yangi, alohida bot kerak)
+**Vazifa:** xodim hisobotni **kutmasdan** o'zi so'raydi.
+
+**Buyruqlar:** `/foyda` · `/xarajat` (bugun, kecha, hafta, oy, otgan) · `/qarz` · `/kassa` · `/ombor` · `/mahsulot nom` · `/yordam`
+
+| Kim | Nimani ko'radi |
+|---|---|
+| **Egasi (admin)** | Hamma filial |
+| **Xodim** | Faqat **o'z filiali** va faqat **ruxsati bor** buyruq (foyda — `hisobot.view`, xarajat — `xarajatlar.view`, qarz — `mijozlar.view`, kassa — `kassalar.view`, ombor — `ombor.view`) |
+| **Guruh** | Javob bermaydi (faqat shaxsiy chat) |
+
+Ulash: Sozlamalar → «Botdan hisobot so'rash» → **kod** → botga `/start KOD`.
+Egasi bir marta bot tokenini kiritadi: shu oynada «Botni sozlash».
+
+---
+
+## Yangi botlar — taklif etilgan nomlar
+| Bot | Ko'rinadigan nom | @nom |
+|---|---|---|
+| Hisobot | Powerful · Hisobot | @PowerfulGroup_hisobot_bot |
+| Onlayn do'kon | Powerful · Onlayn do'kon | @PowerfulGroup_dokon_bot |
+| So'rov | Powerful · So'rov | @PowerfulGroup_sorov_bot |
+
+**Yaratish (har bot, 2 daqiqa):** Telegram → **@BotFather** → `/newbot` → nom → @nom (oxiri `bot`) → **token** (maxfiy) → `/setuserpic` (logotip: `assets/brand-logo.jpg`).
+Eski botlarni yangi nomga o'tkazish: BotFather → `/setname` (token o'zgarmaydi — eng oson yo'l).
+Guruhga ulash: botni guruhga a'zo qiling → guruh ID sini Sozlamalar → Telegram'da yozing.

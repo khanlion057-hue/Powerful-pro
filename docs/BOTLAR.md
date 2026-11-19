@@ -45,3 +45,23 @@ Buyruqlar: `/foyda`, `/xarajat` (bugun · kecha · hafta · oy · otgan), `/qarz
 - **Mijozlar uchun alohida bot** (hozir mijoz xabarlari hisobot boti orqali boradi) — mijoz bilan brend nomi bilan yozishish uchun.
 - **Yuk hisobi boti** (@Powerful_yukxisobot): agar bu yuk/jo'natma kuzatuvi uchun mo'ljallangan bo'lsa — vazifasini ayting.
 Har yangi bot: BotFather → token → Sozlamalarda saqlanadi; hisobot botiga **webhook qo'yilmaydi** (investor ulash va parol tiklash `getUpdates` ishlatadi).
+
+---
+# Yangi botlar: nomlar va BotFather qadamlari
+
+Telegram botni **faqat egasi** @BotFather orqali yarata oladi (menda sizning Telegram akkauntingiz yo'q). Quyida tayyor nomlar, tavsif va buyruqlar — nusxalab qo'yasiz.
+Foydalanuvchi nomi (@...) `bot` bilan tugashi va band bo'lmasligi shart; band bo'lsa raqam qo'shing.
+
+| # | Bot | Ko'rinadigan nom | Taklif etilgan @nom | Vazifa |
+|---|---|---|---|---|
+| 1 | Hisobot boti | Powerful · Hisobot | @PowerfulGroup_hisobot_bot | kunlik/oylik hisobot, nasiya, diller, kirim, o'tkazma, investor, zaxira |
+| 2 | Onlayn do'kon boti | Powerful · Onlayn do'kon | @PowerfulGroup_dokon_bot | onlayn buyurtma va yangi mahsulot e'loni |
+| 3 | So'rov boti | Powerful · So'rov | @PowerfulGroup_sorov_bot | xodim /foyda, /xarajat, /qarz, /kassa, /ombor so'raydi |
+| 4 | (ixtiyoriy) Yuk hisobi | Powerful · Yuk hisobi | @PowerfulGroup_yuk_bot | yuk/jo'natma bildirishnomalari — vazifasini aytsangiz qo'shaman |
+
+## Har bot uchun (BotFather'da)
+1. `/newbot` → ko'rinadigan nom → @nom → **token** (maxfiy, hech kimga bermang).
+2. `/setdescription` — jadvaldagi «Vazifa» matni; `/setuserpic` — Powerful logotipi (`assets/brand-logo.jpg`).
+3. So'rov boti uchun buyruqlar ilovadan o'zi o'rnatiladi (Sozlamalar → «Botdan hisobot so'rash» → token → «Botni sozlash»). Onlayn do'kon botida — Onlayn-do'kon → Bot → token; buyruqlar «sozlash» tugmasi bilan.
+4. Hisobot boti: Sozlamalar → Telegram → token va guruhni tanlash; **webhook qo'ymang**.
+5. Guruhlarga qo'shing: botni guruh a'zosi qiling (egasi guruhi, har filial va har diller guruhi) va guruh ID sini Sozlamalar'da kiriting.

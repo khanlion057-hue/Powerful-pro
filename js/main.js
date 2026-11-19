@@ -4052,7 +4052,7 @@ function pgMahsulotlar() {
     <button type="button" class="pm-sortb" onclick="pmSortSheet()" aria-label="Saralash" title="Saralash">${ICONF.sort}</button>
   </div>
 
-  <div class="pm-cats"><button class="pm-cat pm-cat-edit" onclick="pmCatSheet()" aria-label="Kategoriyalarni boshqarish">✎</button>${cats.length>1 ? ['',...cats].map(c=>`<button class="pm-cat${catF===c?' on':''}" onclick="pmSetCat(${JSON.stringify(c).replace(/"/g,'&quot;')})">${c?esc(c):'Barcha kategoriya'}</button>`).join('') : ''}</div>
+  <div class="pm-cats"><button class="pm-cat pm-cat-edit" onclick="pmCatSheet()" aria-label="Kategoriyalarni boshqarish">✎</button>${cats.length>1 ? ['',...cats].map(c=>`<button class="pm-cat${catF===c?' on':''}" onclick="pmSetCat(${JSON.stringify(c).replace(/"/g,'&quot;')})">${c?esc(c):'Hammasi'}</button>`).join('') : ''}</div>
 
   ${(() => { const g = fwCanDelProducts() ? fwOrphanProducts().filter(p => !p.archived).length : 0;
     return g ? `<button class="pos-strip pm-ghost" onclick="fwCleanupOrphans(null);pgMahsulotlar()">${ICONF.warning}<span><b>${g}</b> ta mahsulot hech qayerda yoʻq (kirimi oʻchirilgan) — savdo roʻyxatidan tozalash</span>${ICONF.chevron}</button>` : ''; })()}
@@ -4061,7 +4061,7 @@ function pgMahsulotlar() {
   pmFilter();
 }
 function pmSetSt(k){ S.pmSt = k; document.querySelectorAll('#pg-mahsulotlar .pm-chip, #pg-mahsulotlar .pmh-b').forEach(b=>b.classList.toggle('on', b.getAttribute('onclick')===`pmSetSt('${k}')`)); pmFilter(); }
-function pmSetCat(c){ S.pmCat = c; document.querySelectorAll('#pg-mahsulotlar .pm-cat').forEach(b=>b.classList.toggle('on', b.textContent===(c||'Barcha kategoriya'))); pmFilter(); }
+function pmSetCat(c){ S.pmCat = c; document.querySelectorAll('#pg-mahsulotlar .pm-cat').forEach(b=>b.classList.toggle('on', b.textContent===(c||'Hammasi'))); pmFilter(); }
 const PM_SORTS = { new:'Yangi qoʻshilganlar', name:'Nomi (A–Z)', stockAsc:'Qoldiq: kamdan koʻpga', stockDesc:'Qoldiq: koʻpdan kamga', price:'Narx: qimmatdan arzonga' };
 // Kategoriyalarni boshqarish: nomini oʻzgartirish (hamma mahsulotda), olib tashlash; yangisi — «Yangi mahsulot» formasida «+»
 function pmCatSheet() {
@@ -12963,18 +12963,34 @@ async function trialResetOpen() {
   try { TRS.st = await trialCall({ action: 'status' }); } catch (e) { toast(e.message, 'error'); return; }
   TRS.counts = null; trialResetPaint();
 }
+// Jadval nomlari — tushunarli guruhlarga (soni 0 bo'lganlar ko'rsatilmaydi)
+const TRS_GROUPS = [
+  ['Savdolar va chiqim hisoblari', ['sales', 'sale_credit_uses', 'stock_writeoffs', 'stock_ledger']],
+  ['Mijoz qarzlari va to‘lovlari', ['customer_debt_ledger', 'customer_debt_payments', 'customer_credit_ledger', 'customer_credit_balances', 'customer_balances']],
+  ['Ta’minotchi qarzlari va to‘lovlari', ['supplier_debt_ledger', 'supplier_payments', 'supplier_advance_ledger', 'supplier_advance_balances', 'supplier_balances']],
+  ['Kassa harakatlari va qoldiqlari', ['cashbox_ledger', 'cashbox_transactions', 'cashbox_balances', 'firma_kassa_ledger', 'firma_kassa_balance', 'home_withdrawals']],
+  ['Diller buyurtma, to‘lov, ombor', ['dealer_orders', 'dealer_pay_notices', 'dealer_payments', 'dealer_sales', 'dealer_stock', 'dealer_stock_moves', 'dealer_audit_log', 'fw_dealer_revisions']],
+  ['Hamkor (investor) hisobi', ['partner_ledger', 'partner_payments', 'partner_periods']],
+  ['Filial o‘tkazmalari va qarzlari', ['branch_transfer_shipments', 'branch_transfers', 'branch_debt_cur', 'branch_debt_cur_ledger']],
+  ['Tarix va bildirishnomalar', ['fw_notifications', 'tg_outbox', 'fw_audit_events', 'staff_audit_log', 'ops_events', 'ops_alerts', 'ledger_ops', 'idempotency_keys']],
+];
 function trialResetPaint() {
-  const st = TRS.st || {}, rows = TRS.counts ? Object.entries(TRS.counts).filter(([, n]) => +n > 0).map(([k, n]) => `<div class="dk-kv"><span>${esc(k)}</span><b>${n}</b></div>`).join('') || '<p class="bs-note">Oʻchadigan yozuv yoʻq</p>' : '';
+  const st = TRS.st || {}, c = TRS.counts || {};
+  const rows = TRS.counts ? TRS_GROUPS.map(([label, keys]) => [label, keys.reduce((a, k) => a + (+c[k] || 0), 0)]).filter(([, n]) => n > 0)
+    .map(([l, n]) => `<div class="dk-kv"><span>${esc(l)}</span><b>${n} ta</b></div>`).join('') : '';
+  const preview = TRS.counts ? (rows ? `<div class="st-eyebrow">Hozir shular o‘chadi</div><div class="bs-card">${rows}</div>` : '<p class="bs-note">O‘chadigan yozuv yo‘q — hammasi allaqachon toza.</p>') : '';
   openSheet({ ic: 'trash', c: 'red', title: 'Sinovni tozalash', sub: st.start ? `Muddat: ${esc(st.until)} gacha${st.open ? '' : ' (tugagan)'}` : 'Boshlanish sanasi kiritilmagan',
     body: `<div class="fr-form">
-      <p class="bs-note">Qoladi: mahsulotlar, kirim partiyalari (qoldiq toʻliq qaytadi), dillerlar / xodimlar / filiallar / mijozlar roʻyxati. <b>Oʻchadi:</b> savdo, toʻlov, xarajat, kassa, qarz va balans yozuvlari, oʻtkazmalar, diller buyurtmalari. Balans 0 boʻladi. <b>Qaytarib boʻlmaydi.</b></p>
+      <div class="bs-card"><div class="st-eyebrow" style="color:var(--red)">O‘chadi</div><p class="bs-note" style="margin:4px 0 8px">Savdolar, qarzlar (mijoz va ta’minotchi), kassa harakatlari, xarajat va to‘lov yozuvlari, filial o‘tkazmalari, diller buyurtma va to‘lovlari, hamkor hisobi, tarix.</p>
+        <div class="st-eyebrow" style="color:var(--emerald)">Qoladi</div><p class="bs-note" style="margin:4px 0 0">Mahsulotlar, kirim partiyalari (qoldiq to‘liq qaytadi), dillerlar, xodimlar, filiallar, mijoz va ta’minotchi ro‘yxati. Barcha balans va qarzlar 0 bo‘ladi.</p></div>
+      <p class="bs-note"><b>Qaytarib bo‘lmaydi.</b> Avval zaxira nusxa oling.</p>
       <div class="st-eyebrow">Sinov boshlangan sana</div>
       <input class="form-control" type="date" id="trs-start" value="${esc(st.start || '')}" max="${td()}" onchange="trialSetStart(this.value)">
-      ${st.open ? `<button class="bs-btn ghost" onclick="trialDry(this)">Nima oʻchishini koʻrish</button>${rows ? `<div class="bs-card">${rows}</div>` : ''}
-      <div class="st-eyebrow">Parolingiz</div><input class="form-control" type="password" id="trs-pw" autocomplete="current-password">
-      <div class="st-eyebrow">Tasdiqlash: <b>TOZALASH</b> deb yozing</div><input class="form-control" id="trs-ok" autocomplete="off">` : `<p class="bs-note">${st.start ? 'Sinov muddati tugagan — tozalash yopilgan.' : 'Avval sanani kiriting.'}</p>`}
+      ${st.open ? `<button class="bs-btn ghost" onclick="trialDry(this)">Nimalar o‘chishini ko‘rish</button>${preview}
+      <div class="st-eyebrow">Parolingiz</div><input class="form-control" type="password" id="trs-pw" autocomplete="current-password" placeholder="Administrator paroli">
+      <div class="st-eyebrow">Tasdiqlash uchun <b>TOZALASH</b> deb yozing</div><input class="form-control" id="trs-ok" autocomplete="off" placeholder="TOZALASH">` : `<p class="bs-note">${st.start ? 'Sinov muddati tugagan — tozalash yopilgan.' : 'Avval sanani kiriting.'}</p>`}
     </div>`,
-    foot: st.open ? `<div class="fr-foot"><button class="bs-btn ghost" onclick="closeSheet()">Bekor</button><button class="bs-btn" style="background:var(--red)" id="trs-go" onclick="trialRun(this)">Tozalash</button></div>` : '' });
+    foot: st.open ? `<div class="fr-foot"><button class="bs-btn ghost" onclick="closeSheet()">Bekor</button><button class="bs-btn" style="background:var(--red)" id="trs-go" onclick="trialRun(this)">Hammasini tozalash</button></div>` : '' });
 }
 async function trialSetStart(v) {
   try { TRS.st = await trialCall({ action: 'set_start', startDate: v }); TRS.counts = null; toast('✅ Sana saqlandi'); trialResetPaint(); } catch (e) { toast(e.message, 'error'); }
@@ -15626,7 +15642,7 @@ function frFormRender() {
         <button class="${f.mode !== 'debt' ? 'on' : ''}" onclick="FR.form.mode='consign';frFormRender()"><b>Sotish uchun</b><small>Qarz — filial <b>sotganda</b>, optom − ${typeof flPct === 'function' ? flPct(f.to) : 0}% xizmat. Sotilmagani qaytariladi.</small></button>
         <button class="${f.mode === 'debt' ? 'on' : ''}" onclick="FR.form.mode='debt';frFormRender()"><b>Qarzga</b><small>Qarz — filial <b>qabul qilganda</b>, optom narxda. Tovar filialniki.</small></button>
       </div>` : ''}
-    ${t ? '' : `<div class="st-eyebrow">Mahsulotlar</div>${(() => { const cs = [...new Set(S.products.filter(p => !p.archived && !p.directSale && p.cat).map(p => p.cat))].sort(); return cs.length > 1 ? `<div class="pm-cats" style="margin:0 0 8px">${['', ...cs].map(c => `<button class="pm-cat${(f.cat || '') === c ? ' on' : ''}" onclick="frSetCat(${JSON.stringify(c).replace(/"/g, '&quot;')})">${c ? esc(c) : 'Barcha kategoriya'}</button>`).join('')}</div>` : ''; })()}<div class="kr-search">${ICONF.search}<input type="search" id="fr-q" placeholder="Nomi, kodi yoki shtrix-kod" autocomplete="off" oninput="frSearch(this.value)"></div><div id="fr-res" class="fr-res"></div>`}
+    ${t ? '' : `<div class="st-eyebrow">Mahsulotlar</div>${(() => { const cs = [...new Set(S.products.filter(p => !p.archived && !p.directSale && p.cat).map(p => p.cat))].sort(); return cs.length > 1 ? `<div class="pm-cats" style="margin:0 0 8px">${['', ...cs].map(c => `<button class="pm-cat${(f.cat || '') === c ? ' on' : ''}" onclick="frSetCat(${JSON.stringify(c).replace(/"/g, '&quot;')})">${c ? esc(c) : 'Hammasi'}</button>`).join('')}</div>` : ''; })()}<div class="kr-search">${ICONF.search}<input type="search" id="fr-q" placeholder="Nomi, kodi yoki shtrix-kod" autocomplete="off" oninput="frSearch(this.value)"></div><div id="fr-res" class="fr-res"></div>`}
     ${rows || `<div class="fr-empty">${t ? 'Joʻnatiladigan qolgan mahsulot yoʻq' : 'Mahsulot qoʻshing'}</div>`}
     ${isReq ? `<div class="fr-2"><div><div class="st-eyebrow">Muhimlik</div><div class="bs-seg"><button class="${f.prio === 'normal' ? 'on' : ''}" onclick="FR.form.prio='normal';frFormRender()">Oddiy</button><button class="${f.prio === 'urgent' ? 'on' : ''}" onclick="FR.form.prio='urgent';frFormRender()">Shoshilinch</button></div></div>
       <div><div class="st-eyebrow">Qachongacha kerak</div><input class="form-control" type="date" value="${esc(f.needBy)}" onchange="FR.form.needBy=this.value"></div></div>` : ''}

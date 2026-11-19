@@ -559,7 +559,7 @@ function dlOrderHtml() {
       </div>
       <button onclick="dlRefreshCatalog()" style="background:none;border:none;color:var(--blue);font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;margin-left:8px">🔄 Yangilash</button>
     </div>
-    ${(() => { const cs = [...new Set(CATALOG.map(p => p.cat).filter(Boolean))].sort(); return cs.length > 1 ? `<div class="pm-cats" style="margin:0 0 10px">${['', ...cs].map(c => `<button class="pm-cat${(DLO.cat || '') === c ? ' on' : ''}" onclick="DLO.cat=${JSON.stringify(c).replace(/"/g, '&quot;')};dlRenderContent()">${c ? esc(c) : 'Barcha kategoriya'}</button>`).join('')}</div>` : ''; })()}
+    ${(() => { const cs = [...new Set(CATALOG.map(p => p.cat).filter(Boolean))].sort(); return cs.length > 1 ? `<div class="pm-cats" style="margin:0 0 10px">${['', ...cs].map(c => `<button class="pm-cat${(DLO.cat || '') === c ? ' on' : ''}" onclick="DLO.cat=${JSON.stringify(c).replace(/"/g, '&quot;')};dlRenderContent()">${c ? esc(c) : 'Hammasi'}</button>`).join('')}</div>` : ''; })()}
     <div class="dl-card" style="margin-bottom:12px">
       <input class="dl-input" id="dl-order-search" placeholder="🔍 Mahsulot qidirish (bo'sh qoldirsangiz — hammasi ko'rinadi)" oninput="dlRenderOrderList()" style="margin-bottom:0">
     </div>

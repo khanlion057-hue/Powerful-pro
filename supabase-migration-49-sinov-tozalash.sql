@@ -11,7 +11,7 @@ declare
     'cashbox_ledger','cashbox_transactions','cashbox_balances','firma_kassa_ledger','firma_kassa_balance','home_withdrawals',
     'dealer_orders','dealer_pay_notices','dealer_payments','dealer_sales','dealer_stock','dealer_stock_moves','dealer_audit_log','fw_dealer_revisions',
     'partner_ledger','partner_payments','partner_periods','branch_transfer_shipments','branch_transfers','branch_debt_cur','branch_debt_cur_ledger',
-    'stock_writeoffs','fw_notifications','tg_outbox'];
+    'stock_writeoffs','fw_notifications','tg_outbox','fw_audit_events','staff_audit_log','ops_events','ops_alerts','ledger_ops','idempotency_keys'];
 begin
   foreach t in array tabs loop
     if to_regclass('public.' || t) is null then continue; end if;
@@ -25,7 +25,7 @@ begin
     end if;
   end loop;
   -- ombor jurnali: kirim/import/boshlang'ich yozuvlar qoladi (tarix), qolgani (savdo, tuzatish...) o'chadi.
-  -- ledger_ops va idempotency_keys ATAYIN qoldiriladi: eski so'rovlar qayta yuborilsa, kirim ikki marta yozilmasin.
+  -- ledger_ops, idempotency_keys va audit jurnallari ham tozalanadi (iz qolmasin); tozalagandan keyin barcha qurilmalar qayta yuklanishi kerak.
   execute 'select count(*) from public.stock_ledger where op_kind not in (''kirim'',''import'',''opening'')' into n;
   res := res || jsonb_build_object('stock_ledger', n);
   if not p_dry then

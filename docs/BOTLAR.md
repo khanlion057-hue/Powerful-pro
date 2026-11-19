@@ -7,7 +7,8 @@ Ularning Telegram nomlari (taxminiy moslik — bot nomlari kodda yozilmagan, tek
 |---|---|---|
 | **@Powerful_hisobot** (hisobot boti) | Hisobotlar, hodisalar, investor hujjatlari, zaxira, parol tiklash, mijoz xabarlari | `settings.tgBotToken` |
 | **@Powerful_onlaynbot** (onlayn do'kon boti) | Onlayn do'kon buyurtmalari va yangi mahsulot e'loni | `settings.shopBotToken` |
-| **@Powerful_yukxisobot** (tasdiqlang: so'rov boti yoki yuk hisobi?) | Xodim botdan /foyda, /xarajat... so'raydi | alohida: `app_data` qatori `tg_query_bot` |
+| **@Powerful_yukxisobot** (yuk hisobi) | **Boshqa maqsad uchun** — bu tizimga ULANMAGAN, tegilmaydi | — |
+| **So'rov boti** (yangi, hali ochilmagan) | Xodim botdan /foyda, /xarajat... so'raydi | alohida: `app_data` qatori `tg_query_bot` |
 
 ## 1) Hisobot boti — kim nimani oladi
 | Xabar | Qachon | Kim oladi | Ichida nima |
@@ -33,7 +34,8 @@ To'liq (hammasini) ko'radigan: **faqat egasi guruhi** (`tgChatId`). Filial guruh
 - Yangi mahsulot e'loni — belgilangan **kanal/guruhlarga** (rasm, nom, narx, havola).
 - Kim to'liq: egasi.
 
-## 3) So'rov boti (xodim so'raydi; v25.6.9)
+## 3) So'rov boti (xodim so'raydi; v25.6.9) — YANGI bot ochish kerak
+(@Powerful_yukxisobot bunga ishlatilmaydi — u boshqa maqsad uchun.)
 Buyruqlar: `/foyda`, `/xarajat` (bugun · kecha · hafta · oy · otgan), `/qarz`, `/kassa`, `/ombor`, `/mahsulot nom`, `/yordam`.
 - Ulash: Sozlamalar → «Botdan hisobot so'rash» → kod → botga `/start KOD`.
 - **Egasi (admin):** hamma filial. **Xodim:** faqat o'z filiali va faqat ruxsati bor buyruq
@@ -43,7 +45,6 @@ Buyruqlar: `/foyda`, `/xarajat` (bugun · kecha · hafta · oy · otgan), `/qarz
 ## Yangi bot kerak bo'lsa
 - **Xodimlar uchun alohida bildirishnoma boti** (masalan kassirga «kassa yopilmadi» eslatma) — kerak bo'lsa qo'shiladi.
 - **Mijozlar uchun alohida bot** (hozir mijoz xabarlari hisobot boti orqali boradi) — mijoz bilan brend nomi bilan yozishish uchun.
-- **Yuk hisobi boti** (@Powerful_yukxisobot): agar bu yuk/jo'natma kuzatuvi uchun mo'ljallangan bo'lsa — vazifasini ayting.
 Har yangi bot: BotFather → token → Sozlamalarda saqlanadi; hisobot botiga **webhook qo'yilmaydi** (investor ulash va parol tiklash `getUpdates` ishlatadi).
 
 ---
@@ -57,7 +58,6 @@ Foydalanuvchi nomi (@...) `bot` bilan tugashi va band bo'lmasligi shart; band bo
 | 1 | Hisobot boti | Powerful · Hisobot | @PowerfulGroup_hisobot_bot | kunlik/oylik hisobot, nasiya, diller, kirim, o'tkazma, investor, zaxira |
 | 2 | Onlayn do'kon boti | Powerful · Onlayn do'kon | @PowerfulGroup_dokon_bot | onlayn buyurtma va yangi mahsulot e'loni |
 | 3 | So'rov boti | Powerful · So'rov | @PowerfulGroup_sorov_bot | xodim /foyda, /xarajat, /qarz, /kassa, /ombor so'raydi |
-| 4 | (ixtiyoriy) Yuk hisobi | Powerful · Yuk hisobi | @PowerfulGroup_yuk_bot | yuk/jo'natma bildirishnomalari — vazifasini aytsangiz qo'shaman |
 
 ## Har bot uchun (BotFather'da)
 1. `/newbot` → ko'rinadigan nom → @nom → **token** (maxfiy, hech kimga bermang).

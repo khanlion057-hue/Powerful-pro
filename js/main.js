@@ -12790,6 +12790,10 @@ function pgSozlamalar() {
       row({ic:'lock', c:'purple', t:'Tez kirish: PIN va barmoq izi', sub:'Login va parol oʻrniga', val: (()=>{ const q = fwQuickGet(); return !q ? 'Oʻchiq' : (q.bio && fwBioAvail()) ? 'PIN + barmoq izi' : 'PIN'; })(), on:"stQuickSheet()"}),
     ])}
 
+    ${own ? group('Administrator · dastlabki sinov', [
+      row({ic:'trash', c:'red', t:'Sinov maʼlumotlarini tozalash', sub:'Faqat kirim qoladi · parol bilan', danger:true, on:"trialResetOpen()"}),
+    ]) : ''}
+
     ${group(`${brL} · chek va printer`, [
       rb({ic:'print', c:'blue', t:'Chek o\u02bblchami', sub:'Faqat shu filial', val:`${[58,72,80].includes(pw)?pw:72} mm`, on:"stPrinterSheet()"}),
       rb({ic:'bluetooth', c:'sky', t:'Chek printeri', sub:'Faqat shu filial', val: fwPrintCfg('printerName') ? esc(fwPrintCfg('printerName')) : 'Tizim printeri', on:"stPrinterSheet()"}),
@@ -12896,6 +12900,63 @@ const THEME_META = {
   mono:{name:'Monoxrom', sub:'Oq-qora mavzu'},
   'mono-light':{name:'Monoxrom (yorugʻ)', sub:'Qora urgʻuli oq mavzu'},
 };
+// ── v25.6.9: DASTLABKI SINOVNI TOZALASH (faqat administrator, parol bilan, boshlanishdan 6 oy ichida) ──
+const TRS = { st: null, counts: null, busy: false };
+async function trialCall(body) {
+  const r = await authFetch('/.netlify/functions/trial-reset', { method: 'POST', body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || j.ok === false) throw new Error(j.error || 'Server xatosi');
+  return j;
+}
+async function trialResetOpen() {
+  if (!_fwIsOwner()) { toast('Faqat administrator uchun', 'error'); return; }
+  try { TRS.st = await trialCall({ action: 'status' }); } catch (e) { toast(e.message, 'error'); return; }
+  TRS.counts = null; trialResetPaint();
+}
+function trialResetPaint() {
+  const st = TRS.st || {}, rows = TRS.counts ? Object.entries(TRS.counts).filter(([, n]) => +n > 0).map(([k, n]) => `<div class="dk-kv"><span>${esc(k)}</span><b>${n}</b></div>`).join('') || '<p class="bs-note">Oʻchadigan yozuv yoʻq</p>' : '';
+  openSheet({ ic: 'trash', c: 'red', title: 'Sinovni tozalash', sub: st.start ? `Muddat: ${esc(st.until)} gacha${st.open ? '' : ' (tugagan)'}` : 'Boshlanish sanasi kiritilmagan',
+    body: `<div class="fr-form">
+      <p class="bs-note">Qoladi: mahsulotlar, kirim partiyalari (qoldiq toʻliq qaytadi), dillerlar / xodimlar / filiallar / mijozlar roʻyxati. <b>Oʻchadi:</b> savdo, toʻlov, xarajat, kassa, qarz va balans yozuvlari, oʻtkazmalar, diller buyurtmalari. Balans 0 boʻladi. <b>Qaytarib boʻlmaydi.</b></p>
+      <div class="st-eyebrow">Sinov boshlangan sana</div>
+      <input class="form-control" type="date" id="trs-start" value="${esc(st.start || '')}" max="${td()}" onchange="trialSetStart(this.value)">
+      ${st.open ? `<button class="bs-btn ghost" onclick="trialDry(this)">Nima oʻchishini koʻrish</button>${rows ? `<div class="bs-card">${rows}</div>` : ''}
+      <div class="st-eyebrow">Parolingiz</div><input class="form-control" type="password" id="trs-pw" autocomplete="current-password">
+      <div class="st-eyebrow">Tasdiqlash: <b>TOZALASH</b> deb yozing</div><input class="form-control" id="trs-ok" autocomplete="off">` : `<p class="bs-note">${st.start ? 'Sinov muddati tugagan — tozalash yopilgan.' : 'Avval sanani kiriting.'}</p>`}
+    </div>`,
+    foot: st.open ? `<div class="fr-foot"><button class="bs-btn ghost" onclick="closeSheet()">Bekor</button><button class="bs-btn" style="background:var(--red)" id="trs-go" onclick="trialRun(this)">Tozalash</button></div>` : '' });
+}
+async function trialSetStart(v) {
+  try { TRS.st = await trialCall({ action: 'set_start', startDate: v }); TRS.counts = null; toast('✅ Sana saqlandi'); trialResetPaint(); } catch (e) { toast(e.message, 'error'); }
+}
+async function trialDry(btn) {
+  if (btn) btn.disabled = true;
+  try { TRS.counts = (await trialCall({ action: 'dry' })).counts; trialResetPaint(); } catch (e) { toast(e.message, 'error'); if (btn) btn.disabled = false; }
+}
+async function trialRun(btn) {
+  const pw = document.getElementById('trs-pw')?.value || '', ok = document.getElementById('trs-ok')?.value || '';
+  if (!pw) { toast('Parolni kiriting', 'error'); return; }
+  if (ok.trim() !== 'TOZALASH') { toast('«TOZALASH» deb yozing', 'error'); return; }
+  if (TRS.busy || !confirm('Barcha sinov harakatlari butunlay oʻchadi. Davom etasizmi?')) return;
+  TRS.busy = true; if (btn) btn.disabled = true;
+  try {
+    await trialCall({ action: 'run', password: pw, confirm: 'TOZALASH' });
+    trialLocalReset();
+    auditLog('Dastlabki sinov maʼlumotlari tozalandi');
+    closeSheet(); toast('✅ Tozalandi — balanslar 0, kirim saqlandi'); setTimeout(() => location.reload(), 900);
+  } catch (e) { toast(e.message, 'error'); if (btn) btn.disabled = false; }
+  finally { TRS.busy = false; }
+}
+// Brauzerdagi (app_data) nusxa: har filialda partiyalar saqlanadi (sold=0), qolgan harakatlar boʻshatiladi
+function trialLocalReset() {
+  const clean = (snap) => { const e = _emptyBranchDefaults(), keep = (snap.batches || []).filter(b => b.status !== 'deleted').map(b => ({ ...b, sold: 0, status: (+b.qty || 0) > 0 ? 'active' : 'empty' }));
+    Object.assign(snap, e, { batches: keep, batchCounter: snap.batchCounter || e.batchCounter,
+      customers: (snap.customers || []).map(c => ({ ...c, debt: 0 })), suppliers: (snap.suppliers || []).map(c => ({ ...c, debt: 0 })) }); };
+  const cur = _snapshotBranch(); clean(cur); _applyBranchSnapshot(cur);
+  Object.keys(S._store || {}).forEach(k => { if (k !== S.branch && S._store[k]) clean(S._store[k]); });
+  S.partnerPeriods = []; S.dealerTxns = []; S.dealerOrders = []; S.filialOrders = [];
+  S._syncBaseline = _numericBaselineSnapshot(); save();
+}
 function stThemeSheet() {
   const cur = getThemeMode();
   const card = k => `<button class="th-card${k===cur?' on':''}" onclick="setThemeMode('${k}');stThemeSheet();if(S.page==='sozlamalar')pgSozlamalar()">

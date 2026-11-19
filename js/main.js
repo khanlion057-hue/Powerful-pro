@@ -13340,6 +13340,10 @@ function stBranchMenu(key) {
 function _stTgTokenSet() { const st = S.settings||{}; return !!(st.tgBotToken || st.tgBotTokenSet); }
 // v24.7: Botlar xaritasi — qaysi bot qayerdan, qanday vazifani bajaradi (tokenlar faqat serverda, bu yerda faqat holat)
 function stBotsSheet() {
+  stBotsPaint(null);
+  if (_fwIsOwner()) tgqCall({ action: 'status' }).then(q => { if (document.querySelector('.bt-map')) stBotsPaint(q); }).catch(() => {});   // so'rov boti holati (faqat administrator)
+}
+function stBotsPaint(q) {
   const st = S.settings || {}, tgOn = !!((st.tgBotToken || st.tgBotTokenSet) && st.tgChatId);
   const shopOn = !!(st.shopBotTokenSet || st.shopBotToken), hh = (h, d) => String(+h >= 0 && h !== '' && h != null ? h : d).padStart(2, '0') + ':00';
   const parts = (S.partners || []).filter(p => p && p.tgChat).length;
@@ -13353,6 +13357,15 @@ function stBotsSheet() {
         job(parts > 0, 'Investor hisobotlari', `Hamkorlar → Telegram · ${parts} ta hamkor ulangan`, 'Oylik / yillik hisobot PDF — investor «Start»ni bosgach, bitta tugma bilan', "go('hamkorlar')"),
         job(tgOn, 'Hujjat va cheklarni yuborish', 'Chek, hisob-faktura, hisobot oynalaridagi «Telegram» tugmasi', 'PDF hujjatni guruhga (Chat ID) yuboradi · faqat administrator'),
         job(!!(tgOn && st.tgAnnounceOn), 'Yangi mahsulot eʼloni', 'Kanal va guruhlarga · mahsulot qoʻshilganda', 'Rasm, nom, narx va havola — bir chatga bir marta', 'stEditTelegram()'),
+      ])}
+      ${(() => { const bk = Object.keys(S._store || { baza: 1 }), brOn = bk.filter(k => (st.tgBranchChats || {})[k]).length, dls = (S.dealers || []), dlOn = dls.filter(d => (st.tgDealerChatMap || {})[d.id]).length;
+        return bot('send', 'sky', 'Guruhlar · kim nima oladi', 'Asosiy bot shularga yuboradi · Sozlamalar → Telegram bot', tgOn, [
+        job(!!st.tgChatId, 'Egasi guruhi', 'Hammasi: barcha filial, bosh kassa, dillerlar', 'Nasiya, toʻlov, diller, kirim, oʻtkazma, kunlik va oy hisoboti', 'stEditTelegram()'),
+        job(brOn > 0, `Filial guruhlari · ${brOn}/${bk.length}`, 'Har biriga faqat oʻz filiali', 'Kunlik hisobot, nasiya, qarz toʻlovi, eslatma, tovar kirimi, oʻtkazma, oy yakuni', 'stEditTelegram()'),
+        job(dlOn > 0, `Diller guruhlari · ${dlOn}/${dls.length}`, 'Har biriga faqat oʻzi', 'Tovar olish/qaytarish, savdo, toʻlov, oy yakuni', 'stEditTelegram()'),
+      ]); })()}
+      ${bot('chart', 'purple', 'Soʻrov boti' + (q && q.bot ? ' · @' + esc(q.bot) : ''), 'Xodim botdan oʻzi soʻraydi · alohida bot', !!(q && q.set), [
+        job(!!(q && q.set), 'Buyruqlar', 'Shaxsiy chatda: /foyda /xarajat /qarz /kassa /ombor /mahsulot', 'Egasi — hamma filial; xodim — oʻz filiali va ruxsati boricha' + (q ? ` · ulangan xodim: ${q.links}` : ''), 'tgqOpen()'),
       ])}
       ${bot('cart', 'emerald', 'Doʻkon boti' + (shopOn && typeof shopCfg === 'function' && shopCfg().bot && shopCfg().bot.username ? ' · @' + esc(shopCfg().bot.username) : ''), 'Onlayn-doʻkon → Telegram bot · xaridorlar uchun', shopOn, [
         job(shopOn, 'Vitrina va buyurtma', 'Xaridor «Start» → raqamini ulashadi', 'Katalogni ochadi va buyurtma beradi; buyurtma Onlayn-doʻkon boʻlimiga tushadi', "go('dokon')"),

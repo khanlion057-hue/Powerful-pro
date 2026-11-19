@@ -1070,3 +1070,4 @@ tests/p1.2-rounding-currency.test.js        — YANGI
 - Telegram soʻrov boti (2-qadam): telegram-query funksiyasi (webhook, maxfiy kalit, /start KOD ulash, ruxsat va filial cheklovi), Sozlamalar → «Botdan hisobot soʻrash». Alohida bot tokeni kerak (BotFather).
 - Filial guruhlariga: tovar kirimi, oʻtkazma (soʻrov/joʻnatma/qabul) xabarlari; oy yakunida har filial guruhiga oʻz hisoboti (foyda, xarajat, qarz, kassa) va egasiga umumiy. Sozlama: tgEvt.stock=false — oʻchirish.
 - Xarajatga chek rasmi: forma «Chek rasmi», ro'yxatda 📎 — to'liq ko'rish (faqat https havola saqlanadi).
+- Sozlamalar → «Botlar va avtomatik vazifalar»: guruhlar (egasi/filial/diller) holati va soʻrov boti qoʻshildi; docs/BOTLAR.md oddiy tilda.

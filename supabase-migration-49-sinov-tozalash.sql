@@ -11,7 +11,7 @@ declare
     'cashbox_ledger','cashbox_transactions','cashbox_balances','firma_kassa_ledger','firma_kassa_balance','home_withdrawals',
     'dealer_orders','dealer_pay_notices','dealer_payments','dealer_sales','dealer_stock','dealer_stock_moves','dealer_audit_log','fw_dealer_revisions',
     'partner_ledger','partner_payments','partner_periods','branch_transfer_shipments','branch_transfers','branch_debt_cur','branch_debt_cur_ledger',
-    'stock_writeoffs','stock_ledger','fw_notifications','ledger_ops','idempotency_keys','tg_outbox'];
+    'stock_writeoffs','fw_notifications','tg_outbox'];
 begin
   foreach t in array tabs loop
     if to_regclass('public.' || t) is null then continue; end if;
@@ -24,6 +24,15 @@ begin
       execute format('alter table public.%I enable trigger user', t);
     end if;
   end loop;
+  -- ombor jurnali: kirim/import/boshlang'ich yozuvlar qoladi (tarix), qolgani (savdo, tuzatish...) o'chadi.
+  -- ledger_ops va idempotency_keys ATAYIN qoldiriladi: eski so'rovlar qayta yuborilsa, kirim ikki marta yozilmasin.
+  execute 'select count(*) from public.stock_ledger where op_kind not in (''kirim'',''import'',''opening'')' into n;
+  res := res || jsonb_build_object('stock_ledger', n);
+  if not p_dry then
+    alter table public.stock_ledger disable trigger user;
+    delete from public.stock_ledger where op_kind not in ('kirim','import','opening');
+    alter table public.stock_ledger enable trigger user;
+  end if;
   select count(*) into n from public.batches where sold <> 0 or status in ('empty','transit');
   res := res || jsonb_build_object('batches_reset', n);
   if not p_dry then

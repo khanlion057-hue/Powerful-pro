@@ -465,6 +465,7 @@ function svRenderContent() {
   else if (ACTIVE_TAB === 'orders') { el.innerHTML = svOrdersHtml(); svLoadOrdersIfNeeded(); }
   else if (ACTIVE_TAB === 'expense') {
     el.innerHTML = svExpenseHtml();
+    { const sa = document.getElementById('svs-amt'); if (sa) svAmtSync('svs-box', 'svs-amt', 'svs-lbl', 'svs-conv', +sa.dataset.pre || 0); if (document.getElementById('sve-amt')) svAmtSync('sve-box', 'sve-amt', 'sve-lbl', 'sve-conv'); }
     // Kategoriyalar serverdan (yagona manba); kelguncha "Yuklanmoqda…" holati
     if (SV_EXP.mode !== 'salary' && (FWC.filial !== SV_BRANCH || (!FWC.loaded && !FWC.loading))) fwExpCatLoad(SV_BRANCH, !!FWC.error).then(() => svCatRefresh());
   }
@@ -494,10 +495,11 @@ function svMySalaryHtml() {
   </div>
   <div class="dl-card">
     <div style="font-weight:700;font-size:13px;margin-bottom:10px">Oylik oldim</div>
-    <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Olgan summangiz (${sp.cur==='USD'?'$':"so'm"})</label>
-    <input class="dl-input" id="svs-amt" type="text" inputmode="decimal" value="${sp.amount}" oninput="liveFormatSpaces(this)">
-    <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:6px">Qaysi kassadan</label>
-    ${svBoxChips('svs-box')}
+    <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:6px">Qaysi kassadan oldingiz</label>
+    ${svBoxChips('svs-box', `svAmtSync('svs-box','svs-amt','svs-lbl','svs-conv',${(sp.cur==='USD' ? +sp.amount||0 : CUR.toUsd(+sp.amount||0)).toFixed(4)})`)}
+    <label id="svs-lbl" style="font-size:12px;color:var(--text-muted);display:block;margin:4px 0">Summa</label>
+    <input class="dl-input" id="svs-amt" type="text" inputmode="decimal" data-pre="${(sp.cur==='USD' ? +sp.amount||0 : CUR.toUsd(+sp.amount||0)).toFixed(4)}" oninput="liveFormatSpaces(this);svAmtSync('svs-box','svs-amt','svs-lbl','svs-conv')" style="font-size:17px;font-weight:700;margin-bottom:4px">
+    <div id="svs-conv" style="font-size:12px;color:var(--text-muted);min-height:16px;margin-bottom:8px"></div>
     <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px">Belgilangandan koʻp yozsangiz — ortiqcha qism qarzga yoziladi.</div>
     <button class="dl-btn" style="width:100%;justify-content:center" onclick="svTakeSalary(${sp.id})">✅ Oylik oldim — yozib qoʻyish</button>
   </div>`;
@@ -508,8 +510,9 @@ async function svTakeSalary(spId) {
   const given = parseAmt(document.getElementById('svs-amt')?.value);
   const bid = parseInt(document.getElementById('svs-box')?.value||0);
   if (given<=0) { toast('Summa kiriting!','error'); return; }
+  const gCur = svBoxCur('svs-box');   // summa kassa valyutasida yozilgan
 
-  const givenUsd = sp.cur==='USD' ? given : CUR.toUsd(given);
+  const givenUsd = gCur==='USD' ? given : CUR.toUsd(given);
   const baseUsd = sp.cur==='USD' ? sp.amount : CUR.toUsd(sp.amount);
   const diffUsd = givenUsd - baseUsd;
   const sysType = fwSalarySysType(sp.name), cat = FW_SYS_EXPENSE[sysType];   // tizim yozuvi (tanlanadigan kategoriya emas)
@@ -524,7 +527,7 @@ async function svTakeSalary(spId) {
   }
   sp.debtUsd = (sp.debtUsd||0) + diffUsd;
 
-  S.expenses.push({ id:uid(), date:td(), cat, sysType, amtUsd:givenUsd, amount:given, cur:sp.cur, desc:`${cat}: ${sp.name} (oʻzi yozdi)`, person:sp.name, staffId:ME.id, boxId:bid, turi:'tasischi', salaryPersonId:sp.id, rate: sp.cur==='UZS' ? CUR.usdUzs : null });
+  S.expenses.push({ id:uid(), date:td(), cat, sysType, amtUsd:givenUsd, amount:given, cur:gCur, desc:`${cat}: ${sp.name} (oʻzi yozdi)`, person:sp.name, staffId:ME.id, boxId:bid, turi:'tasischi', salaryPersonId:sp.id, rate: sp.cur==='UZS' ? CUR.usdUzs : null });
 
 
   auditLog(`${cat} olindi (oʻzi yozdi): ${sp.name} — ${CUR.fmtUsd(givenUsd)}`);
@@ -536,10 +539,21 @@ async function svTakeSalary(spId) {
 // v23.9: kassa tanlovi — kartochkalar (telefonda bir bosishda); qiymat yashirin maydonda (mavjud kod .value bilan o'qiydi).
 // Sotuvchiga faqat savdo kassalari: Shaxsiy va diller kassasi yo'q.
 function svCashBoxes() { return (S.cashboxes||[]).filter(k=>k.type!=='dealer' && k.type!=='qobiljon'); }
-function svBoxChips(id) {
+function svBoxChips(id, after) {
   const boxes = svCashBoxes(), sel = boxes[0];
   if (!boxes.length) return `<input type="hidden" id="${id}" value=""><div class="sv-nobox">Filialda kassa yoʻq — administratorga murojaat qiling</div>`;   // v24.6: bo'sh maydon emas
-  return `<input type="hidden" id="${id}" value="${sel ? sel.id : ''}"><div class="sv-chips" role="radiogroup">${boxes.map((k,i)=>`<button type="button" role="radio" aria-checked="${i===0}" class="${i===0?'on':''}" data-v="${k.id}" onclick="svChipPick(this,'${id}')"><b>${esc(k.icon||'')} ${esc(k.name)}</b><small>${k.cur==='USD'?CUR.fmtUsd(k.bal||0):CUR.fmtUzs(k.bal||0)}</small></button>`).join('')}</div>`;
+  return `<input type="hidden" id="${id}" value="${sel ? sel.id : ''}"><div class="sv-chips" role="radiogroup">${boxes.map((k,i)=>`<button type="button" role="radio" aria-checked="${i===0}" class="${i===0?'on':''}" data-v="${k.id}" data-cur="${k.cur==='USD'?'USD':'UZS'}" onclick="svChipPick(this,'${id}')${after ? ';' + after : ''}"><b>${esc(k.icon||'')} ${esc(k.name)}</b><small>${k.cur==='USD'?CUR.fmtUsd(k.bal||0):CUR.fmtUzs(k.bal||0)}</small></button>`).join('')}</div>`;
+}
+// v25.6.9: summa — tanlangan KASSA valyutasida yoziladi (so'm kassa → so'm, dollar kassa → $), 1 000 ko'rinishida; ostida o'girilgan qiymat
+function svBoxCur(id) { const b = S.cashboxes.find(k => k.id === parseInt(document.getElementById(id)?.value || 0)); return b && b.cur === 'USD' ? 'USD' : 'UZS'; }
+function svAmtSync(boxId, amtId, lblId, convId, prefillUsd) {
+  const cur = svBoxCur(boxId), lbl = document.getElementById(lblId), inp = document.getElementById(amtId), conv = document.getElementById(convId);
+  if (!inp) return;
+  if (lbl) lbl.textContent = cur === 'USD' ? 'Summa ($ — dollarda)' : "Summa (so'mda)";
+  inp.placeholder = cur === 'USD' ? 'masalan: 120' : 'masalan: 1 500 000';
+  if (prefillUsd != null && prefillUsd > 0) { inp.value = cur === 'USD' ? String(Math.round(prefillUsd * 100) / 100) : String(Math.round(CUR.toUzs(prefillUsd))); liveFormatSpaces(inp); }
+  inp.dataset.cur = cur;
+  if (conv) { const v = parseAmt(inp.value); conv.textContent = v > 0 ? (cur === 'USD' ? `= ${CUR.fmtUzs(CUR.toUzs(v))}` : `= ${CUR.fmtUsd(CUR.toUsd(v))}`) : ''; }
 }
 function svChipPick(btn, id) {
   const inp = document.getElementById(id); if (inp) inp.value = btn.dataset.v;
@@ -571,13 +585,13 @@ function svExpenseHtml() {
         <button type="button" class="btn btn-ghost" id="sve-cat-add" onclick="svCatAdd()" style="font-size:12px;padding:6px 10px">+ Kategoriya qo'shish</button>
         <button type="button" class="btn btn-ghost" id="sve-cat-retry" onclick="fwExpCatLoad(SV_BRANCH,true).then(() => svCatRefresh())" style="font-size:12px;padding:6px 10px;display:${FWC.error?'':'none'}">Qayta yuklash</button>
       </div>
-      <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Summa</label>
-      <div class="sv-amt"><input class="dl-input" id="sve-amt" type="text" inputmode="decimal" placeholder="masalan: 550 000" oninput="liveFormatSpaces(this)">
-        <input type="hidden" id="sve-cur" value="UZS"><span class="sv-cur" role="radiogroup"><button type="button" class="on" data-v="UZS" onclick="svChipPick(this,'sve-cur')">so'm</button><button type="button" data-v="USD" onclick="svChipPick(this,'sve-cur')">$</button></span></div>
+      <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:6px">Qaysi kassadan</label>
+      ${svBoxChips('sve-box', "svAmtSync('sve-box','sve-amt','sve-lbl','sve-conv')")}
+      <label id="sve-lbl" style="font-size:12px;color:var(--text-muted);display:block;margin:4px 0">Summa</label>
+      <input class="dl-input" id="sve-amt" type="text" inputmode="decimal" oninput="liveFormatSpaces(this);svAmtSync('sve-box','sve-amt','sve-lbl','sve-conv')" style="font-size:17px;font-weight:700;margin-bottom:4px">
+      <div id="sve-conv" style="font-size:12px;color:var(--text-muted);min-height:16px;margin-bottom:8px"></div>
       <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Izoh</label>
       <input class="dl-input" id="sve-dsc" placeholder="Xarajat haqida...">
-      <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:6px">Kassa</label>
-      ${svBoxChips('sve-box')}
       <button class="dl-btn" style="width:100%;justify-content:center;margin-top:4px" onclick="svAddExpense()">Xarajat kiritish</button>
     </div>
 
@@ -607,7 +621,7 @@ function svCatAdd() {
 async function svAddExpense() {
   const raw = parseAmt(document.getElementById('sve-amt')?.value);
   if (raw<=0) { toast('Summa kiriting!','error'); return; }
-  const cur = document.getElementById('sve-cur')?.value || 'UZS';
+  const cur = svBoxCur('sve-box');   // v25.6.9: summa kassa valyutasida
   // Kategoriya — serverdagi FAOL do'kon kategoriyasi (ID bilan bog'lanadi)
   const catObj = fwExpCatById(parseInt(document.getElementById('sve-cat')?.value || 0));
   if (!catObj || !catObj.isActive || (catObj.turi || 'dokon') !== 'dokon') {

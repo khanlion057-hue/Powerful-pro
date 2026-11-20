@@ -230,8 +230,8 @@ async function testSellerPortalEndToEnd() {
     assert.deepEqual(catRow.map(r => [r.filial, r.turi, r.name, r.created_by_name]), [['f729', 'dokon', 'Kamunal', 'Kassir 729']], 'kategoriya bazada (xodim filiali, muallif)');
     assert.equal(await page.evaluate(() => { const s = document.getElementById('sve-cat'); return s.options[s.selectedIndex].textContent; }), 'Kamunal');
     // v23.9: valyuta va kassa — kartochkalar (yashirin maydonga yoziladi); tanlov qiymati ham tekshiriladi
-    await page.click('.sv-cur button[data-v="UZS"]'); await page.fill('#sve-amt', '50000'); await page.click('.sv-chips button[data-v="1"]');
-    assert.deepEqual(await page.evaluate(() => [document.getElementById('sve-cur').value, document.getElementById('sve-box').value]), ['UZS', '1']);
+    await page.click('.sv-chips button[data-v="1"]'); await page.fill('#sve-amt', '50000');   // v25.6.9: summa valyutasi — kassadan
+    assert.deepEqual(await page.evaluate(() => [svBoxCur('sve-box'), document.getElementById('sve-box').value]), ['UZS', '1']);
     await page.evaluate(() => svAddExpense());
     await waitIdle(page, 1500);
     assert.equal(await boxBal(pg, 1), 1150000);

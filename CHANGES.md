@@ -1076,3 +1076,4 @@ tests/p1.2-rounding-currency.test.js        — YANGI
 - Tuzatish: sinovni tozalash endi server JSON nusxasini ham tozalaydi (barcha filial; versiya +1 — eski nusxali qurilmalar qayta yuklaydi). Avval boshqa filial nusxasidagi eski savdo/xarajat qaytib chiqishi mumkin edi.
 - Tuzatish: so'rov boti — faqat kerakli filial parallel yuklanadi (10 s chegarasi), takroriy Telegram yetkazishga ikkinchi javob yo'q (update_id).
 - Tuzatish: kirim/o'tkazma Telegram xabari amalni 2,5 s dan ortiq kutdirmaydi.
+- Sotuvchi oylik va xarajat: avval kassa tanlanadi, summa SHU kassa valyutasida yoziladi (so'm kassa — so'mda, dollar — $ da), 1 000 ko'rinishida, ostida o'girilgan qiymat (diller to'lovidagi kabi).

@@ -15,6 +15,25 @@ async function server() {
   assert.deepEqual([c.sales.length, c.expenses.length, c.cashTxns.length, c.customers[0].debt, c.cashboxes[0].bal], [0, 0, 0, 0, 0]);
   assert.match(src, /cleanJson\(admin\)/); assert.match(src, /version: \(Number/);
 }
+// Funksiyaning o'zini chaqirish (avval faqat matn tekshirilardi — `json` nomi soya bo'lib, har amal 500 berardi)
+async function serverRun() {
+  process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'test-key';
+  const SA = require('../netlify/functions/_lib/supabaseAdmin.js');
+  const calls = [];
+  const q = (t) => ({ select() { return this; }, eq() { return this; }, in() { return this; }, update(v) { calls.push(['update', t]); return { eq: async () => ({ error: null }) }; },
+    upsert: async () => ({ error: null }), maybeSingle: async () => (t === 'staff' ? { data: { id: 1, role: 'admin', active: true, auth_user_id: 'u' } } : { data: { data: { start: '2026-11-01' }, version: 3 } }),
+    then(r) { return r({ data: [], error: null }); } });
+  SA.getAdminClient = () => ({ auth: { getUser: async () => ({ data: { user: { id: 'u' } } }), admin: { getUserById: async () => ({ data: { user: { email: 'a@b.c' } } }) } }, from: q, rpc: async (n, a) => ({ data: { sales: 2, dry: a.p_dry }, error: null }) });
+  global.fetch = async () => ({ ok: true, json: async () => ({ access_token: 't' }) });
+  delete require.cache[require.resolve('../netlify/functions/trial-reset.js')];
+  const H = require('../netlify/functions/trial-reset.js').handler;
+  const call = (b) => H({ httpMethod: 'POST', headers: { authorization: 'Bearer x' }, body: JSON.stringify(b) });
+  const st = await call({ action: 'status' }); assert.equal(st.statusCode, 200, st.body);
+  const dry = await call({ action: 'dry' }); assert.equal(dry.statusCode, 200, dry.body); assert.equal(JSON.parse(dry.body).counts.dry, true);
+  assert.equal((await call({ action: 'run', password: 'p', confirm: 'XATO' })).statusCode, 400);
+  const run = await call({ action: 'run', password: 'p', confirm: 'TOZALASH' }); assert.equal(run.statusCode, 200, run.body);
+  assert.ok(calls.some(([k, t]) => k === 'update' && t === 'app_data'), 'JSON nusxa ham tozalandi');
+}
 async function client() {
   const { browser, page, errors } = await openPage('index.html', { width: 390, height: 844, mobile: true, admin: true });
   try {
@@ -29,4 +48,4 @@ async function client() {
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }
 }
-module.exports = { name: 'P108 — Sinovni tozalash', cases: [{ name: 'server/SQL: admin, parol, 6 oy; roʻyxatlar oʻchmaydi', run: server }, { name: 'mahalliy nusxa: kirim saqlanadi, harakatlar 0', run: client }] };
+module.exports = { name: 'P108 — Sinovni tozalash', cases: [{ name: 'server/SQL: admin, parol, 6 oy; roʻyxatlar oʻchmaydi', run: server }, { name: 'funksiya ishlaydi: status, dry, run (tasdiqsiz — rad; JSON tozalanadi)', run: serverRun }, { name: 'mahalliy nusxa: kirim saqlanadi, harakatlar 0', run: client }] };

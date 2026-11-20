@@ -514,7 +514,9 @@ async function svTakeSalary(spId) {
 
   const givenUsd = gCur==='USD' ? given : CUR.toUsd(given);
   const baseUsd = sp.cur==='USD' ? sp.amount : CUR.toUsd(sp.amount);
-  const diffUsd = givenUsd - baseUsd;
+  // v25.6.9: faqat shu oy jami oylikdan oshgan qism qarzga (bo'lib-bo'lib olinsa ham to'g'ri)
+  const _m = td().slice(0, 7), _before = (S.expenses || []).filter(e => e.turi === 'tasischi' && e.salaryPersonId === sp.id && String(e.date || '').slice(0, 7) === _m).reduce((a, e) => a + (+e.amtUsd || 0), 0);
+  const diffUsd = Math.max(0, _before + givenUsd - Math.max(baseUsd, _before));
   const sysType = fwSalarySysType(sp.name), cat = FW_SYS_EXPENSE[sysType];   // tizim yozuvi (tanlanadigan kategoriya emas)
 
   // v11 (F4): kassadan chiqim — avval serverda (rad etilsa hech narsa yozilmaydi)
@@ -527,7 +529,7 @@ async function svTakeSalary(spId) {
   }
   sp.debtUsd = (sp.debtUsd||0) + diffUsd;
 
-  S.expenses.push({ id:uid(), date:td(), cat, sysType, amtUsd:givenUsd, amount:given, cur:gCur, desc:`${cat}: ${sp.name} (oʻzi yozdi)`, person:sp.name, staffId:ME.id, boxId:bid, turi:'tasischi', salaryPersonId:sp.id, rate: sp.cur==='UZS' ? CUR.usdUzs : null });
+  S.expenses.push({ id:uid(), date:td(), cat, sysType, amtUsd:givenUsd, amount:given, cur:gCur, desc:`${cat}: ${sp.name} (oʻzi yozdi)`, person:sp.name, staffId:ME.id, boxId:bid, turi:'tasischi', salaryPersonId:sp.id, rate: gCur==='UZS' ? CUR.usdUzs : null });
 
 
   auditLog(`${cat} olindi (oʻzi yozdi): ${sp.name} — ${CUR.fmtUsd(givenUsd)}`);
@@ -551,7 +553,12 @@ function svAmtSync(boxId, amtId, lblId, convId, prefillUsd) {
   if (!inp) return;
   if (lbl) lbl.textContent = cur === 'USD' ? 'Summa ($ — dollarda)' : "Summa (so'mda)";
   inp.placeholder = cur === 'USD' ? 'masalan: 120' : 'masalan: 1 500 000';
-  if (prefillUsd != null && prefillUsd > 0) { inp.value = cur === 'USD' ? String(Math.round(prefillUsd * 100) / 100) : String(Math.round(CUR.toUzs(prefillUsd))); liveFormatSpaces(inp); }
+  const prev = inp.dataset.cur, typed = parseAmt(inp.value);
+  if (prev && prev !== cur && typed > 0) {   // kassa valyutasi almashdi — yozilgan summa o'sha qiymatda o'giriladi (ma'nosi o'zgarmaydi)
+    inp.value = cur === 'USD' ? String(Math.round(CUR.toUsd(typed) * 100) / 100) : String(Math.round(CUR.toUzs(typed))); liveFormatSpaces(inp);
+  } else if (!prev && !(typed > 0) && prefillUsd != null && prefillUsd > 0) {   // faqat birinchi ochilishda — oylik summasi
+    inp.value = cur === 'USD' ? String(Math.round(prefillUsd * 100) / 100) : String(Math.round(CUR.toUzs(prefillUsd))); liveFormatSpaces(inp);
+  }
   inp.dataset.cur = cur;
   if (conv) { const v = parseAmt(inp.value); conv.textContent = v > 0 ? (cur === 'USD' ? `= ${CUR.fmtUzs(CUR.toUzs(v))}` : `= ${CUR.fmtUsd(CUR.toUsd(v))}`) : ''; }
 }

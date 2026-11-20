@@ -5,7 +5,7 @@
 const { tashkentNow, _esc: esc } = require('./dailyReport');
 
 const num = (v) => { const x = Number(v); return Number.isFinite(x) ? x : 0; };
-const sp = (n, d = 0) => { const v = Math.round(num(n) * 10 ** d) / 10 ** d; const [i, f] = Math.abs(v).toFixed(d).split('.'); return (v < 0 ? '-' : '') + i.replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + (f ? '.' + f : ''); };
+const sp = (n, d = 0) => { const v = Math.round(num(n) * 10 ** d) / 10 ** d; const [i, f] = Math.abs(v).toFixed(d).split('.'); return (v < 0 ? '-' : '') + i.replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + (f && +f ? '.' + f : ''); };   // kunlik hisobot bilan bir xil: $650, $12.50
 const usd = (n) => '$' + sp(n, Math.abs(num(n)) >= 1000 ? 0 : 2);
 const asc = (t) => String(t).replace(/[ʻʼ‘’ʹ]/g, "'").replace(/[^\x20-\x7E\n]/g, '?');
 const pre = (rows) => '<pre>' + rows.map((r) => esc(asc(r))).join('\n') + '</pre>';
@@ -32,7 +32,7 @@ const nameOf = (data, k) => (data.settings && data.settings.branchNames && data.
 const visible = (data, filial) => keysOf(data).filter((k) => !filial || k === filial);
 
 function periodStats(b, r, rate) {
-  const sales = (b.sales || []).filter((s) => s && inR(s.date, r) && s.status !== 'cancelled' && s.status !== 'void');
+  const sales = (b.sales || []).filter((s) => s && inR(s.date, r) && require('./reportPeriod').isCounted(s));   // rad etilgan va o'tkazma — yo'q
   const exp = (b.expenses || []).filter((e) => e && inR(e.date, r) && !(e.turi === 'hamkor' && e.kind === 'kirim'));
   const cats = {}; exp.forEach((e) => { const k = e.cat || 'Boshqa'; cats[k] = (cats[k] || 0) + num(e.amtUsd); });
   const sum = (a, f) => a.reduce((t, x) => t + num(x[f]), 0);

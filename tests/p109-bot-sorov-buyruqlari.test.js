@@ -20,10 +20,13 @@ async function run() {
   assert.match(Q.qarz(data, O), /Mijozlar bizga\s+\$10/); assert.match(Q.qarz(data, O), /Dillerlar/);
   assert.doesNotMatch(Q.qarz(data, { ...O, filial: 'f729' }), /Dillerlar/);
   assert.doesNotMatch(Q.kassa(data, O), /Shaxsiy/); assert.match(Q.kassa(data, O), /1 000 000 som/);
-  const ob = Q.ombor(data, { ...O, filial: 'baza' }); assert.match(ob, /Disk 350\s+3\.00/); assert.doesNotMatch(ob, /Arra/);
-  assert.match(Q.mahsulot(data, 'disk', { ...O, filial: 'baza' }), /3\.00 dona/); assert.match(Q.mahsulot(data, 'x'), /yozing/);
+  const ob = Q.ombor(data, { ...O, filial: 'baza' }); assert.match(ob, /Disk 350\s+3(<|\n)/); assert.doesNotMatch(ob, /Arra/);
+  assert.match(Q.mahsulot(data, 'disk', { ...O, filial: 'baza' }), / 3 dona/); assert.match(Q.mahsulot(data, 'x'), /yozing/);
   for (const t of [f, Q.xarajat(data, 'oy', O), Q.qarz(data, O), Q.kassa(data, O), Q.ombor(data, O)]) assert.ok(!/[^\x00-\x7F]/.test(t.replace(/[📈💸🧾💰📦]/gu, '')), 'faqat ASCII (emoji bundan mustasno)');
   assert.deepEqual(Q.parsePeriod('otgan', '2026-11-18'), { start: '2026-10-01', end: '2026-10-31', label: 'Otgan oy' });
   assert.equal(Q.PERM.foyda, 'hisobot.view');
+  // rad etilgan (voided) va filialga o'tkazma «savdolari» foydaga kirmaydi (kunlik hisobot va boshqa hisobotlar bilan bir xil)
+  const d2 = JSON.parse(JSON.stringify(data)); d2.branchStore.baza.sales.push({ date: '2026-11-06', totalUsd: 500, profitUsd: 100, isFilialTransfer: true }, { date: '2026-11-06', totalUsd: 50, profitUsd: 30, status: 'voided' });
+  assert.match(Q.foyda(d2, 'oy', { ...O, filial: 'baza' }), /Foyda\s+\$30\b/);
 }
 module.exports = { name: 'P109 — Bot soʻrov buyruqlari', cases: [{ name: 'foyda/xarajat/qarz/kassa/ombor/mahsulot: davr, filial cheklovi, ASCII', run }] };

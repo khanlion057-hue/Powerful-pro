@@ -12240,6 +12240,12 @@ function openGiveSalary(id) {
     </div>
     <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Bekor</button><button class="btn btn-primary" onclick="giveSalary(${id})">✅ Berish</button></div>`);
 }
+// Shu oy shu xodimga avval berilgan ($) va yangi to'lovdan keyingi ORTIQCHA qism (qarzga yoziladigan) — manfiy bo'lmaydi
+function fwSalaryOverUsd(spId, baseUsd, givenUsd) {
+  const m = td().slice(0, 7);
+  const before = (S.expenses || []).filter(e => e.turi === 'tasischi' && e.salaryPersonId === spId && String(e.date || '').slice(0, 7) === m).reduce((a, e) => a + (+e.amtUsd || 0), 0);
+  return Math.max(0, before + givenUsd - Math.max(baseUsd, before));
+}
 async function giveSalary(id) {
   const p = (S.salaryPeople||[]).find(x=>x.id===id); if (!p) return;
   const given = parseAmt(document.getElementById('gs-amt')?.value);
@@ -12248,7 +12254,8 @@ async function giveSalary(id) {
 
   const givenUsd = p.cur==='USD' ? given : CUR.toUsd(given);
   const baseUsd = p.cur==='USD' ? p.amount : CUR.toUsd(p.amount);
-  const diffUsd = givenUsd - baseUsd;
+  // v25.6.9 (hisobchi): oylik bo'lib-bo'lib berilsa — qarzga faqat shu oy JAMI berilgani oylikdan OSHGAN qism yoziladi
+  const diffUsd = fwSalaryOverUsd(p.id, baseUsd, givenUsd);
   const sysType = fwSalarySysType(p.name), cat = FW_SYS_EXPENSE[sysType];   // tizim yozuvi (tanlanadigan kategoriya emas)
 
   // v11 (F4): kassadan chiqim — avval serverda (rad etilsa oylik yozilmaydi)
@@ -14538,9 +14545,12 @@ async function importProducts(input) {
 // Kirim turi o'zgarganda: taʼminotchi ro'yxati shu turga moslanadi (bosh qoldiq — taʼminotchisiz; konsignatsiya — faqat konsignatsiya taʼminotchilari)
 function eiKindChange() {
   const kind = document.getElementById('ei-kind')?.value || 'opening', sel = document.getElementById('ei-supp'), note = document.getElementById('ei-supp-note'); if (!sel) return;
-  [...sel.options].forEach(o => { if (!o.value) { o.hidden = kind !== 'opening'; return; } const cons = o.dataset.cons === '1'; o.hidden = kind === 'opening' || (kind === 'consign' ? !cons : cons); });
-  if (kind === 'opening' || sel.selectedOptions[0]?.hidden) sel.value = kind === 'opening' ? '' : ([...sel.options].find(o => o.value && !o.hidden)?.value || '');
-  if (note) note.textContent = kind === 'opening' ? "Bosh qoldiq: taʼminotchi qarzi yozilmaydi." : kind === 'consign' ? "Konsignatsiya: tovar taʼminotchiniki — qarz tovar SOTILGANDA yoziladi. Konsignatsiya taʼminotchisini tanlang." : "Taʼminotchidan xarid: tannarx × miqdor taʼminotchi qarziga yoziladi.";
+  // variantlar QAYTA quriladi (iOS Safari <option hidden> ni e'tiborsiz qoldiradi)
+  const list = kind === 'opening' ? [] : (S.suppliers || []).filter(s => kind === 'consign' ? !!s.isConsignment : !s.isConsignment);
+  sel.innerHTML = (kind === 'opening' ? '<option value="">— taʼminotchisiz (bosh qoldiq) —</option>' : (list.length ? '' : '<option value="">— mos taʼminotchi yoʻq —</option>'))
+    + list.map(s => `<option value="${s.id}" data-cons="${s.isConsignment ? 1 : 0}">${esc(s.name)}${s.isConsignment ? ' (📋 konsignatsiya)' : ''}</option>`).join('');
+  sel.disabled = kind === 'opening';
+  if (note) note.textContent = kind === 'opening' ? "Bosh qoldiq: taʼminotchi qarzi yozilmaydi." : kind === 'consign' ? "Konsignatsiya: tovar taʼminotchiniki — qarz tovar SOTILGANDA yoziladi." : "Taʼminotchidan xarid: tannarx × miqdor taʼminotchi qarziga yoziladi.";
 }
 function openExcelImportModal() {
   modal(`
@@ -14549,7 +14559,6 @@ function openExcelImportModal() {
       <p class="bs-note" style="margin:0 0 12px">Excel orqali kirim: bosh qoldiq, taʼminotchidan xarid yoki <b>konsignatsiya</b> (sotish uchun olingan tovar). Shablonni yuklab oling, toʻldiring va shu yerga yuklang. <b>Miqdor 0 boʻlsa</b> ham mahsulot va sotuv narxi yoziladi (omborga tovar tushmaydi).
         Ustunlar: <b>Kod · Nomi · Kategoriya · Brend · Miqdor · Tannarx ($) · Chakana ($) · Optom ($)</b>. Yangi kod — yangi mahsulot boʻlib qoʻshiladi.
         Fayl avval toʻliq tekshiriladi: xato boʻlsa — hech narsa yozilmaydi.</p>
-      <button type="button" class="btn btn-ghost" style="width:100%;justify-content:center;margin-bottom:12px" onclick="downloadExcelTemplate()">📥 Shablonni yuklab olish</button>
       <div class="form-group">
         <label class="form-label" for="ei-kind">Kirim turi</label>
         <select class="form-control" id="ei-kind" onchange="eiKindChange()"><option value="opening">Bosh qoldiq (taʼminotchisiz)</option><option value="supplier">Taʼminotchidan xarid</option><option value="consign">📋 Konsignatsiya — sotish uchun olingan</option></select>
@@ -14559,6 +14568,7 @@ function openExcelImportModal() {
         <select class="form-control" id="ei-cur" onchange="document.getElementById('ei-cur-note').textContent='Shablon va fayl shu valyutada: '+XL_COST_HEAD[this.value]"><option value="USD">Dollar ($)</option><option value="CNY">Yuan (¥)</option><option value="UZS">So'm</option></select>
         <small class="bs-note" id="ei-cur-note" style="display:block;margin-top:6px">Shablon va fayl shu valyutada: ${XL_COST_HEAD.USD}</small>
       </div>
+      <button type="button" class="btn btn-ghost" style="width:100%;justify-content:center;margin-bottom:12px" onclick="downloadExcelTemplate()">📥 Shablonni yuklab olish</button>
       <div class="form-group">
         <label class="form-label" for="ei-supp">Taʼminotchi (ixtiyoriy)</label>
         <select class="form-control" id="ei-supp" onchange="eiSuppNote()">

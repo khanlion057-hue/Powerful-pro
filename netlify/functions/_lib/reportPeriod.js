@@ -109,4 +109,4 @@ function periodStats(data, kind, today) {
   return out;
 }
 
-module.exports = { KINDS, LABELS, fmtSom, tashkentToday, periodRange, saleSom, periodStats };
+module.exports = { KINDS, LABELS, fmtSom, tashkentToday, periodRange, saleSom, periodStats, isCounted };

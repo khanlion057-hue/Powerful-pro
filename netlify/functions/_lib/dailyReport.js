@@ -29,7 +29,8 @@ function branchNameOf(data, key) {
 // Bitta filial bo'yicha bugungi ko'rsatkichlar
 function branchDay(b, date, rate) {
   const toUsd = (cur, amt) => (cur === 'USD' ? num(amt) : (rate > 0 ? num(amt) / rate : 0));
-  const sales = (b.sales || []).filter((s) => s && s.date === date && s.status !== 'cancelled' && s.status !== 'void');
+  // v25.6.9 (hisobchi): boshqa hisobotlar bilan bir xil — rad etilgan (voided) va filialga o'tkazma «savdolari» kirmaydi
+  const sales = (b.sales || []).filter((s) => s && s.date === date && require('./reportPeriod').isCounted(s));
   const sum = (a, f) => a.reduce((t, x) => t + num(x[f]), 0);
   const pay = { cash_uzs: 0, card: 0, usd: 0, mixed: 0 };
   sales.forEach((s) => { if (s.payType in pay) pay[s.payType] += num(s.paidUsd); });

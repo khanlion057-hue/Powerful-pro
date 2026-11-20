@@ -90,9 +90,12 @@ exports.handler = async (event) => {
     try {
       const upd = parseBody(event) || {}, msg = upd.message;
       // Takroriy yetkazish (Telegram javob kutmay qolsa qayta yuboradi) — bitta xabarga bitta javob
+      // alohida qator — asosiy sozlamani (ulash kodlari) ustidan yozib yubormasin
       if (Number.isSafeInteger(upd.update_id)) {
-        if (cfg.lastUpd && upd.update_id <= cfg.lastUpd) return json({ ok: true, dup: true }, 200);
-        cfg.lastUpd = upd.update_id; await saveRow(admin, cfg);
+        const { data: lr } = await admin.from('app_data').select('data').eq('id', ROW + '_upd').maybeSingle();
+        const last = lr && lr.data && lr.data.bot === cfg.token.split(':')[0] ? Number(lr.data.last) || 0 : 0;
+        if (last && upd.update_id <= last) return json({ ok: true, dup: true }, 200);
+        await admin.from('app_data').upsert({ id: ROW + '_upd', data: { bot: cfg.token.split(':')[0], last: upd.update_id }, updated_at: new Date().toISOString() });
       }
       if (msg && msg.text && msg.chat && msg.chat.type === 'private') await answer(admin, cfg, msg);
     } catch (e) { console.error('[telegram-query]', e && e.message); }

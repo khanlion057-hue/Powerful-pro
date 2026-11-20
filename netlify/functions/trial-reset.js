@@ -85,8 +85,8 @@ exports.handler = async (event) => {
     const email = u && u.user && u.user.email;
     if (!email || !(await checkPassword(email, body.password))) return json({ error: "Parol noto'g'ri" }, 403);
     const { data, error } = await admin.rpc('fw_trial_reset', { p_dry: false }); if (error) throw error;
-    const json = await cleanJson(admin);
-    data.app_data_branches = json.branches;
+    const jr = await cleanJson(admin);
+    data.app_data_branches = jr.branches;
     await admin.from('app_data').upsert({ id: ROW, data: { ...cfg, lastRun: { at: new Date().toISOString(), by: auth.staff.name || auth.staff.login || null, counts: data } }, updated_at: new Date().toISOString() });
     return json({ ok: true, counts: data }, 200);
   } catch (e) { return serverError(e, 'trial-reset', 'Tozalashda xatolik'); }

@@ -104,8 +104,8 @@ async function testReminder() {
   assert.deepEqual(list.map(x => x.name), ['Vali', 'Ali']);
   const t = ev.remindText({ branchNames: {} }, list, date);
   assert.match(t, /Bugun toʻlash kerak \(1\)[\s\S]*Ali[\s\S]*1 200 000 so'm/);
-  assert.match(t, /Muddati oʻtgan \(1\)[\s\S]*Vali[\s\S]*6 kun kechikdi \(15\.11\.2026\)/);
-  assert.match(t, /Jami: <b>1 700 000 so'm<\/b>/);
+  assert.match(t, /Muddati oʻtgan \(1\)[\s\S]*Vali[\s\S]*Kechikdi\s+6 kun/);
+  assert.match(t, /JAMI qarz\s+1 700 000 so'm/);
 }
 
 

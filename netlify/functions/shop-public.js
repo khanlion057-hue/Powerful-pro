@@ -42,8 +42,9 @@ async function notify(admin, st, found, order, total, cur) {
     const chats = chatsFor(st, 'shop', { filial: found.key }); if (!chats.length) return;
     const esc = (s) => String(s == null ? '' : s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
     const money = cur === 'USD' ? '$' + total : String(total).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + " so'm";
-    const lines = order.items.slice(0, 15).map((i) => `• ${esc(i.name)} × ${i.qty}`).join('\n');
-    const text = `🛒 <b>Yangi onlayn buyurtma #${order.no}</b>\n👤 ${esc(order.cust.name)} · ${esc(order.cust.phone)}\n${order.delivery === 'courier' ? '🚚 Yetkazib berish: ' + esc(order.cust.address) : '🏬 Olib ketadi'}\n${lines}\n💰 <b>${money}</b>${order.note ? '\n📝 ' + esc(order.note) : ''}`;
+    const F = require('./_lib/tgFmt');   // v25.6.9: ustun uslubi
+    const R = [...order.items.slice(0, 15).map((i) => F.row(F.cut(i.name, 22), 'x' + i.qty)), F.LINE, F.row('Jami', money)];
+    const text = `🛒 <b>Yangi onlayn buyurtma #${order.no}</b>\n👤 ${esc(order.cust.name)} · ${esc(order.cust.phone)}\n${order.delivery === 'courier' ? '🚚 Yetkazib berish: ' + esc(order.cust.address) : '🏬 Olib ketadi'}\n${F.pre(R)}${order.note ? '\n📝 ' + esc(order.note) : ''}`;
     await Promise.all(chats.map((c) => ops.within(tgSend(st.tgBotToken, c, text), 4000, null)));
   } catch (_) { /* xabar — ikkinchi darajali */ }
 }

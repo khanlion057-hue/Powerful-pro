@@ -111,11 +111,12 @@ async function usageText(admin) {
   if (!r || r.error || !r.data) return null;
   const u = r.data, pct = (v, lim) => (v == null ? '—' : `${Math.round(v / MB)} MB / ${Math.round(lim / MB)} MB (${Math.round((v / lim) * 100)}%)`);
   const warn = (u.db_bytes > 400 * MB || (u.storage_bytes || 0) > 800 * MB) ? '\n⚠️ <b>Chegaraga yaqin — tozalash yoki tarifni oshirish kerak</b>' : '';
-  return ['🖥 <b>Tizim holati</b> (bepul tarif)',
-    `Baza: ${pct(u.db_bytes, 500 * MB)}`,
-    `Rasmlar: ${pct(u.storage_bytes, 1024 * MB)}`,
-    `Xatolar (24 soat): ${u.errors_24h} · sekin javob: ${u.slow_24h} · cheklangan so'rov: ${u.rate_24h}`,
-    `Telegram navbati: kutmoqda ${u.outbox_pending}, yuborilmadi ${u.outbox_failed_24h}`].join('\n') + warn;
+  // v25.6.9: ustun uslubi
+  const F = require('./tgFmt'), p2 = (v, lim) => (v == null ? '-' : `${Math.round(v / MB)}/${Math.round(lim / MB)} MB ${Math.round((v / lim) * 100)}%`);
+  void pct;
+  return ['🖥 <b>Tizim holati</b> (bepul tarif)', F.pre([F.row('Baza', p2(u.db_bytes, 500 * MB)), F.row('Rasmlar', p2(u.storage_bytes, 1024 * MB)), F.LINE,
+    F.row('Xatolar (24 soat)', String(u.errors_24h)), F.row('Sekin javob', String(u.slow_24h)), F.row("Cheklangan so'rov", String(u.rate_24h)),
+    F.row('Telegram navbati', String(u.outbox_pending)), F.row('Yuborilmadi', String(u.outbox_failed_24h))])].join('\n') + warn;
 }
 
 module.exports = { _resetMissing: () => { _missingUntil = 0; }, opsOn, within, clientIp, rateHit, report, enqueue, flushOutbox, usageText, RETRYABLE, getAdminClient };

@@ -216,12 +216,15 @@ function dueList(data, date) {
 function remindText(st, list, date) {
   const today = list.filter((x) => x.due === date), late = list.filter((x) => x.due < date);
   const days = (d) => Math.round((Date.parse(date) - Date.parse(d)) / 864e5);
-  const item = (x, lateMode) => `• <b>${esc(x.name)}</b>${x.phone ? ' · ' + esc(x.phone) : ''}\n   ${esc(uzs(x.debt))}${lateMode ? ` · ${days(x.due)} kun kechikdi (${fmtDate(x.due)})` : ''}${Object.keys(st.branchNames || {}).length > 1 ? ' · ' + esc(branchName(st, x.filial)) : ''}`;
+  // v25.6.9: ustun uslubi — har mijoz: ism (va telefon) qatori, ostida summa / kechikish
+  const F = require('./tgFmt'), many = Object.keys(st.branchNames || {}).length > 1;
+  const block = (x, lateMode) => [F.cut(x.name, F.W), ...(x.phone ? ['  ' + F.cut(x.phone, F.W - 2)] : []),
+    F.row('  Qarz', F.uzs(x.debt)), ...(lateMode ? [F.row('  Kechikdi', `${days(x.due)} kun`)] : []), ...(many ? [F.row('  Filial', F.cut(branchName(st, x.filial), 16))] : [])];
   const out = [`⏰ <b>Nasiya eslatmasi</b> · ${fmtDate(date)}`];
-  if (today.length) { out.push('', `📅 <b>Bugun toʻlash kerak (${today.length})</b>`); today.slice(0, 40).forEach((x) => out.push(item(x, false))); }
-  if (late.length) { out.push('', `⚠️ <b>Muddati oʻtgan (${late.length})</b>`); late.slice(0, 40).forEach((x) => out.push(item(x, true))); }
+  if (today.length) out.push(`📅 <b>Bugun toʻlash kerak (${today.length})</b>`, F.pre(today.slice(0, 30).flatMap((x) => block(x, false))));
+  if (late.length) out.push(`⚠️ <b>Muddati oʻtgan (${late.length})</b>`, F.pre(late.slice(0, 30).flatMap((x) => block(x, true))));
   const tot = list.reduce((a, x) => a + x.debt, 0);
-  out.push('', `Jami: <b>${esc(uzs(tot))}</b>`);
+  out.push(F.pre([F.row('JAMI qarz', F.uzs(tot))]));
   return out.join('\n').slice(0, 3900);
 }
 

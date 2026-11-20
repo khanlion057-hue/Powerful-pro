@@ -72,7 +72,7 @@ async function testCustomerMessages() {
   try {
     await ev.notifyCreditSale(db, { filial: 'baza', custId: 7, items: [{ pid: 1, name: 'Arra tigʻi', qty: 2, sellUsd: 45 }], paidUsd: 0, dueDate: '2026-11-21', dueDays: 10 });
     const toCust = t.sent.filter(x => x.body.chat_id === 5551);
-    assert.equal(toCust.length, 1, 'mijozning oʻziga bitta xabar'); assert.match(toCust[0].body.text, /nasiya xarid[\s\S]*Arra tigʻi — 2 dona[\s\S]*1 080 000 so'm[\s\S]*21\.11\.2026/);
+    assert.equal(toCust.length, 1, 'mijozning oʻziga bitta xabar'); assert.match(toCust[0].body.text, /nasiya xarid[\s\S]*Arra tig'i\s+2 dona[\s\S]*Qarzga\s+1 080 000 so'm[\s\S]*Qaytarish sanasi\s+21\.11\.2026/);
     assert.equal(t.sent.filter(x => x.body.chat_id === '-1001112223334').length, 1, 'guruhga ham');
     t.sent.length = 0;
     await ev.notifyCreditSale(db, { filial: 'baza', custId: 8, items: [{ pid: 1, name: 'X', qty: 1, sellUsd: 10 }], paidUsd: 0 });
@@ -85,8 +85,8 @@ async function testCustomerMessages() {
     await ev.notifyCreditSale(db, { filial: 'baza', custId: 7, items: [{ pid: 1, name: 'X', qty: 1, sellUsd: 10 }], paidUsd: 0 });
     assert.ok(!t.sent.some(x => x.body.chat_id === 5551), 'sozlamada oʻchirilgan — mijozga yoʻq');
   } finally { t.restore(); }
-  assert.match(tc.custRemindText({ brand: 'PG', custName: 'Ali', debtUzs: 500000, due: '2026-11-15', today: '2026-11-21' }), /15\.11\.2026<\/b> edi \(6 kun oʻtdi\)[\s\S]*500 000 so'm/);
-  assert.match(tc.custRemindText({ brand: 'PG', debtUzs: 500000, due: '2026-11-21', today: '2026-11-21' }), /Bugun \(<b>21\.11\.2026<\/b>\) qarzni qaytarish kuni/);
+  assert.match(tc.custRemindText({ brand: 'PG', custName: 'Ali', debtUzs: 500000, due: '2026-11-15', today: '2026-11-21' }), /muddati oʻtdi[\s\S]*Qarzingiz\s+500 000 so'm[\s\S]*15\.11\.2026[\s\S]*Kechikdi\s+6 kun/);
+  assert.match(tc.custRemindText({ brand: 'PG', debtUzs: 500000, due: '2026-11-21', today: '2026-11-21' }), /Bugun qarzni qaytarish kuni[\s\S]*Qaytarish sanasi\s+21\.11\.2026/);
 }
 
 async function testFunctionGuards() {

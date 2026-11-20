@@ -123,7 +123,7 @@ async function testMonitor() {
 
   // Barcha funksiyalar o'ralgan
   const files = fs.readdirSync(FN).filter((f) => f.endsWith('.js'));
-  assert.equal(files.length, 66);
+  assert.equal(files.length, 68);   // v25.6.9: + telegram-query, trial-reset
   for (const f of files) assert.equal(require(path.join(FN, f)).handler._fwMonitored, f.slice(0, -3), `${f} kuzatuvchi bilan o'ralgan`);
 }
 
@@ -163,7 +163,7 @@ async function testOutbox() {
   // tgEvents: vaqtinchalik xatoda xabar navbatga tushadi (ops yoqiq bo'lsa)
   const src = fs.readFileSync(path.join(FN, '_lib', 'tgEvents.js'), 'utf8');
   assert.match(src, /ops\.RETRYABLE\(b\.description\)\) await ops\.enqueue\(ctx\.admin/);
-  assert.equal((src.match(/, admin \}\);/g) || []).length, 4, "4 ta hodisa admin'ni uzatadi");
+  assert.equal((src.match(/, admin \}\);/g) || []).length, 6, "6 ta hodisa admin'ni uzatadi (v25.6.9: kirim, o'tkazma)");
   const daily = fs.readFileSync(path.join(FN, 'telegram-daily-report.js'), 'utf8');
   assert.match(daily, /ops\.flushOutbox\(admin, st\.tgBotToken\)/); assert.match(daily, /ops_cleanup/); assert.match(daily, /ops\.usageText\(admin\)/);
 }

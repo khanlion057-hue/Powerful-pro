@@ -102,22 +102,24 @@ async function sendToCustomer(admin, token, filial, custId, text) {
 // ── Mijozga xabar matnlari (faqat o'z ma'lumoti) ──
 function custCreditText({ brand, custName, items, discPct, debtUsd, rate, dueDate }) {
   const k = 1 - Math.min(100, Math.max(0, num(discPct))) / 100;
-  const lines = (items || []).slice(0, 30).map((i) => `• ${esc(i.name || i.sku || '')} — ${+num(i.qty).toFixed(3)} dona`);
+  const F = require('./tgFmt');   // v25.6.9: ustun uslubi
+  const lines = (items || []).slice(0, 30).map((i) => F.row(F.cut(i.name || i.sku || '', 22), F.sp(num(i.qty), 3) + ' dona'));
   const debtUzs = rate > 0 ? debtUsd * rate : null;
-  return [`🧾 <b>${esc(brand)}</b> — nasiya xarid`, custName ? `Hurmatli ${esc(custName)}!` : '', ...lines,
-    debtUzs != null ? `💰 Qarzga: <b>${esc(uzs(debtUzs))}</b>` : `💰 Qarzga: <b>$${debtUsd.toFixed(2)}</b>`,
-    dueDate ? `📅 Qaytarish sanasi: <b>${fmtDate(dueDate)}</b>` : ''].filter(Boolean).join('\n') + (k < 1 ? '' : '');
+  return [`🧾 <b>${esc(brand)}</b> — nasiya xarid`, custName ? `Hurmatli ${esc(custName)}!` : '',
+    F.pre([...lines, F.LINE, F.row('Qarzga', debtUzs != null ? F.uzs(debtUzs) : F.usd(debtUsd)), ...(dueDate ? [F.row('Qaytarish sanasi', fmtDate(dueDate))] : [])])].filter(Boolean).join('\n') + (k < 1 ? '' : '');
 }
 function custPayText({ brand, amountText, debtAfterUzs }) {
   const full = debtAfterUzs != null && num(debtAfterUzs) <= 0.5;
-  return [`💵 <b>${esc(brand)}</b> — toʻlovingiz qabul qilindi: <b>${esc(amountText)}</b>`,
-    full ? '✅ Qarzingiz toʻliq yopildi. Rahmat!' : (debtAfterUzs != null ? `Qolgan qarz: <b>${esc(uzs(debtAfterUzs))}</b>` : '')].filter(Boolean).join('\n');
+  const F = require('./tgFmt');   // v25.6.9: ustun uslubi
+  return [`💵 <b>${esc(brand)}</b> — toʻlovingiz qabul qilindi`, F.pre([F.row('Toʻlandi', amountText), ...(debtAfterUzs != null && !full ? [F.row('Qolgan qarz', F.uzs(debtAfterUzs))] : [])]),
+    full ? '✅ Qarzingiz toʻliq yopildi. Rahmat!' : ''].filter(Boolean).join('\n');
 }
 function custRemindText({ brand, custName, debtUzs, due, today }) {
+  const F = require('./tgFmt');   // v25.6.9: ustun uslubi
   const late = due < today; const days = Math.round((Date.parse(today) - Date.parse(due)) / 864e5);
   return [`⏰ <b>${esc(brand)}</b> — eslatma`, custName ? `Hurmatli ${esc(custName)}!` : '',
-    late ? `Qarzni qaytarish muddati <b>${fmtDate(due)}</b> edi (${days} kun oʻtdi).` : `Bugun (<b>${fmtDate(due)}</b>) qarzni qaytarish kuni.`,
-    `Qarzingiz: <b>${esc(uzs(debtUzs))}</b>`].filter(Boolean).join('\n');
+    late ? 'Qarzni qaytarish muddati oʻtdi.' : 'Bugun qarzni qaytarish kuni.',
+    F.pre([F.row('Qarzingiz', F.uzs(debtUzs)), F.row('Qaytarish sanasi', fmtDate(due)), ...(late ? [F.row('Kechikdi', days + ' kun')] : [])])].filter(Boolean).join('\n');
 }
 
 module.exports = { ROW_ID, CODE_RE, loadLinks, saveLinks, codeFor, unlink, sweep, sendToCustomer, custCreditText, custPayText, custRemindText, key, tgApi };

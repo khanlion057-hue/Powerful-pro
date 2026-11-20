@@ -13007,9 +13007,9 @@ async function trialRun(btn) {
   TRS.busy = true; if (btn) btn.disabled = true;
   try {
     await trialCall({ action: 'run', password: pw, confirm: 'TOZALASH' });
-    trialLocalReset();
-    auditLog('Dastlabki sinov maʼlumotlari tozalandi');
-    closeSheet(); toast('✅ Tozalandi — balanslar 0, kirim saqlandi'); setTimeout(() => location.reload(), 900);
+    // Server JSON nusxani ham tozaladi va versiyani oshirdi — bu qurilmadagi eski nusxa YUBORILMAYDI, faqat qayta yuklanadi
+    try { localStorage.removeItem('bp_data'); } catch (_) {}
+    closeSheet(); toast('✅ Tozalandi — balanslar 0, kirim saqlandi. Boshqa qurilmalarda ham ilovani qayta oching'); setTimeout(() => location.reload(), 1200);
   } catch (e) { toast(e.message, 'error'); if (btn) btn.disabled = false; }
   finally { TRS.busy = false; }
 }

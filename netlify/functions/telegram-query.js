@@ -9,7 +9,9 @@
 //   Telegram (webhook, x-telegram-bot-api-secret-token): xabar → buyruq → javob. Ruxsatsiz — javob yo'q yoki rad.
 const crypto = require('crypto');
 const { getAdminClient, json, methodGuard, parseBody, requireStaffAuth, serverError } = require('./_lib/supabaseAdmin');
-const { TOKEN_RE, loadAll } = require('./_lib/dailyReportRun');
+const { TOKEN_RE } = require('./_lib/dailyReportRun');
+const { cashAuthorityOn, loadBalances, overlayBranch } = require('./_lib/cashAuthority');
+const { ledgerAuthorityOn, loadLedger, overlayBranchLedger } = require('./_lib/ledgerAuthority');
 const Q = require('./_lib/botQuery');
 
 const ROW = 'tg_query_bot', CODE_TTL = 15 * 60e3;
@@ -34,6 +36,21 @@ async function permsOf(admin, staff) {
   return { admin: false, keys: new Set((rp || []).map((x) => x.permissions && x.permissions.key).filter(Boolean)) };
 }
 
+// Tez yuklash (Netlify sinxron funksiya chegarasi ~10 s): faqat kerakli filial, filiallar PARALLEL
+async function loadFor(admin, filial) {
+  const bq = filial ? admin.from('app_data_branches').select('branch_key,data').eq('branch_key', filial) : admin.from('app_data_branches').select('branch_key,data');
+  const [{ data: row }, { data: fresh }, cashOn, ledOn] = await Promise.all([admin.from('app_data').select('data').eq('id', 'main').maybeSingle(), bq, cashAuthorityOn(admin), ledgerAuthorityOn(admin)]);
+  const data = (row && row.data) || {}, src = { ...(data.branchStore || {}) };
+  (fresh || []).forEach((r) => { if (r.data) src[r.branch_key] = r.data; });
+  const bs = {}; Object.keys(src).forEach((k) => { if (!filial || k === filial) bs[k] = src[k]; });
+  await Promise.all(Object.keys(bs).map(async (k) => {
+    let b = bs[k];
+    if (cashOn) b = overlayBranch(b, await loadBalances(admin, k));
+    if (ledOn) b = overlayBranchLedger(b, await loadLedger(admin, k)).branch;
+    bs[k] = b;
+  }));
+  return { ...data, branchStore: bs };
+}
 async function answer(admin, cfg, msg) {
   const chatId = String(msg.chat.id), text = String(msg.text || '').trim().slice(0, 200);
   const send = (t) => tgApi(cfg.token, 'sendMessage', { chat_id: chatId, text: t, parse_mode: 'HTML', disable_web_page_preview: true });
@@ -55,7 +72,7 @@ async function answer(admin, cfg, msg) {
   const P = await permsOf(admin, staff);
   if (!P.admin && !P.keys.has(need)) return send("Bu buyruq uchun ruxsatingiz yo'q.");
   const filial = P.admin ? null : staff.filial;
-  const { data } = await loadAll(admin);
+  const data = await exports._load(admin, filial);
   const o = { filial };
   const out = cmd === 'foyda' ? Q.foyda(data, arg, o) : cmd === 'xarajat' ? Q.xarajat(data, arg, o) : cmd === 'qarz' ? Q.qarz(data, o)
     : cmd === 'kassa' ? Q.kassa(data, o) : cmd === 'ombor' ? Q.ombor(data, o) : Q.mahsulot(data, arg, o);
@@ -72,6 +89,11 @@ exports.handler = async (event) => {
     if (!cfg.token || !sameSecret(hdr, cfg.secret)) return json({ error: 'Not found' }, 404);
     try {
       const upd = parseBody(event) || {}, msg = upd.message;
+      // Takroriy yetkazish (Telegram javob kutmay qolsa qayta yuboradi) — bitta xabarga bitta javob
+      if (Number.isSafeInteger(upd.update_id)) {
+        if (cfg.lastUpd && upd.update_id <= cfg.lastUpd) return json({ ok: true, dup: true }, 200);
+        cfg.lastUpd = upd.update_id; await saveRow(admin, cfg);
+      }
       if (msg && msg.text && msg.chat && msg.chat.type === 'private') await answer(admin, cfg, msg);
     } catch (e) { console.error('[telegram-query]', e && e.message); }
     return json({ ok: true }, 200);   // Telegram qayta yubormasligi uchun doim 200
@@ -114,3 +136,4 @@ exports.handler = async (event) => {
   } catch (e) { return serverError(e, 'telegram-query', 'Server xatosi'); }
 };
 exports.handler = require('./_lib/monitor').wrap('telegram-query', exports.handler);
+exports._load = loadFor;

@@ -1073,3 +1073,6 @@ tests/p1.2-rounding-currency.test.js        — YANGI
 - Sozlamalar → «Botlar va avtomatik vazifalar»: guruhlar (egasi/filial/diller) holati va soʻrov boti qoʻshildi; docs/BOTLAR.md oddiy tilda.
 - Kirim shabloni valyuta bo'yicha: dollar / yuan / so'm (sarlavhada valyuta aniq), Kirim «Shablon» tugmasi valyuta so'raydi, Excel oynasida valyuta tanlanadi; fayl valyutasi tanlanganga mos bo'lmasa import rad etiladi (aralashmaydi).
 - Excel kirim: «Kirim turi» (bosh qoldiq / ta'minotchidan / konsignatsiya — sotish uchun olingan); miqdor 0 bo'lsa ham mahsulot va sotuv narxi (ustama) yoziladi, omborga tovar tushmaydi; tannarxsiz narx — aniq xato.
+- Tuzatish: sinovni tozalash endi server JSON nusxasini ham tozalaydi (barcha filial; versiya +1 — eski nusxali qurilmalar qayta yuklaydi). Avval boshqa filial nusxasidagi eski savdo/xarajat qaytib chiqishi mumkin edi.
+- Tuzatish: so'rov boti — faqat kerakli filial parallel yuklanadi (10 s chegarasi), takroriy Telegram yetkazishga ikkinchi javob yo'q (update_id).
+- Tuzatish: kirim/o'tkazma Telegram xabari amalni 2,5 s dan ortiq kutdirmaydi.

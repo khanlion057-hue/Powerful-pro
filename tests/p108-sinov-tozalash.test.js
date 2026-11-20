@@ -8,6 +8,12 @@ async function server() {
   const sql = fs.readFileSync(require.resolve('../supabase-migration-49-sinov-tozalash.sql'), 'utf8');
   assert.match(sql, /grant execute on function public\.fw_trial_reset\(boolean\) to service_role/);
   assert.doesNotMatch(sql, /delete from public\.(products|staff|dealers|batches)\b/);
+  // JSON nusxa ham tozalanadi (boshqa filial nusxasidagi eski savdo qaytmasin)
+  const { _cleanBranch } = require('../netlify/functions/trial-reset.js');
+  const c = _cleanBranch({ batches: [{ qty: 10, sold: 4, status: 'active' }, { qty: 3, status: 'deleted' }, { qty: 2, sold: 0, status: 'transit' }], sales: [1], expenses: [1], cashTxns: [1], customers: [{ debt: 9 }], cashboxes: [{ bal: 5 }] });
+  assert.deepEqual(c.batches.map((b) => [b.qty, b.sold, b.status]), [[10, 0, 'active'], [2, 0, 'active']]);
+  assert.deepEqual([c.sales.length, c.expenses.length, c.cashTxns.length, c.customers[0].debt, c.cashboxes[0].bal], [0, 0, 0, 0, 0]);
+  assert.match(src, /cleanJson\(admin\)/); assert.match(src, /version: \(Number/);
 }
 async function client() {
   const { browser, page, errors } = await openPage('index.html', { width: 390, height: 844, mobile: true, admin: true });

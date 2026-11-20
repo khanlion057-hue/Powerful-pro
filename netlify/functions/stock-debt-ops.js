@@ -197,7 +197,7 @@ exports.handler = async (event) => {
     if (error) return serverError(error, 'stock-debt-ops', 'Amal bajarilmadi', 400);
     // v25.6.9: filial guruhiga kirim xabari (takroriy kalitda — yuborilmaydi; xato amalni buzmaydi)
     if (body.kind === 'batches_create' && !(data && data.replay)) {
-      try { await require('./_lib/tgEvents').notifyStockIn(admin, { filial, reason: body.payload.reason, batches: body.payload.batches, staffName: auth.staff?.name || null }); } catch (_) {}
+      try { await require('./_lib/opsGuard').within(require('./_lib/tgEvents').notifyStockIn(admin, { filial, reason: body.payload.reason, batches: body.payload.batches, staffName: auth.staff?.name || null }), 2500, null); } catch (_) {}
     }
     return json({ ...data, filial, ledger: true }, 200);
   } catch (e) {

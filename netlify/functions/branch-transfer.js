@@ -125,7 +125,7 @@ exports.handler = async (event) => {
     if (body.kind === 'list') return json({ transfers: r.data || [], filial }, 200);
     if (body.kind === 'income') return json({ income: r.data || {} }, 200);
     if (['tr_request', 'tr_ship', 'tr_receive'].includes(body.kind) && !(r.data && r.data.replay)) {
-      try { await require('./_lib/tgEvents').notifyTransfer(admin, { kind: body.kind, filial, payload: p, staffName: auth.staff?.name || null }); } catch (_) {}
+      try { await require('./_lib/opsGuard').within(require('./_lib/tgEvents').notifyTransfer(admin, { kind: body.kind, filial, payload: p, staffName: auth.staff?.name || null }), 2500, null); } catch (_) {}
     }
     return json({ ...r.data, filial, ledger: true }, 200);
   } catch (e) {

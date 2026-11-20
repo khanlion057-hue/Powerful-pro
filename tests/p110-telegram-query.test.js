@@ -15,10 +15,11 @@ const fakeAdmin = { from: (t) => ({
   upsert: async (row) => { store[row.id] = row.data; return { error: null }; } }) };
 // app_data uchun id ni eslab qolish
 const origFrom = fakeAdmin.from; fakeAdmin.from = (t) => { const q = origFrom(t); const eq = q.eq; q.eq = function (c, v) { if (t === 'app_data' && c === 'id') this._id = v; return eq.call(this, c, v); }; return q; };
-SA.getAdminClient = () => fakeAdmin; DR.loadAll = async () => ({ data: DATA, extra: {} });
+SA.getAdminClient = () => fakeAdmin;
 const sent = []; global.fetch = async (url, o) => { const body = JSON.parse(o.body); sent.push({ m: url.split('/').pop(), body }); return { json: async () => ({ ok: true, result: { username: 'testbot' } }) }; };
-const H = require('../netlify/functions/telegram-query.js').handler;
-const upd = (chat, text, secret = 'S3CRET') => H({ httpMethod: 'POST', headers: { 'x-telegram-bot-api-secret-token': secret }, body: JSON.stringify({ message: { chat: { id: chat, type: 'private' }, text } }) });
+const TQ = require('../netlify/functions/telegram-query.js'); TQ._load = async (a, filial) => ({ ...DATA, branchStore: Object.fromEntries(Object.entries(DATA.branchStore).filter(([k]) => !filial || k === filial)) });
+const H = TQ.handler; let UPD = 1;
+const upd = (chat, text, secret = 'S3CRET') => H({ httpMethod: 'POST', headers: { 'x-telegram-bot-api-secret-token': secret }, body: JSON.stringify({ update_id: UPD++, message: { chat: { id: chat, type: 'private' }, text } }) });
 async function run() {
   assert.equal((await upd(10, '/foyda', 'XATO')).statusCode, 404, 'noto\'g\'ri maxfiy kalit');
   await upd(10, '/foyda'); assert.match(sent.at(-1).body.text, /Avval ulang/);
@@ -31,5 +32,8 @@ async function run() {
   store.tg_query_bot.links['12'] = { staffId: 3 }; await upd(12, '/foyda'); assert.match(sent.at(-1).body.text, /ruxsatingiz yo'q/);
   const n = sent.length; await H({ httpMethod: 'POST', headers: { 'x-telegram-bot-api-secret-token': 'S3CRET' }, body: JSON.stringify({ message: { chat: { id: -100, type: 'group' }, text: '/foyda' } }) });
   assert.equal(sent.length, n, 'guruhda javob berilmaydi');
+  // takroriy update_id — ikkinchi marta javob yo'q
+  const dup = { httpMethod: 'POST', headers: { 'x-telegram-bot-api-secret-token': 'S3CRET' }, body: JSON.stringify({ update_id: 9999, message: { chat: { id: 11, type: 'private' }, text: '/kassa' } }) };
+  await H(dup); const m = sent.length; await H(dup); assert.equal(sent.length, m, 'takror yetkazilganda qayta javob yo\'q');
 }
 module.exports = { name: 'P110 — Telegram soʻrov boti', cases: [{ name: 'webhook: maxfiy kalit, /start kod, ruxsat, filial cheklovi, guruh e\'tiborsiz', run }] };

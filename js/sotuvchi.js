@@ -1313,6 +1313,7 @@ async function svSaveSaleEdit(saleId) {
 }
 
 async function svLogout() {
+  if (typeof fwqLogoutOk === 'function' && !fwqLogoutOk()) return;
   if (typeof fwLogoutFlow === 'function') { const nm = ME && ME.name; ME = null; CART = []; return fwLogoutFlow(db, nm); }
   await db.auth.signOut();
   ME = null; S = null; CART = []; SALE_CUST_ID = null;

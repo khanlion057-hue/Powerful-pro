@@ -2489,9 +2489,22 @@ function fwIsNetErr(e) {
   const m = String((e && (e.message || e)) || '');
   return !!e && (e.name === 'TypeError' || /Failed to fetch|NetworkError|Load failed|network|internet/i.test(m));
 }
+// v25.6.9 (auditor): navbatdagi savdo — QAYSI foydalanuvchi kiritgani bilan saqlanadi; boshqa xodim kirganda uning nomidan YUBORILMAYDI
+function fwqWho() {
+  try {
+    if (typeof CURRENT_USER !== 'undefined' && CURRENT_USER) return CURRENT_USER.kind === 'owner' ? 'owner' : 's' + CURRENT_USER.staffId;
+    if (typeof ME !== 'undefined' && ME && ME.id != null) return 's' + ME.id;
+  } catch (_) {}
+  return null;
+}
+// Chiqishdan oldin: yuborilmagan oflayn savdo bo'lsa — ogohlantirish (chiqsa ham saqlanadi; shu xodim qayta kirganda yuboriladi)
+function fwqLogoutOk() {
+  try { const me = fwqWho(), mine = fwqPending().filter(e => !e.who || e.who === me).length;
+    return !mine || typeof confirm !== 'function' || confirm(`${mine} ta oflayn savdo hali serverga yuborilmagan. Internet bilan qayta kirganingizda yuboriladi. Baribir chiqasizmi?`); } catch (_) { return true; }
+}
 function fwqAdd(entry) {
   const a = fwqList();
-  if (!a.some(x => x.id === entry.id)) a.push(Object.assign({}, entry, { state: 'pending', tries: 0, at: Date.now() }));
+  if (!a.some(x => x.id === entry.id)) a.push(Object.assign({}, entry, { state: 'pending', tries: 0, at: Date.now(), who: fwqWho() }));
   fwqSave(a); fwqSchedule();
 }
 function _fwqUpdate(id, patch) {
@@ -2505,7 +2518,7 @@ async function _fwqSend(e) {
 }
 async function fwqFlush() {
   if (FWQ.busy || (typeof navigator !== 'undefined' && navigator.onLine === false) || typeof authFetch !== 'function') return;
-  const list = fwqPending(); if (!list.length) return;
+  const me = fwqWho(), list = fwqPending().filter(e => !e.who || !me || e.who === me); if (!list.length) return;   // faqat o'zi kiritganlar
   FWQ.busy = true; let sent = 0, rejected = 0;
   try {
     for (const e of list) {

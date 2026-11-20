@@ -2002,6 +2002,7 @@ function openBranchSwitch() {
 
 function appLogout() {
   if (!confirm("Tizimdan chiqasizmi? Qayta kirish uchun login/parol (yoki PIN) kerak bo'ladi.")) return;
+  if (typeof fwqLogoutOk === 'function' && !fwqLogoutOk()) return;   // v25.6.9: yuborilmagan oflayn savdo
   if (typeof fwLogoutFlow === 'function') { fwLogoutFlow(_db, CURRENT_USER?.kind === 'staff' ? CURRENT_USER.name : (S.settings?.ownerName || '')); return; }
   try { localStorage.removeItem('fw_off_auth_v1'); localStorage.removeItem('fw_quick_v1'); } catch (_) {}
   sessionStorage.removeItem('bp_auth_ok');

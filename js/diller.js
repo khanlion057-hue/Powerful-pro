@@ -799,6 +799,7 @@ function dlOpenSettings() {
     onLogout: dlLogout });
 }
 async function dlLogout() {
+  if (typeof fwqLogoutOk === 'function' && !fwqLogoutOk()) return;
   if (typeof fwLogoutFlow === 'function') { const nm = ME && ME.name; ME = null; return fwLogoutFlow(db, nm); }
   await db.auth.signOut();
   ME = null; STOCK = []; SALES = [];

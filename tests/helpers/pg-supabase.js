@@ -52,6 +52,7 @@ function pgQuery(pg, table) {
   const q = {
     select(cols) { if (st.op === 'select' && cols) st.cols = cols; return q; },
     eq(c, v) { st.where.push(`${qi(c)} = ${p(v)}`); return q; },
+    neq(c, v) { st.where.push(`${qi(c)} is distinct from ${p(v)}`); return q; },   // v25.6.9: o'chirilgan partiyalarni o'qimaslik
     in(c, vs) {
       const lit = '{' + vs.map(v => '"' + String(v).replace(/(["\\])/g, '\\$1') + '"').join(',') + '}';
       st.params.push(lit);

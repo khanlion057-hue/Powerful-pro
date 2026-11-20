@@ -333,7 +333,7 @@ async function _cloudSave(payload) {
   // Function orqali yozishga urinamiz. Ma'lumot STRUKTURASI o'zgarmaydi — xuddi
   // shu "payload" object, xuddi shu app_data.data ustuniga yoziladi (faqat
   // TASHISH usuli — anon to'g'ridan-to'g'ri so'rov emas, Function orqali).
-  let savedViaFunction = false;
+  let savedViaFunction = false, casBranches = false;
   try {
     const res = await authFetch('/.netlify/functions/app-data-save', {
       method: 'POST', body: JSON.stringify({ data: payload, ...(Number.isSafeInteger(_fwVer.main) ? { baseVersion: _fwVer.main } : {}) })
@@ -348,6 +348,7 @@ async function _cloudSave(payload) {
       // o'chirish) yozmaydi — foydalanuvchi buni bilishi kerak.
       const r = await res.json().catch(()=>({}));
       if (r.versions) { if (Number.isSafeInteger(r.versions.main)) _fwVer.main = r.versions.main; Object.assign(_fwVer.branches, r.versions.branches || {}); }
+      casBranches = !!(r.versions && r.versions.branches && Object.keys(r.versions.branches).length);   // v25.6.9: filial qatori shu so'rovda (CAS) yozildi
       _applyServerCorrections(r, r.ownBranch === S.branch ? r.serverBranchValues : null);
       // v11 (F4): kassa qoldig'i — bazadagi haqiqiy qiymat (brauzer yuborgani e'tiborga olinmaydi)
       if (r.cashAuthority && r.cashAuthority.on) {
@@ -405,7 +406,9 @@ async function _cloudSave(payload) {
   // yozamiz va darhol taqqoslaymiz. Bu yerdagi HAR QANDAY xatolik faqat shu funksiya
   // ichida qoladi — asosiy (eski) saqlash allaqachon muvaffaqiyatli, foydalanuvchi
   // hech narsani sezmaydi, ma'lumot yo'qolmaydi.
-  _parallelBranchSave(payload).catch(()=>{});
+  // v25.6.9 (tezlik): filial qatori app-data-save ichida (versiya bilan) allaqachon yozilgan bo'lsa — ikkinchi marta yozilmaydi
+  // (avval har saqlashda qayta yozilib, versiyani oshirar va keyingi saqlashda 409 ziddiyat keltirardi)
+  if (!casBranches) _parallelBranchSave(payload).catch(()=>{});
   _batchesShadowSync().catch(()=>{}); // P3-3: yangi batches SQL jadvaliga fon-rejimda parallel sinxronizatsiya (bloklamaydi)
 }
 
@@ -1132,6 +1135,12 @@ async function dlInsertPayment(dealerId, amountUsd, note, idemKey) {
 const FW_CATALOG_SYNC_PERMS = ['mahsulotlar.edit','mahsulotlar.create','mahsulotlar.delete','kirim.create',
   'savdo.create','savdo.edit','savdo.delete','qaytarish.create','dillerlar.manage'];
 function fwCanSyncCatalog() { return FW_CATALOG_SYNC_PERMS.some(k => hasPerm(k)); }
+let _dlSyncT = null, _dlSyncBusy = false, _dlSyncLast = 0;
+function dlSyncCatalogSoon() {
+  if (_dlSyncT) return;   // allaqachon navbatda
+  const wait = Math.max(1500, 30000 - (Date.now() - _dlSyncLast));
+  _dlSyncT = setTimeout(async () => { _dlSyncT = null; if (_dlSyncBusy) { dlSyncCatalogSoon(); return; } _dlSyncBusy = true; _dlSyncLast = Date.now(); try { await dlSyncCatalog(); } finally { _dlSyncBusy = false; } }, wait);
+}
 async function dlSyncCatalog(manual) {
   if (!_cloudEnabled || !_db) {
     if (manual) toast('Bulut ulanmagan!','error');
@@ -1743,7 +1752,7 @@ async function save() {
     // v24: haqiqiy sabab ko'rsatiladi (sessiya, ruxsat, hajm, server) — jimgina yutilmaydi
     showSaveIndicator('error', `⚠ Saqlanmadi: ${(e && e.message) || "noma'lum xato"}. Qayta urinib ko'ring`);
   }
-  dlSyncCatalog(); // async, kutilmaydi — dillerlar ko'radigan katalog yangilanadi
+  dlSyncCatalogSoon(); // v25.6.9: ko'pi bilan 30 soniyada bir marta (har saqlashda to'liq katalog qayta qurilmaydi)
   return ok;
 }
 

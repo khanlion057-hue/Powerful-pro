@@ -35,11 +35,12 @@ async function loadLedger(admin, filial) {
   // v25.6.9 (tezlik): baza boshqa qit'ada (har ketma-ket so'rov ~0,2–0,3 s) — o'zaro bog'liq bo'lmagan hamma so'rov BIR VAQTDA boshlanadi
   // (avval qo'shimcha so'rovlar bittadan, ketma-ket kutilardi). Xato qoidalari avvalgidek: asosiy jadvallar — xato; ixtiyoriy (29/34/44) — jadval yo'q bo'lsa jim.
   const wq = admin.from('stock_writeoffs').select('*').eq('filial', filial);
-  const [c, s, b, sl, sx, wr, cr, su] = await Promise.all([
+  const [c, s, b, sl, sx, wr, cr, su, bdel] = await Promise.all([
     // v25.6.5: sahifalab (1000 qatorlik PostgREST chegarasi): avval kesilgan jadval yangi partiyalarni «yo'q» deb qoldig'ini 0 qilardi
     selectAll(() => admin.from('customer_balances').select('customer_local_id,debt').eq('filial', filial), 'customer_local_id'),
     selectAll(() => admin.from('supplier_balances').select('supplier_local_id,debt,total_paid').eq('filial', filial), 'supplier_local_id'),
-    selectAll(() => admin.from('batches').select('*').eq('filial', filial), 'id'),   // v24.6: barcha ustunlar — o'tkazma partiyalarini ro'yxatga qo'shish uchun
+    // v25.6.9 (tezlik): tirik partiyalar — faqat kerakli ustunlar; o'chirilganlar — faqat ID (5 000+ «deleted» qator har yuklashda to'liq o'qilardi)
+    selectAll(() => { const q = admin.from('batches').select('id,local_id,qty,sold,status,cost_usd,pid,bno,origin,from_branch,batch_date').eq('filial', filial); return typeof q.neq === 'function' ? q.neq('status', 'deleted') : q; }, 'id'),
     selectAll(() => admin.from('sales').select('local_id,items,subtotal_usd,disc_pct,disc_usd,total_usd,paid_usd,debt_usd,profit_usd,status,edited_at').eq('filial', filial), 'id'),
     // v25.1 (47): savdoning yaxlitlash maydonlari — 47 qo'llangan bo'lsa ular ham (bo'lmasa — avvalgi ustunlar)
     selectAll(() => admin.from('sales').select('local_id,asl_jami_uzs,yaxlitlash_chegirmasi_uzs,tolangan_jami_uzs').eq('filial', filial), 'id'),
@@ -49,6 +50,7 @@ async function loadLedger(admin, filial) {
     Promise.resolve(admin.from('customer_credit_balances').select('customer_local_id,credit_uzs').eq('filial', filial)),
     // v25 (44): so'mdagi ta'minotchi — aniq qarz so'mda (ustun bo'lmasa — 44 qo'llanmagan, hammasi $ da)
     selectAll(() => admin.from('supplier_balances').select('supplier_local_id,currency,debt_uzs').eq('filial', filial).eq('currency', 'UZS'), 'supplier_local_id'),
+    selectAll(() => admin.from('batches').select('id,local_id').eq('filial', filial).eq('status', 'deleted'), 'id'),
   ]);
   for (const r of [c, s, b, sl]) if (r.error) throw r.error;
   let slr = sl;
@@ -68,6 +70,9 @@ async function loadLedger(admin, filial) {
   if (!su.error) (su.data || []).forEach(r => { const v = suppliers.get(String(r.supplier_local_id)); if (v) Object.assign(v, { debtCur: 'UZS', debtUzs: r2(r.debt_uzs) }); });
   const batches = new Map((b.data || []).map(r => [String(r.local_id), { qty: num(r.qty), sold: num(r.sold), status: r.status, costUsd: num(r.cost_usd),
     pid: num(r.pid), bno: r.bno || null, origin: r.origin || null, fromBranch: r.from_branch || null, date: r.batch_date ? String(r.batch_date).slice(0, 10) : null }]));
+  // o'chirilgan partiyalar — faqat «deleted» belgisi (JSON nusxadagi shunday partiya ro'yxatdan chiqariladi; avvalgi xulq)
+  if (bdel && !bdel.error) (bdel.data || []).forEach((r) => { const k = String(r.local_id); if (!batches.has(k)) batches.set(k, { qty: 0, sold: 0, status: 'deleted', costUsd: 0, pid: 0 }); });
+  else if (bdel && bdel.error) throw bdel.error;
   const sales = new Map((slr.data || []).filter(r => r.local_id).map(r => [String(r.local_id), r]));
   return { customers, suppliers, batches, sales, writeoffs, credits };
 }

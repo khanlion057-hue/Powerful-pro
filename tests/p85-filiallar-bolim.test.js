@@ -1,6 +1,6 @@
 // P85 — v25 (egasi talabi 2026-11-10): FILIALLAR — Dillerlar kabi alohida, to'liq bo'lim.
 //  • Menyuda va Tezkor amallarda Dillerlar va Filiallar — alohida; Dillerlar ichida «Filiallar» yorlig'i yo'q.
-//  • Filiallar yorliqlari: Filiallar, Buyurtmalar, Nazorat, Ombor, Yuborish, Savdo, Qarzlar, Revizya, Statistika.
+//  • Filiallar yorliqlari: Filiallar, Buyurtmalar, Nazorat, Ombor, Yuborish, Savdo, Qarzlar, Reviziya, Statistika.
 //  • Bosh sahifada Filiallar va Dillerlar statistikasi.
 const assert = require('node:assert/strict');
 const { openPage } = require('./p4-responsive.test.js')._helpers;
@@ -28,7 +28,7 @@ module.exports = {
           const nav = [...document.querySelectorAll('.sidebar .nav-item')].map(b => b.dataset.page);
           return { tabs, txt, dTabs, homeFl: /Filiallar/.test(home) && /Dillerlar/.test(home), acts, nav };
         });
-        assert.deepEqual(r.tabs, ['Filiallar', 'Buyurtmalar', 'Nazorat', 'Ombor', 'Yuborish', 'Savdo', 'Qarzlar', 'Revizya', 'Statistika']);
+        assert.deepEqual(r.tabs, ['Filiallar', 'Buyurtmalar', 'Nazorat', 'Ombor', 'Yuborish', 'Savdo', 'Qarzlar', 'Reviziya', 'Statistika']);
         assert.ok(!r.dTabs.includes('Filiallar'), 'Dillerlar ichida Filiallar yorligʻi yoʻq');
         assert.match(r.txt.ombor, /Qoldiq 7 dona/); assert.match(r.txt.ombor, /Yoʻlda 4/);
         assert.match(r.txt.sale, /F-001/); assert.match(r.txt.sale, /Xizmat haqi \$3\.00/);

@@ -2201,7 +2201,7 @@ button.pc-tile{ cursor:pointer; }
 .ox-biz-g b.am{ color:var(--amber); } .ox-biz-g b.rd{ color:var(--red); }
 @media (min-width:900px){ .ox-biz-g{ grid-template-columns:repeat(6,minmax(0,1fr)); } .ox-biz-big{ font-size:30px; } }
 .ox-seg{ display:inline-flex; gap:2px; padding:3px; border-radius:11px; background:color-mix(in srgb,var(--bg-primary) 60%,transparent); }
-.ox-seg button{ border:none; background:none; color:var(--text-secondary); font:inherit; font-size:11.5px; font-weight:700; padding:4px 9px; border-radius:8px; cursor:pointer; }
+.ox-seg button{ border:none; background:none; color:var(--text-secondary); font:inherit; font-size:12px; font-weight:700; padding:6px 11px; min-height:34px; border-radius:8px; cursor:pointer; }
 .ox-seg button.on{ background:var(--gold); color:#fff; }
 .ox-hero-net{ display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:10px; padding-top:10px; border-top:1px solid var(--border); font-size:12.5px; color:var(--text-secondary); }
 .ox-hero-net b{ font-size:16px; font-weight:800; font-variant-numeric:tabular-nums; }
@@ -3848,3 +3848,7 @@ button.pos-thumb{ cursor:zoom-in; }
 .sf-gal-main > img, .sf-gal-main > video{ position:absolute; inset:0; width:100%; height:100%; }   /* rasm o'lchami qanday bo'lmasin — maydon sakramaydi */
 .pm-archb{ border:0; background:none; color:var(--sky); font:inherit; font-weight:700; cursor:pointer; padding:0 }
 .pm-cat-edit{ border-style:dashed !important }
+
+/* v25.6.9 (dizayner): tor ekranda (≤360px) kassalar bir ustunda — yorliqlar kesilmaydi; kichik tugmalarga qulay bosish maydoni */
+@media (max-width:360px){ .ks-grid{ grid-template-columns:1fr !important; } }
+.modal-close{ min-width:40px; min-height:40px; }

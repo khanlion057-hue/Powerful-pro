@@ -1363,7 +1363,7 @@ const CUR = {
 
   fmtUsd(n)   { const v=(+(n||0)).toFixed(2); const [int,dec]=v.split('.'); return '$'+int.replace(/\B(?=(\d{3})+(?!\d))/g,' ')+'.'+dec; },
   fmtCny(n)   { return '¥'+(+(n||0)).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,' '); },
-  fmtUzs(n)   { return (+(n||0)).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,' ') + ' UZS'; },
+  fmtUzs(n)   { return (+(n||0)).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,' ') + ' soʻm'; },   // v25.6.9: hamma joyda bir xil «soʻm»
 
   distributeUsd(totalUsd, items, method) {
     if (!items.length) return [];
@@ -4052,7 +4052,7 @@ function pgMahsulotlar() {
     <button class="kr-q" style="--c:var(--emerald)" onclick="pmExcelSheet()">${ICONF.upload}<span>Excel</span></button>
     <button class="kr-q" style="--c:var(--sky)" onclick="pmQrSheet()">${ICONF.qr}<span>QR kodlar</span></button>
     <button class="kr-q" style="--c:var(--purple)" onclick="openProductCard2()">${ICONF.history}<span>Tarix</span></button>
-    <button class="kr-q" style="--c:var(--amber)" onclick="openRevision()">${ICONF.ruler}<span>Revizya</span></button>
+    <button class="kr-q" style="--c:var(--amber)" onclick="openRevision()">${ICONF.ruler}<span>Reviziya</span></button>
   </div>
 
   <div class="kr-search pm-search">
@@ -4061,7 +4061,7 @@ function pgMahsulotlar() {
     <button type="button" class="pm-sortb" onclick="pmSortSheet()" aria-label="Saralash" title="Saralash">${ICONF.sort}</button>
   </div>
 
-  <div class="pm-cats"><button class="pm-cat pm-cat-edit" onclick="pmCatSheet()" aria-label="Kategoriyalarni boshqarish">✎</button>${cats.length>1 ? ['',...cats].map(c=>`<button class="pm-cat${catF===c?' on':''}" onclick="pmSetCat(${JSON.stringify(c).replace(/"/g,'&quot;')})">${c?esc(c):'Hammasi'}</button>`).join('') : ''}</div>
+  <div class="pm-cats"><button class="pm-cat pm-cat-edit" onclick="pmCatSheet()" aria-label="Kategoriyalarni boshqarish">✎ Kategoriyalar</button>${cats.length>1 ? ['',...cats].map(c=>`<button class="pm-cat${catF===c?' on':''}" onclick="pmSetCat(${JSON.stringify(c).replace(/"/g,'&quot;')})">${c?esc(c):'Hammasi'}</button>`).join('') : ''}</div>
 
   ${(() => { const g = fwCanDelProducts() ? fwOrphanProducts().filter(p => !p.archived).length : 0;
     return g ? `<button class="pos-strip pm-ghost" onclick="fwCleanupOrphans(null);pgMahsulotlar()">${ICONF.warning}<span><b>${g}</b> ta mahsulot hech qayerda yoʻq (kirimi oʻchirilgan) — savdo roʻyxatidan tozalash</span>${ICONF.chevron}</button>` : ''; })()}
@@ -4908,7 +4908,7 @@ function revisionHtml() {
   return `
   <div class="rv-top">
     <button class="rv-back" onclick="closeRevision()" aria-label="Orqaga">‹</button>
-    <div class="rv-tt"><b>Revizya</b><span>${esc(branchName(S.branch))} ombori</span></div>
+    <div class="rv-tt"><b>Reviziya</b><span>${esc(branchName(S.branch))} ombori</span></div>
     <label class="rv-date">${ICONF.calendar}<span>${(S.revDate||td()).split('-').reverse().join('.')}</span>
       <input type="date" value="${S.revDate||td()}" max="${td()}" onchange="revSetDate(this.value);this.previousElementSibling.textContent=this.value.split('-').reverse().join('.')"></label>
   </div>
@@ -5012,7 +5012,7 @@ function revFillAllDo() {
   _revSaveDraft(); pgMahsulotlar();
 }
 function revAskReset() {
-  openSheet({ic:'trash', c:'red', title:'Revizyani tozalash', sub:'Kiritilgan barcha sonlar oʻchadi',
+  openSheet({ic:'trash', c:'red', title:'Reviziyani tozalash', sub:'Kiritilgan barcha sonlar oʻchadi',
     body:`<div class="bs-card"><p class="bs-note">Bu revizya qoralamasidagi sonlar oʻchiriladi. Ombor qoldigʻiga ta’sir qilmaydi.</p></div>`,
     foot:`<button class="bs-btn" style="background:var(--red)" onclick="closeSheet();revReset()">Tozalash</button>`});
 }
@@ -5022,7 +5022,7 @@ function revConfirmSheet() {
   const st = _revStats();
   const diffs = _revProducts().map(p=>{ const v=S.revFacts[p.id]; if(v===undefined||v===null||v==='') return null; const d=parseInt(v)-getStock(p.id); return d? {p,d,u:d*getCostFIFO(p.id)} : null; }).filter(Boolean)
     .sort((a,b)=>a.d-b.d);
-  openSheet({ic:'check', c:'emerald', title:'Revizyani tasdiqlash', sub:`${(S.revDate||td()).split('-').reverse().join('.')} · ${st.counted} ta mahsulot sanaldi`,
+  openSheet({ic:'check', c:'emerald', title:'Reviziyani tasdiqlash', sub:`${(S.revDate||td()).split('-').reverse().join('.')} · ${st.counted} ta mahsulot sanaldi`,
     body:`
     <div class="kst-split">
       <div class="kst-s" style="--c:var(--emerald)">${ICONF.add}<span>Ortiqcha</span><b>+${st.plusQ} dona</b><small>${usd(st.plusUsd)} — omborga qoʻshiladi</small></div>
@@ -5075,7 +5075,7 @@ function revDoPrint(showSys) {
     .box{ width:70px; height:22px } .note{ width:110px } tr.cat td{ background:#f4f4f4; font-weight:bold; font-size:11px }
     .sign{ display:flex; gap:40px; margin-top:22px } .sign div{ flex:1; border-top:1px solid #000; padding-top:4px; font-size:11px }
   </style></head><body>
-    <div class="h"><div><b>Sanash varagʻi (Revizya)</b><small>${esc(fwBrand().name)} · ${esc(branchName(S.branch))} ombori</small></div>
+    <div class="h"><div><b>Sanash varagʻi (Reviziya)</b><small>${esc(fwBrand().name)} · ${esc(branchName(S.branch))} ombori</small></div>
       <div style="text-align:right">Sana: <b style="font-size:13px">${esc(dmy)}</b><small>${list.length} ta mahsulot</small></div></div>
     <table><thead><tr><th>№</th><th>Kod</th><th>Mahsulot</th><th>Birlik</th>${showSys?'<th>Tizimda</th>':''}<th>Sanaldi</th><th>Izoh</th></tr></thead><tbody>${rows}</tbody></table>
     <div class="sign"><div>Sanadi (F.I.Sh., imzo)</div><div>Tekshirdi (F.I.Sh., imzo)</div></div>
@@ -5089,7 +5089,7 @@ function revDoPrint(showSys) {
 // yoki yo'qligi.
 function openRevisionHistory() {
   modal(`
-    <div class="modal-header"><div class="modal-title">💾 Revizya tarixi — ${branchName(S.branch)}</div><button class="modal-close" onclick="closeModal()">×</button></div>
+    <div class="modal-header"><div class="modal-title">💾 Reviziya tarixi — ${branchName(S.branch)}</div><button class="modal-close" onclick="closeModal()">×</button></div>
     <div class="modal-body" style="max-height:70vh;overflow-y:auto">
       ${S.revisions.length ? S.revisions.map(r=>`
         <div class="card" style="margin-bottom:10px;padding:12px">
@@ -5133,17 +5133,17 @@ async function saveRevision() {
       let used = false;
       rows.filter(x=>x.diff>0).forEach(x=>{
         const id = +surplusIds[x.pid]; used = true;
-        S.batches.push({id,pid:x.pid,bno,origin:"Revizya ortig'i",cur:'USD',qty:x.diff,sold:0,costUsd:+((r.rows||[]).find(y=>+y.pid===x.pid)||{}).cost||0,bankFeeUsd:0,suppId:null,rates:{usdUzs:CUR.usdUzs,usdCny:CUR.usdCny},date:S.revDate,status:'active',items:[{pid:x.pid,qty:x.diff}]});
+        S.batches.push({id,pid:x.pid,bno,origin:"Reviziya ortig'i",cur:'USD',qty:x.diff,sold:0,costUsd:+((r.rows||[]).find(y=>+y.pid===x.pid)||{}).cost||0,bankFeeUsd:0,suppId:null,rates:{usdUzs:CUR.usdUzs,usdCny:CUR.usdCny},date:S.revDate,status:'active',items:[{pid:x.pid,qty:x.diff}]});
       });
       if (used) S.batchCounter = (S.batchCounter||0) + 1;
       if (r.authority) fwApplyLedger(r.authority);
     }
     const totalDiffUsd = rows.reduce((s,x)=>s+x.diffUsd,0);
     S.revisions.unshift({id:uid(), date:S.revDate, rows, totalDiffUsd, applied:!!apply, performedBy: (CURRENT_USER?.name || 'Admin')});
-    auditLog(`Revizya: ${S.revDate} — farq ${CUR.fmtUsd(totalDiffUsd)}${apply?" (qoldiq to'g'irlandi)":''}`);
+    auditLog(`Reviziya: ${S.revDate} — farq ${CUR.fmtUsd(totalDiffUsd)}${apply?" (qoldiq to'g'irlandi)":''}`);
     S.revMode=false; S.revFacts={};
     save(); pgMahsulotlar();
-    toast(`✅ Revizya saqlandi! Jami farq: ${totalDiffUsd>=0?'+':''}${CUR.fmtUsd(totalDiffUsd)}${apply?" (qoldiq tuzatildi)":''}`);
+    toast(`✅ Reviziya saqlandi! Jami farq: ${totalDiffUsd>=0?'+':''}${CUR.fmtUsd(totalDiffUsd)}${apply?" (qoldiq tuzatildi)":''}`);
     return;
   }
   const rows = [];
@@ -5161,7 +5161,7 @@ async function saveRevision() {
     rows.forEach(r=>{
       if (r.diff>0) {
         const bno=String(++S.batchCounter).padStart(4,'0');
-        S.batches.push({id:uid(),pid:r.pid,bno,origin:"Revizya ortig'i",cur:'USD',qty:r.diff,sold:0,costUsd:getCostFIFO(r.pid),bankFeeUsd:0,suppId:null,rates:{usdUzs:CUR.usdUzs,usdCny:CUR.usdCny},date:S.revDate,status:'active',items:[{pid:r.pid,qty:r.diff}]});
+        S.batches.push({id:uid(),pid:r.pid,bno,origin:"Reviziya ortig'i",cur:'USD',qty:r.diff,sold:0,costUsd:getCostFIFO(r.pid),bankFeeUsd:0,suppId:null,rates:{usdUzs:CUR.usdUzs,usdCny:CUR.usdCny},date:S.revDate,status:'active',items:[{pid:r.pid,qty:r.diff}]});
       } else if (r.diff<0) {
         deductFIFO(r.pid, -r.diff);
       }
@@ -5169,10 +5169,10 @@ async function saveRevision() {
   }
 
   S.revisions.unshift({id:uid(), date:S.revDate, rows, totalDiffUsd, applied:!!apply, performedBy: (CURRENT_USER?.name || 'Admin')});
-  auditLog(`Revizya: ${S.revDate} — farq ${CUR.fmtUsd(totalDiffUsd)}${apply?" (qoldiq to'g'irlandi)":''}`);
+  auditLog(`Reviziya: ${S.revDate} — farq ${CUR.fmtUsd(totalDiffUsd)}${apply?" (qoldiq to'g'irlandi)":''}`);
   S.revMode=false; S.revFacts={};
   save(); pgMahsulotlar();
-  toast(`✅ Revizya saqlandi! Jami farq: ${totalDiffUsd>=0?'+':''}${CUR.fmtUsd(totalDiffUsd)}${apply?" (qoldiq tuzatildi)":''}`);
+  toast(`✅ Reviziya saqlandi! Jami farq: ${totalDiffUsd>=0?'+':''}${CUR.fmtUsd(totalDiffUsd)}${apply?" (qoldiq tuzatildi)":''}`);
 }
 
 
@@ -5294,7 +5294,7 @@ function pgOmbor() {
     ${fwActs([
       ['swap','sky','Oʻtkazmalar','openTransfers()'],   // v24.6: so'rov / yuborish / yo'lda / sanab qabul (36 bo'lmasa — avvalgi oyna)
       ['truck','purple','Kirim',"go('kirim')"],
-      ['ruler','amber','Revizya',"go('mahsulotlar');openRevision()"],
+      ['ruler','amber','Reviziya',"go('mahsulotlar');openRevision()"],
       ['inventory','emerald','Mahsulotlar',"go('mahsulotlar')"],
     ])}
     ${isBaza && filialKeys.length>1 ? `<section class="ox-card"><div class="ox-card-h"><b>Filiallar boʻyicha qarz</b><span>${CUR.fmtUsd(debtVal)}</span></div>
@@ -9039,7 +9039,7 @@ async function saveEditStaff(id) {
 
 // v25 (egasi talabi 2026-11-10): Filiallar — alohida bo'lim (pgFiliallar), Dillerlar ichida emas
 const DL_TABS = [['list','people','Dillerlar'],['orders','inbox','Buyurtmalar'],['monitor','history','Nazorat'],['ombor','inventory','Ombor'],['send','truck','Yuborish'],
-  ['sale','receipt','Savdo'],['debt','money','Qarzlar'],['revizya','ruler','Revizya'],['stat','chart','Statistika'],['tahlil','sparkle','Tahlil']];
+  ['sale','receipt','Savdo'],['debt','money','Qarzlar'],['revizya','ruler','Reviziya'],['stat','chart','Statistika'],['tahlil','sparkle','Tahlil']];
 function pgDillerlar() {
   const el = document.getElementById('pg-dillerlar');
   if (!S.dillerTab || S.dillerTab === 'filial') S.dillerTab = 'list';
@@ -9258,7 +9258,7 @@ function flRefresh() { if (S.page === 'filiallar') pgFiliallar(); else if (S.pag
 // v25 (egasi talabi 2026-11-10): Filiallar — Dillerlar kabi to'liq bo'lim (yorliqlar). Ma'lumot: filial ombori/savdosi
 // (S._store), o'tkazmalar (FR — branch-transfer), qarz (branchDebt / branchDebtUzs). Faqat ko'rsatish va mavjud amallar.
 const FL_TABS = [['list','branch','Filiallar'],['orders','inbox','Buyurtmalar'],['monitor','history','Nazorat'],['ombor','inventory','Ombor'],['send','truck','Yuborish'],
-  ['sale','receipt','Savdo'],['debt','money','Qarzlar'],['revizya','ruler','Revizya'],['stat','chart','Statistika']];
+  ['sale','receipt','Savdo'],['debt','money','Qarzlar'],['revizya','ruler','Reviziya'],['stat','chart','Statistika']];
 const FLU = { tab: 'list', k: null, per: 'month' };
 function flSetTab(t) { FLU.tab = t; pgFiliallar(); }
 function flPick(k) { FLU.k = k; flRenderTab(); }
@@ -9371,7 +9371,7 @@ function flDebtHtml() {
     <div class="fl-acts" style="margin-top:12px"><button class="fw-btn ok" onclick="go('firmakassa')">${ICONF.money}<span>Toʻlov qabul (Bosh kassa)</span></button></div>
     <p class="fl-note">Filial qarzni oʻz kassasidan «Bazaga toʻlov» bilan toʻlaydi — pul Bosh kassaga tushadi. Qarz valyutasi — filial sozlamasida ($ yoki soʻm).</p>`;
 }
-// Revizya: tanlangan filial ombor reviziyalari
+// Reviziya: tanlangan filial ombor reviziyalari
 function flRevHtml() {
   const k = flCurK(); if (!k) return `<div class="fr-empty">Filial yoʻq</div>`;
   if (flIsOwn(k)) return `${flPickHtml()}<div class="fr-empty">Mustaqil filial — savdosi, ombori, kassasi va foydasi oʻziniki. Baza faqat qarzini koʻradi.</div>`;
@@ -9379,7 +9379,7 @@ function flRevHtml() {
   return `${flPickHtml()}${L.length ? L.map(r => { const n = (r.rows || []).filter(x => +x.diff).length, d = +r.totalDiffUsd || 0;
     return `<div class="fl-row"><span><b>${esc(fwDmy(r.date))}</b><small>${(r.rows || []).length} ta mahsulot sanaldi · ${n} ta farq · ${esc(r.performedBy || '')}${r.applied ? ' · qoldiq toʻgʻrilandi' : ''}</small></span><span style="color:${d < 0 ? 'var(--red)' : d > 0 ? 'var(--emerald)' : 'inherit'}">${d > 0 ? '+' : d < 0 ? '−' : ''}${CUR.fmtUsd(Math.abs(d))}</span></div>`; }).join('')
     : `<div class="fr-empty">${esc(branchName(k))}da hali revizya oʻtkazilmagan</div>`}
-    <p class="fl-note">Revizyani filial oʻz «Ombor» boʻlimida oʻtkazadi; natija shu yerda koʻrinadi.</p>`;
+    <p class="fl-note">Reviziyani filial oʻz «Ombor» boʻlimida oʻtkazadi; natija shu yerda koʻrinadi.</p>`;
 }
 // Statistika: davr bo'yicha filiallar reytingi va eng ko'p sotilgan mahsulotlar
 function flStatHtml() {
@@ -9466,7 +9466,7 @@ function dillerRenderTab() {
   else if (S.dillerTab==='ombor') body.innerHTML = dillerOmborHtml();
   else if (S.dillerTab==='send') body.innerHTML = dillerSendHtml();
   else if (S.dillerTab==='sale') body.innerHTML = dillerSaleHtml();
-  else if (S.dillerTab==='revizya') body.innerHTML = dillerRevizyaHtml();
+  else if (S.dillerTab==='revizya') body.innerHTML = dillerReviziyaHtml();
   else if (S.dillerTab==='tahlil') body.innerHTML = dillerTahlilHtml();
   else if (S.dillerTab==='stat') body.innerHTML = `<div id="dl-stats" class="fws-wrap">${dlStatsHtml()}</div>`;
   else body.innerHTML = dillerDebtHtml();
@@ -10330,7 +10330,7 @@ function openDealerRevisionHistory(dealerId) {
     <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Yopish</button></div>`);
 }
 
-function dillerRevizyaHtml() {
+function dillerReviziyaHtml() {
   const d = S.dillerRevDealerId ? S.dealers.find(x=>x.id===S.dillerRevDealerId) : null;
   const dealerHist = S.dealerRevisions.filter(r=>r.dealerId===S.dillerRevDealerId).length;
   const searchBox = `
@@ -10393,7 +10393,7 @@ function dillerRevizyaHtml() {
       <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary)">
         <input type="checkbox" id="dr-apply" style="width:auto;margin:0"> Qoldiqni FAKT bo'yicha to'g'irlash (kamomadni dillerga qarz qilib yozish)
       </label>
-      <button class="btn btn-primary btn-lg" onclick="saveDealerRevision()" style="margin-left:auto">💾 Revizyani saqlash</button>
+      <button class="btn btn-primary btn-lg" onclick="saveDealerRevision()" style="margin-left:auto">💾 Reviziyani saqlash</button>
     </div>` : ''}`;
 }
 
@@ -10458,7 +10458,7 @@ function saveDealerRevision() {
   auditLog(`Diller revizияsi: ${d.name} — ${S.dillerRevDate} — farq ${CUR.fmtUsd(totalDiffUsd)}${apply?" (qoldiq to'g'irlandi)":''}`);
   S.dillerRevFacts = {};
   save(); dillerRenderTab();
-  toast(`✅ Revizya saqlandi! Jami farq: ${totalDiffUsd>=0?'+':''}${CUR.fmtUsd(totalDiffUsd)}${apply?" (qoldiq va qarz to'g'irlandi)":''}`);
+  toast(`✅ Reviziya saqlandi! Jami farq: ${totalDiffUsd>=0?'+':''}${CUR.fmtUsd(totalDiffUsd)}${apply?" (qoldiq va qarz to'g'irlandi)":''}`);
 }
 
 // ── DILLER SOTUVI (komissiya asosida — debt va foyda shu yerda hisoblanadi) ──
@@ -11272,7 +11272,7 @@ function pgKassalar() {
   const tOut = (S.cashTxns||[]).filter(t=>t.date===today && t.type==='out').reduce((s,t)=>s+(t.cur==='USD'?(+t.amount||0):CUR.toUsd(+t.amount||0)),0);
   el.innerHTML=`
     ${fwHero({ tone:'emerald', label:'Kassalardagi jami pul', badge:`${visibleBoxes.length} ta kassa`, big: fwMoneyUsd(usd + CUR.toUsd(uzs)),
-      cols:[[fwShortUzs(uzs),'Soʻm kassalar'],[fwMoneyUsd(usd),'Dollar kassalar','var(--gold)'],[`${tIn>=tOut?'+':'−'}${fwMoneyUsd(Math.abs(tIn-tOut)).replace('−','')}`,'Bugun (sof)', tIn>=tOut?'var(--emerald)':'var(--red)']],
+      cols:[[fwShortUzs(uzs)+' soʻm','Soʻm kassalar'],[fwMoneyUsd(usd),'Dollar kassalar','var(--gold)'],[`${tIn>=tOut?'+':'−'}${fwMoneyUsd(Math.abs(tIn-tOut)).replace('−','')}`,'Bugun (sof)', tIn>=tOut?'var(--emerald)':'var(--red)']],
       foot: S.branch!=='baza' && debt>0 ? `<button class="fw-hero-note" onclick="openPay729Baza()">${ICONF.warning}<span>Bazaga qarz: <b>${flDebtTxt(S.branch)}</b> — toʻlash</span>${ICONF.chevron}</button>` : '' })}
     ${typeof dpnBannerHtml === 'function' ? dpnBannerHtml() : ''}
     ${fwActs([

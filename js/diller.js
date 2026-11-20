@@ -557,11 +557,11 @@ function dlOrderHtml() {
       <div style="font-size:11.5px;color:var(--text-muted)">
         Kerakli mahsulot va miqdorni tanlang — buyurtmangiz administratorga yuboriladi, u tasdiqlagach omboringizga tushadi.
       </div>
-      <button onclick="dlRefreshCatalog()" style="background:none;border:none;color:var(--blue);font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;margin-left:8px">🔄 Yangilash</button>
+      <button onclick="dlRefreshCatalog()" style="background:none;border:none;color:var(--blue);font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;margin-left:8px;min-height:40px;padding:0 10px">Yangilash</button>
     </div>
     ${(() => { const cs = [...new Set(CATALOG.map(p => p.cat).filter(Boolean))].sort(); return cs.length > 1 ? `<div class="pm-cats" style="margin:0 0 10px">${['', ...cs].map(c => `<button class="pm-cat${(DLO.cat || '') === c ? ' on' : ''}" onclick="DLO.cat=${JSON.stringify(c).replace(/"/g, '&quot;')};dlRenderContent()">${c ? esc(c) : 'Hammasi'}</button>`).join('')}</div>` : ''; })()}
     <div class="dl-card" style="margin-bottom:12px">
-      <input class="dl-input" id="dl-order-search" placeholder="🔍 Mahsulot qidirish (bo'sh qoldirsangiz — hammasi ko'rinadi)" oninput="dlRenderOrderList()" style="margin-bottom:0">
+      <input class="dl-input" id="dl-order-search" placeholder="🔍 Mahsulot qidirish" oninput="dlRenderOrderList()" style="margin-bottom:0">
     </div>
     <div class="dl-card" id="dl-order-list" style="margin-bottom:12px;max-height:420px;overflow-y:auto"></div>
     ${cartCount ? `<div class="pos-bar-wrap dl-barw"><button class="pos-bar" onclick="dlSubmitOrder()"><em>${cartCount} xil</em><b>${Object.values(ORDER_CART).reduce((a, q) => a + q, 0)} dona</b><span>Buyurtmani yuborish ›</span></button></div>` : ''}
@@ -608,7 +608,7 @@ function dlRenderOrderList() {
   }).join('') : (CATALOG.length===0
       ? `<div style="text-align:center;padding:24px;color:var(--text-muted)">
           <div style="font-size:32px;margin-bottom:6px">📭</div>
-          Asosiy ombor katalogi hali yuklanmagan.<br>Yuqoridagi "🔄 Yangilash" tugmasini bosing.
+          Hozircha buyurtma qilinadigan mahsulot yoʻq.<br>Tekshirish uchun yuqoridagi «Yangilash» tugmasini bosing.
         </div>`
       : `<div style="text-align:center;padding:20px;color:var(--text-muted)">Qidiruv bo'yicha mahsulot topilmadi</div>`);
 }
@@ -767,7 +767,7 @@ function dlRevHtml() {
         <span data-l="Farq" id="dlrev-d-${it.pid}" class="dlrev-d${d == null || d === 0 ? '' : d < 0 ? ' minus' : ' plus'}">${d == null ? '—' : (d > 0 ? '+' : '') + d}</span></div>`; }).join('') || '<div class="dls-empty">Omboringizda mahsulot yoʻq</div>'}</div>
     <label class="dls-l" for="dlrev-reason">Izoh / sabab</label>
     <textarea class="dl-input" id="dlrev-reason" maxlength="500" rows="2" placeholder="Masalan: 2 dona shikastlangan, omborda alohida turibdi"></textarea>
-    <button class="dl-btn" id="dlrev-send" onclick="dlRevSubmit()" ${DLREV.busy ? 'disabled' : ''}>Reviziyani yuborish</button>
+    <button class="dl-btn" id="dlrev-send" onclick="dlRevSubmit()" ${DLREV.busy || !DLREV.items.length ? 'disabled' : ''}>Reviziyani yuborish</button>
     ${DLREV.last ? `<div class="dls-hint" style="margin-top:8px">✅ Yuborildi: kamomad ${DLREV.last.shortageQty} dona, ortiqcha ${DLREV.last.surplusQty} dona.</div>` : ''}
   </div>`;
 }

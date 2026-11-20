@@ -64,8 +64,8 @@
   }
   function closed(msg) {
     $('vt-grid').innerHTML = '<div class="vt-empty"><b>' + esc(msg || 'Doʻkon hozircha yopiq') + '</b>Birozdan soʻng qayta urinib koʻring.<br><br><button class="vt-cta" onclick="location.reload()">Qayta yuklash</button></div>';
-    $('vt-hero').innerHTML = slideHtml(0, 'Tez orada ochilamiz', 'Arra tigʻlari, frezalar va asboblar — onlayn buyurtma bilan', '');
-    $('vt-hero').firstChild.classList.add('on');
+    // v25.6.9: xato holatida qarama-qarshi «Tez orada ochilamiz» bannerini ko'rsatmaymiz
+    $('vt-hero').innerHTML = ''; $('vt-hero').style.display = 'none';
   }
 
   // ── slayder ──

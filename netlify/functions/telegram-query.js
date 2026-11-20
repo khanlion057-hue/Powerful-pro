@@ -57,8 +57,13 @@ async function answer(admin, cfg, msg) {
   const m = /^\/([a-z]+)(?:@\w+)?\s*(.*)$/i.exec(text); if (!m) return;
   const cmd = m[1].toLowerCase(), arg = m[2].trim();
   if (cmd === 'start') {
+    // v25.6.9: taxmin qilib topishdan himoya — chat bo'yicha 15 daqiqada 5 ta noto'g'ri urinish
+    cfg.fails = cfg.fails || {}; const f = cfg.fails[chatId] || { n: 0, t: Date.now() };
+    if (Date.now() - f.t > 15 * 60e3) { f.n = 0; f.t = Date.now(); }
+    if (f.n >= 5) return send("Juda ko'p noto'g'ri urinish — 15 daqiqadan keyin qayta urinib ko'ring.");
     const code = arg.replace(/\D/g, '').slice(0, 8), c = code && cfg.codes && cfg.codes[code];
-    if (!c || c.exp < Date.now()) return send("Kod noto'g'ri yoki muddati tugagan. Ilovada Sozlamalar → Telegram bot orqali yangi kod oling.");
+    if (!c || c.exp < Date.now()) { f.n++; cfg.fails[chatId] = f; await saveRow(admin, cfg); return send("Kod noto'g'ri yoki muddati tugagan. Ilovada Sozlamalar → Telegram bot orqali yangi kod oling."); }
+    delete cfg.fails[chatId];
     cfg.links = cfg.links || {}; cfg.links[chatId] = { staffId: c.staffId, at: Date.now() }; delete cfg.codes[code];
     await saveRow(admin, cfg); return send('✅ Ulandi. Buyruqlar uchun /yordam');
   }
@@ -71,9 +76,11 @@ async function answer(admin, cfg, msg) {
   if (!need) return send("Noma'lum buyruq. /yordam");
   const P = await permsOf(admin, staff);
   if (!P.admin && !P.keys.has(need)) return send("Bu buyruq uchun ruxsatingiz yo'q.");
+  // foyda — ilovadagi kabi tannarx ko'rish huquqi ham kerak
+  if (cmd === 'foyda' && !P.admin && !P.keys.has('tannarx.view')) return send("Foydani ko'rish uchun «tannarx» ruxsati kerak.");
   const filial = P.admin ? null : staff.filial;
   const data = await exports._load(admin, filial);
-  const o = { filial };
+  const o = { filial, supp: P.admin || P.keys.has('taminotchilar.view') };
   const out = cmd === 'foyda' ? Q.foyda(data, arg, o) : cmd === 'xarajat' ? Q.xarajat(data, arg, o) : cmd === 'qarz' ? Q.qarz(data, o)
     : cmd === 'kassa' ? Q.kassa(data, o) : cmd === 'ombor' ? Q.ombor(data, o) : Q.mahsulot(data, arg, o);
   return send(out.slice(0, 4000));
@@ -127,7 +134,7 @@ exports.handler = async (event) => {
     if (!cfg.token) return json({ error: "Bot hali sozlanmagan — administratorga ayting" }, 409);
     if (body.action === 'link_code') {
       const codes = {}; Object.entries(cfg.codes || {}).forEach(([k, v]) => { if (v.exp > Date.now()) codes[k] = v; });
-      const code = String(crypto.randomInt(100000, 1000000)); codes[code] = { staffId: auth.staff.id, exp: Date.now() + CODE_TTL };
+      const code = String(crypto.randomInt(10000000, 100000000));   // 8 xonali codes[code] = { staffId: auth.staff.id, exp: Date.now() + CODE_TTL };
       await saveRow(admin, { ...cfg, codes });
       const me = await tgApi(cfg.token, 'getMe');
       return json({ ok: true, code, bot: me.ok && me.result ? me.result.username : null, minutes: 15 }, 200);

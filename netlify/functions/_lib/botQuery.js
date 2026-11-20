@@ -65,8 +65,9 @@ function qarz(data, o = {}) {
     const b = data.branchStore[k] || {};
     const cust = (b.customers || []).filter((c) => c && num(c.debt) > 0).map((c) => [c.name, rate > 0 ? num(c.debt) / rate : 0]).sort((a, z) => z[1] - a[1]);
     const supp = (b.suppliers || []).filter((c) => c && num(c.debt) > 0).map((c) => [c.name, num(c.debt)]).sort((a, z) => z[1] - a[1]);
-    parts.push(`<b>${esc(asc(nameOf(data, k)))}</b>\n` + pre([line('Mijozlar bizga', usd(cust.reduce((a, x) => a + x[1], 0))), ...cust.slice(0, 5).map(([n, v]) => line('  ' + cut(n, 22), usd(v))),
-      line('Biz taminotchiga', usd(supp.reduce((a, x) => a + x[1], 0))), ...supp.slice(0, 5).map(([n, v]) => line('  ' + cut(n, 22), usd(v)))]));
+    const R = [line('Mijozlar bizga', usd(cust.reduce((a, x) => a + x[1], 0))), ...cust.slice(0, 5).map(([n, v]) => line('  ' + cut(n, 22), usd(v)))];
+    if (o.supp !== false) R.push(line('Biz taminotchiga', usd(supp.reduce((a, x) => a + x[1], 0))), ...supp.slice(0, 5).map(([n, v]) => line('  ' + cut(n, 22), usd(v))));   // ta'minotchi qarzi — faqat ruxsat bo'lsa
+    parts.push(`<b>${esc(asc(nameOf(data, k)))}</b>\n` + pre(R));
   }
   const dl = (data.dealers || []).filter((d) => d && num(d.debt) > 0);
   if (!o.filial && dl.length) parts.push('<b>Dillerlar</b>\n' + pre([line('Jami qarz', usd(dl.reduce((a, d) => a + num(d.debt), 0))), ...dl.sort((a, z) => z.debt - a.debt).slice(0, 8).map((d) => line('  ' + cut(d.name, 22), usd(d.debt)))]));

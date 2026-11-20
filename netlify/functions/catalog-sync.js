@@ -38,14 +38,20 @@ exports.handler = async (event) => {
     const image = typeof o.image === 'string' && /^https:\/\//i.test(o.image) && o.image.length <= 1000 ? o.image : undefined;
     const row = { id, filial, sku: String(o.sku || '').slice(0, 80), name: String(o.name || '').slice(0, 300), qty, point_pct: pct, optim_price: price, updated_at: new Date().toISOString() };
     if (image) row.image = image;
+    if (typeof o.cat === 'string') row.cat = o.cat.slice(0, 80);
+    if (typeof o.brand === 'string') row.brand = o.brand.slice(0, 80);
     clean.push(row);
   }
 
   try {
     const CHUNK = 150;
     for (let i = 0; i < clean.length; i += CHUNK) {
-      const slice = clean.slice(i, i + CHUNK);
-      const { error } = await admin.from('catalog_products').upsert(slice, { onConflict: 'id,filial' });
+      let slice = clean.slice(i, i + CHUNK);
+      let { error } = await admin.from('catalog_products').upsert(slice, { onConflict: 'id,filial' });
+      // 50-migratsiya (cat/brand) hali yo'q bo'lsa — ustunlarsiz
+      if (error && (error.code === 'PGRST204' || error.code === '42703') && /\b(cat|brand)\b/i.test(String(error.message || ''))) {
+        slice = slice.map(({ cat, brand, ...r }) => r); ({ error } = await admin.from('catalog_products').upsert(slice, { onConflict: 'id,filial' }));
+      }
       if (error) throw error;
     }
     return json({ ok: true, count: clean.length }, 200);

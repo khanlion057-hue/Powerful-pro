@@ -41,12 +41,16 @@ function optPrice(p, cost) {
 }
 
 function stripImage(r) { const { image, ...rest } = r; return rest; }
+// v25.6.9: kategoriya va brend (diller portali filtri) — 50-migratsiya bo'lmasa ustunlarsiz yoziladi
+function stripCatBrand(r) { const { cat, brand, ...rest } = r; return rest; }
+function isMissingCatColumn(err) { const m = String((err && (err.message || err.details)) || ''); return (err && (err.code === 'PGRST204' || err.code === '42703')) && /\b(cat|brand)\b/i.test(m); }
 function isMissingImageColumn(err) {
   const m = String((err && (err.message || err.details)) || '');
   return (err && (err.code === 'PGRST204' || err.code === '42703')) && /image/i.test(m);
 }
 exports._catalogImage = catalogImage;
 exports._isMissingImageColumn = isMissingImageColumn;
+exports._isMissingCatColumn = isMissingCatColumn;
 exports._SYNC_PERMS = SYNC_PERMS;
 
 exports.handler = async (event) => {
@@ -100,7 +104,7 @@ exports.handler = async (event) => {
         rows.push({
           id: p.id, filial: bk, sku: String(p.sku || ''), name: String(p.name || ''),
           qty: safeNum(stockFromBatches(batchesArr, p.id)), point_pct: safeNum(p.pointPct),
-          optim_price: safeNum(optPrice(p, cost)), image: catalogImage(p), updated_at: new Date().toISOString()
+          optim_price: safeNum(optPrice(p, cost)), image: catalogImage(p), cat: String(p.cat || '').slice(0, 80), brand: String(p.brand || '').slice(0, 80), updated_at: new Date().toISOString()
         });
       });
     });
@@ -130,11 +134,16 @@ exports.handler = async (event) => {
 
     if (!rows.length) return json({ ok: true, count: 0, eskirganNol: staleZeroed, xabar: "Yozish uchun mahsulot topilmadi" }, 200);
 
-    let withImage = true;
+    let withImage = true, withCat = true;
     for (let i = 0; i < rows.length; i += CHUNK) {
       let slice = rows.slice(i, i + CHUNK);
       if (!withImage) slice = slice.map(stripImage);
+      if (!withCat) slice = slice.map(stripCatBrand);
       let { error } = await admin.from('catalog_products').upsert(slice, { onConflict: 'id,filial' });
+      if (error && withCat && isMissingCatColumn(error)) {
+        withCat = false; slice = slice.map(stripCatBrand);
+        ({ error } = await admin.from('catalog_products').upsert(slice, { onConflict: 'id,filial' }));
+      }
       // 22-migratsiya (image ustuni) hali qo'llanmagan bazada ham katalog yangilanaversin — rasmsiz
       if (error && withImage && isMissingImageColumn(error)) {
         withImage = false;

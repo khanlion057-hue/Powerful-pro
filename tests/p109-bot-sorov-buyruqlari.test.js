@@ -5,7 +5,8 @@ const data = { settings: { usdUzs: 12500, branchNames: { f729: '729-filial' } },
   dealers: [{ name: 'Ali', debt: 120 }],
   branchStore: {
     baza: { sales: [{ date: '2026-11-05', totalUsd: 100, profitUsd: 30 }, { date: '2026-10-30', totalUsd: 999, profitUsd: 999 }, { date: '2026-11-06', totalUsd: 50, profitUsd: 10, status: 'void' }],
-      expenses: [{ date: '2026-11-07', cat: 'Ijara', amtUsd: 20 }, { date: '2026-11-08', cat: 'Yoʻl', amtUsd: 5 }],
+      expenses: [{ date: '2026-11-07', cat: 'Ijara', amtUsd: 20 }, { date: '2026-11-08', cat: 'Yoʻl', amount: 62500 },   // eski yozuv — faqat so'm
+        { date: '2026-11-08', cat: 'Oylik', amtUsd: 200, turi: 'tasischi' }, { date: '2026-11-08', cat: 'H', amtUsd: 50, turi: 'hamkor' }],   // v25.6.10: foyda taqsimoti — xarajat emas
       customers: [{ name: 'Vali', debt: 125000 }], suppliers: [{ name: 'Chin', debt: 40 }], cashboxes: [{ name: 'Naqd', cur: 'UZS', bal: 1000000, type: 'cash' }, { name: 'Shaxsiy', cur: 'USD', bal: 9, type: 'qobiljon' }],
       batches: [{ pid: 1, qty: 10, sold: 7 }, { pid: 2, qty: 3, sold: 0 }] },
     f729: { sales: [{ date: '2026-11-09', totalUsd: 40, profitUsd: 8 }], expenses: [], customers: [], suppliers: [], cashboxes: [], batches: [] } } };

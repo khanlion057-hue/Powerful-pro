@@ -33,10 +33,13 @@ const visible = (data, filial) => keysOf(data).filter((k) => !filial || k === fi
 
 function periodStats(b, r, rate) {
   const sales = (b.sales || []).filter((s) => s && inR(s.date, r) && require('./reportPeriod').isCounted(s));   // rad etilgan va o'tkazma — yo'q
-  const exp = (b.expenses || []).filter((e) => e && inR(e.date, r) && !(e.turi === 'hamkor' && e.kind === 'kirim'));
-  const cats = {}; exp.forEach((e) => { const k = e.cat || 'Boshqa'; cats[k] = (cats[k] || 0) + num(e.amtUsd); });
+  // v25.6.10: ilovadagi Statistika bilan bir xil — faqat do'kon xarajati (ta'sischi/hamkor olgani foyda taqsimoti, xarajat emas);
+  // eski yozuvlarda faqat so'm summa bo'lsa — kurs bilan $ ga
+  const exp = (b.expenses || []).filter((e) => e && inR(e.date, r) && (e.turi || 'dokon') === 'dokon');
+  const eUsd = (e) => num(e.amtUsd) || (rate > 0 ? num(e.amount) / rate : 0);
+  const cats = {}; exp.forEach((e) => { const k = e.cat || 'Boshqa'; cats[k] = (cats[k] || 0) + eUsd(e); });
   const sum = (a, f) => a.reduce((t, x) => t + num(x[f]), 0);
-  return { count: sales.length, revenue: sum(sales, 'totalUsd'), profit: sum(sales, 'profitUsd'), expense: sum(exp, 'amtUsd'), expCount: exp.length, cats };
+  return { count: sales.length, revenue: sum(sales, 'totalUsd'), profit: sum(sales, 'profitUsd'), expense: exp.reduce((t, e) => t + eUsd(e), 0), expCount: exp.length, cats };
 }
 
 function foyda(data, arg, o = {}) {
@@ -54,7 +57,7 @@ function foyda(data, arg, o = {}) {
 
 function xarajat(data, arg, o = {}) {
   const today = o.today || tashkentNow().date, r = parsePeriod(arg, today), cats = {}; let total = 0, n = 0;
-  for (const k of visible(data, o.filial)) { const s = periodStats(data.branchStore[k] || {}, r); Object.entries(s.cats).forEach(([c, v]) => { cats[c] = (cats[c] || 0) + v; }); total += s.expense; n += s.expCount; }
+  for (const k of visible(data, o.filial)) { const s = periodStats(data.branchStore[k] || {}, r, num(data.settings && data.settings.usdUzs)); Object.entries(s.cats).forEach(([c, v]) => { cats[c] = (cats[c] || 0) + v; }); total += s.expense; n += s.expCount; }
   const top = Object.entries(cats).sort((a, z) => z[1] - a[1]).slice(0, 12);
   return `💸 <b>Xarajat - ${esc(asc(r.label))}</b> (${r.start} - ${r.end})\n` + pre(top.length ? [...top.map(([c, v]) => line(cut(c, 20), usd(v))), '-'.repeat(30), line(`Jami (${n} ta)`, usd(total))] : ['Xarajat yoq']);
 }

@@ -7,6 +7,12 @@ async function server() {
   assert.match(src, /requireAdmin: true/); assert.match(src, /checkPassword/); assert.match(src, /'TOZALASH'/); assert.match(src, /addMonths\(start, 6\)/);
   const sql = fs.readFileSync(require.resolve('../supabase-migration-49-sinov-tozalash.sql'), 'utf8');
   assert.match(sql, /grant execute on function public\.fw_trial_reset\(boolean\) to service_role/);
+  // Supabase pg_safeupdate: WHERE shartsiz DELETE/UPDATE prod'da taqiqlangan (PGlite'da bu qoida yo'q — shuning uchun matndan tekshiramiz)
+  for (const f of ['../supabase-migration-49-sinov-tozalash.sql', '../supabase-migration-52-tozalash-tuzatish.sql']) {
+    const t = fs.readFileSync(require.resolve(f), 'utf8');
+    assert.doesNotMatch(t, /delete from public\.%I'/, f + ': DELETE ... WHERE true bo\'lishi kerak');
+    assert.doesNotMatch(t, /points = 0;/, f + ': UPDATE ... WHERE bo\'lishi kerak');
+  }
   assert.doesNotMatch(sql, /delete from public\.(products|staff|dealers|batches)\b/);
   // JSON nusxa ham tozalanadi (boshqa filial nusxasidagi eski savdo qaytmasin)
   const { _cleanBranch } = require('../netlify/functions/trial-reset.js');

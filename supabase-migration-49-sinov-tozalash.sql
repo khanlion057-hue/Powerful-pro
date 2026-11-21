@@ -20,7 +20,7 @@ begin
     if not p_dry then
       -- jurnal jadvallari o'zgarmas (immutable trigger): tozalash vaqtida faqat shu tranzaksiyada o'chirib qo'yiladi
       execute format('alter table public.%I disable trigger user', t);
-      execute format('delete from public.%I', t);
+      execute format('delete from public.%I where true', t);   -- Supabase pg_safeupdate: WHERE shartsiz DELETE taqiqlangan
       execute format('alter table public.%I enable trigger user', t);
     end if;
   end loop;
@@ -40,7 +40,7 @@ begin
     alter table public.batches disable trigger user;
     update public.batches set sold = 0, status = case when qty > 0 then 'active' else 'empty' end where status in ('empty','transit','active');
     alter table public.batches enable trigger user;
-    update public.dealers set debt_usd = 0, total_shipped_usd = 0, total_sold_usd = 0, total_paid_usd = 0, points = 0;
+    update public.dealers set debt_usd = 0, total_shipped_usd = 0, total_sold_usd = 0, total_paid_usd = 0, points = 0 where true;
   end if;
   return res;
 end $$;

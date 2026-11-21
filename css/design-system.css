@@ -3872,3 +3872,21 @@ html:not([data-theme="dark"]) .btn-primary{ color:#fff; }
 /* 5) Fayl tanlash maydoni (chek rasmi) — mavzuga mos */
 .form-control[type=file]::file-selector-button{ border:1px solid var(--border); background:var(--bg-hover, var(--bg-card)); color:var(--text-primary);
   border-radius:8px; padding:4px 10px; margin-right:10px; cursor:pointer; font:inherit; }
+/* 6) Kirim formasi kompyuterda — ikki ustun: chapda partiya va mahsulotlar, o'ngda hisob, to'lov va «Kiritish» (yopishqoq) */
+@media (min-width:1100px){
+  #pg-kirim.k-mode-form .grid-2{ max-width:1240px; }
+  #pg-kirim.k-mode-form .kr-add{ max-width:1240px; }
+  #pg-kirim.k-mode-form .kf-cols{ display:grid; grid-template-columns:minmax(0,1.75fr) minmax(320px,1fr); gap:22px; align-items:start; }
+  #pg-kirim.k-mode-form .kf-main, #pg-kirim.k-mode-form .kf-side{ min-width:0; }
+}
+/* 7) Kompyuterda mahsulot qatori — bitta chiziq (jadval kabi): № | mahsulot | dona | narx | summa | ✕ */
+@media (min-width:1100px){
+  #pg-kirim.k-mode-form .kf-row{ display:grid; grid-template-columns:28px minmax(160px,1fr) 112px 132px auto 36px; gap:10px; align-items:center; }
+  #pg-kirim.k-mode-form .kf-row-h, #pg-kirim.k-mode-form .kf-row-b{ display:contents; }
+  #pg-kirim.k-mode-form .kf-row .kf-idx{ order:1; } #pg-kirim.k-mode-form .kf-row .kf-search{ order:2; min-width:0; }
+  #pg-kirim.k-mode-form .kf-row .kf-step{ order:3; } #pg-kirim.k-mode-form .kf-row .kf-price{ order:4; min-width:0; }
+  #pg-kirim.k-mode-form .kf-row .kf-line{ order:5; text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  #pg-kirim.k-mode-form .kf-row .kf-del{ order:6; }
+  #pg-kirim.k-mode-form .kf-side .grid-2{ grid-template-columns:1fr 1fr; max-width:none; margin:0; }
+}
+.k-supp-bal[hidden]{ display:none !important; }   /* bo'sh ramka ko'rinmasin */

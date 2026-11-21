@@ -103,9 +103,11 @@ async function testReminder() {
   const list = ev.dueList(data, date);
   assert.deepEqual(list.map(x => x.name), ['Vali', 'Ali']);
   const t = ev.remindText({ branchNames: {} }, list, date);
-  assert.match(t, /Bugun toʻlash kerak \(1\)[\s\S]*Ali[\s\S]*1 200 000 so'm/);
-  assert.match(t, /Muddati oʻtgan \(1\)[\s\S]*Vali[\s\S]*Kechikdi\s+6 kun/);
-  assert.match(t, /JAMI qarz\s+1 700 000 so'm/);
+  // v25.6.10: jadval — Mijoz | Qarz, so'm | Kun (har mijoz bitta qator)
+  assert.match(t, /Bugun toʻlash kerak \(1\)[\s\S]*Mijoz\s+Qarz, so'm\n-{30}\nAli\s+1 200 000\n/);
+  assert.match(t, /Muddati oʻtgan \(1\)[\s\S]*Mijoz\s+Qarz, so'm\s+Kun\n-{30}\nVali\s+500 000\s+6<\/pre>/);
+  assert.match(t, /JAMI \(2\)\s+1 700 000 so'm/);
+  for (const line of t.match(/<pre>([\s\S]*?)<\/pre>/g).join('\n').replace(/<\/?pre>/g, '').split('\n')) assert.ok(line.length <= 30, 'ustun kengligi 30: ' + line);
   // v25.6.10: ilova bilan bir xil — eski to'langan nasiya, uzaytirilgan muddat, rad etilgan savdo soxta eslatma bermaydi
   const d2 = { settings: { usdUzs: 12500 }, branchStore: { baza: {
     customers: [{ id: 9, name: 'Bek', debt: 500000, dueOv: { 93: '2026-12-20' } }, { id: 8, name: 'Eski', debt: 200000, debtDue: '2026-11-01' }],

@@ -238,15 +238,24 @@ function dueList(data, date) {
 function remindText(st, list, date) {
   const today = list.filter((x) => x.due === date), late = list.filter((x) => x.due < date);
   const days = (d) => Math.round((Date.parse(date) - Date.parse(d)) / 864e5);
-  // v25.6.9: ustun uslubi — har mijoz: ism (va telefon) qatori, ostida summa / kechikish
+  // v25.6.10: haqiqiy ustunlar (jadval): Mijoz | Qarz, so'm | Kun — har mijoz bitta qator, ostida telefon (va filial)
   const F = require('./tgFmt'), many = Object.keys(st.branchNames || {}).length > 1;
-  const block = (x, lateMode) => [F.cut(x.name, F.W), ...(x.phone ? ['  ' + F.cut(x.phone, F.W - 2)] : []),
-    F.row('  Qarz', F.uzs(x.debt)), ...(lateMode ? [F.row('  Kechikdi', `${days(x.due)} kun`)] : []), ...(many ? [F.row('  Filial', F.cut(branchName(st, x.filial), 16))] : [])];
+  const NW = 13, DW = 11, KW = 5;   // 13 + 1 + 11 + 5 = 30 (F.W)
+  const pad = (t, w, right) => { t = F.asc(t); t = t.length > w ? t.slice(0, w - 1) + '.' : t; return right ? ' '.repeat(w - t.length) + t : t + ' '.repeat(w - t.length); };
+  const table = (arr, lateMode) => {
+    const head = pad('Mijoz', NW) + ' ' + pad("Qarz, so'm", DW, true) + (lateMode ? pad('Kun', KW, true) : '');
+    const rows = arr.slice(0, 30).flatMap((x) => [
+      pad(x.name || 'Mijoz', NW) + ' ' + pad(F.sp(x.debt), DW, true) + (lateMode ? pad(String(days(x.due)), KW, true) : ''),
+      ...(x.phone ? ['  ' + F.cut(x.phone, F.W - 2)] : []),
+      ...(many ? ['  ' + F.cut(branchName(st, x.filial), F.W - 2)] : []),
+    ]);
+    return F.pre([head, F.LINE, ...rows]);
+  };
   const out = [`⏰ <b>Nasiya eslatmasi</b> · ${fmtDate(date)}`];
-  if (today.length) out.push(`📅 <b>Bugun toʻlash kerak (${today.length})</b>`, F.pre(today.slice(0, 30).flatMap((x) => block(x, false))));
-  if (late.length) out.push(`⚠️ <b>Muddati oʻtgan (${late.length})</b>`, F.pre(late.slice(0, 30).flatMap((x) => block(x, true))));
+  if (today.length) out.push(`📅 <b>Bugun toʻlash kerak (${today.length})</b>`, table(today, false));
+  if (late.length) out.push(`⚠️ <b>Muddati oʻtgan (${late.length})</b>`, table(late, true));
   const tot = list.reduce((a, x) => a + x.debt, 0);
-  out.push(F.pre([F.row('JAMI qarz', F.uzs(tot))]));
+  out.push(F.pre([F.row(`JAMI (${list.length})`, F.uzs(tot))]));
   return out.join('\n').slice(0, 3900);
 }
 

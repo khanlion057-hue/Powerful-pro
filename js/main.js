@@ -6294,6 +6294,8 @@ function pgKirim() {
           <button class="bs-x" onclick="kirimCloseForm()" aria-label="Yopish" style="width:36px;height:36px">${ICONF.close}</button>
         </div>
 
+        <!-- v25.6.10: kompyuterda ikki ustun — chapda partiya (valyuta, taʼminotchi, mahsulotlar), oʻngda hisob va toʻlov -->
+        <div class="kf-cols"><div class="kf-main">
         <!-- VALYUTA (filialda Yuan yo'q — faqat Baza Xitoydan import qiladi) -->
         <div style="display:grid;grid-template-columns:${S.branch==='baza'?'1fr 1fr 1fr':'1fr 1fr'};gap:8px;margin-bottom:14px">
           ${fwAccMode()==='yuan'?`<button class="btn ${S.importCur==='CNY'?'btn-primary':'btn-ghost'}" id="k-cny-btn" onclick="kirimSetCur('CNY')" style="justify-content:center;font-size:12px">🇨🇳 Yuan (¥)</button>`:''}
@@ -6330,6 +6332,7 @@ function pgKirim() {
           <div id="k-items">${renderImportRows()}</div>
         </div>
 
+        </div><div class="kf-side">
         <!-- CNY ICHKI XARAJATLAR -->
         <div id="k-cny-costs" style="${S.importCur!=='CNY'?'display:none':''}background:rgba(226,61,61,0.04);border:1px solid rgba(226,61,61,0.15);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px">
           <div style="font-size:12px;font-weight:700;color:var(--red);margin-bottom:10px">🇨🇳 Xitoy ichki xarajatlar (¥) — donaga bo'linadi</div>
@@ -6397,6 +6400,7 @@ function pgKirim() {
         <div style="margin-top:10px">
           <button class="btn btn-primary btn-lg" onclick="kirimSave()" style="width:100%;justify-content:center">📦 KIRITISH</button>
         </div>
+        </div></div>
       </div>
 
       <!-- TARIX -->

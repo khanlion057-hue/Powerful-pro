@@ -3399,7 +3399,21 @@ function _fwSaleKey(s) { return String(s.id); }
 // ── SAVDONI TAHRIRLASH — yakunlangandan keyin, 30 kun ichida ──
 // v24: admin-sinf — egasi yoki «rollar.manage»; qolganlar — sotuvchi (7 kun)
 function fwMyEditClass() { return (!CURRENT_USER || CURRENT_USER.kind === 'owner' || hasPerm('rollar.manage')) ? 'admin' : 'seller'; }
-function fwSaleEditable(s) { const w = fwEditWindow(s && s.date, fwMyEditClass()); if (!w.ok) toast(fwEditWindowMsg(w), 'error'); return w.ok; }
+function fwSaleEditable(s) {
+  const w = fwEditWindow(s && s.date, fwMyEditClass()); if (!w.ok) { toast(fwEditWindowMsg(w), 'error'); return false; }
+  // v25.6.9 (egasi qoidasi): oy yopilgan (foyda taʼsischi/investorlarga taqsimlangan) — avval shu oy TAQSIMOTI bekor qilinadi, keyin savdo
+  const d = String((s && s.date) || '').slice(0, 10);
+  const per = d && typeof brPeriods === 'function' ? brPeriods().find(p => p && p.start && p.end && d >= String(p.start).slice(0, 10) && d <= String(p.end).slice(0, 10)) : null;
+  if (per) {
+    const last = brPeriods()[0], isLast = last && last.id === per.id;
+    openSheet({ ic: 'warning', c: 'amber', title: 'Oy yopilgan', sub: esc(monthLabel(periodMonth(per))),
+      body: `<div class="fr-form"><p class="bs-note">Bu savdo (${esc(s.inv || '')}, ${fmtD(d)}) <b>${esc(monthLabel(periodMonth(per)))}</b> foyda taqsimotiga kirgan — foyda taʼsischi va investorlarga boʻlib berilgan. Savdoni oʻzgartirish yoki oʻchirishdan oldin shu oy taqsimotini bekor qiling, keyin savdoni oʻzgartiring va taqsimotni qayta qiling.</p>
+        ${isLast ? '' : '<p class="bs-note">Taqsimotlar oxiridan boshlab bekor qilinadi: avval keyingi oylar taqsimotini bekor qilish kerak.</p>'}</div>`,
+      foot: `<div class="fr-foot"><button class="bs-btn ghost" onclick="closeSheet()">Yopish</button><button class="bs-btn" onclick="closeSheet();go('hamkorlar')">Hamkorlar → taqsimot</button></div>` });
+    return false;
+  }
+  return true;
+}
 
 function openSaleEdit(sid) {
   const s = S.sales.find(x=>x.id===sid); if (!s) return;

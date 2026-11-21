@@ -25,4 +25,21 @@ async function block() {
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }
 }
-module.exports = { name: 'P118 — Sotilgan kirim, arzon narx', cases: [{ name: 'arzon tovar narxi sentgacha', run: prices }, { name: 'sotilgan kirim oʻchirilmaydi, savdolar (kim, qayerda) koʻrsatiladi', run: block }] };
+async function closedMonth() {
+  const { browser, page, errors } = await openPage('index.html', { width: 390, height: 844, mobile: true, admin: true });
+  try {
+    const r = await page.evaluate(async () => {
+      save = () => {}; let called = 0; window.fwLedgerCall = async () => { called++; return { restocked: [] }; };
+      window.confirm = () => true;
+      S.sales.push({ id: 's77', inv: 'INV-077', date: td(), items: [{ pid: 1, qty: 1 }], totalUsd: 10, status: 'done' });
+      S.partnerPeriods = [{ id: 'per1', filial: S.branch, start: td().slice(0, 8) + '01', end: td(), rows: [], totalProfit: 100 }];
+      await deleteSale('s77');
+      const sheet = document.getElementById('bs-ov').innerText;
+      return { called, sheet, still: S.sales.some((x) => x.id === 's77') };
+    });
+    assert.equal(r.called, 0, 'yopilgan oyda savdo serverga yuborilmadi'); assert.equal(r.still, true);
+    assert.match(r.sheet, /Oy yopilgan/); assert.match(r.sheet, /taqsimotini bekor qiling/);
+    assert.deepEqual(errors, []);
+  } finally { await browser.close(); }
+}
+module.exports = { name: 'P118 — Sotilgan kirim, arzon narx', cases: [{ name: 'arzon tovar narxi sentgacha', run: prices }, { name: 'sotilgan kirim oʻchirilmaydi, savdolar (kim, qayerda) koʻrsatiladi', run: block }, { name: 'yopilgan oy: avval taqsimot bekor qilinadi, keyin savdo', run: closedMonth }] };

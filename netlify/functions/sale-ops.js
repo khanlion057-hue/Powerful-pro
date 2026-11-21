@@ -99,6 +99,20 @@ exports.handler = async (event) => {
     const canOthers = role === 'admin' || auth.permKeys.has('savdo.edit');
     let rpc;
     if (body.action === 'return') {
+      // v25.6.10: qaytarish — administrator emas bo'lsa: «qaytarish.create» ruxsati, savdo 30 kundan eski emas,
+      // boshqa xodimning savdosi — faqat «savdo.edit» bilan (avval faqat savdo ruxsati yetarli edi, muddat va egasi tekshirilmasdi)
+      if (!auth.isAdmin) {
+        if (!auth.permKeys.has('qaytarish.create')) return json({ error: "Qaytarish uchun ruxsatingiz yo'q" }, 403);
+        const { data: sr, error: se } = await admin.from('sales').select('staff_id,sale_date').eq('filial', filial).eq('local_id', saleLocalId).maybeSingle();
+        if (se) return serverError(se, 'sale-ops', 'Server xatosi');
+        if (sr) {
+          const today = new Date(Date.now() + 5 * 3600e3).toISOString().slice(0, 10);
+          const sd = sr.sale_date instanceof Date ? sr.sale_date.toISOString().slice(0, 10) : String(sr.sale_date || '').slice(0, 10);
+          const age = /^\d{4}-\d{2}-\d{2}$/.test(sd) ? Math.round((Date.parse(today) - Date.parse(sd)) / 864e5) : 0;
+          if (age > 30) return json({ error: 'Bu savdo 30 kundan eski — qaytarishni administrator bajaradi' }, 403);
+          if (!canOthers && sr.staff_id != null && Number(sr.staff_id) !== Number(auth.staff?.id)) return json({ error: "Boshqa xodimning savdosini qaytarish uchun ruxsatingiz yo'q" }, 403);
+        }
+      }
       rpc = admin.rpc('sale_return_atomic', {
         p_filial: filial, p_op_key: body.key, p_sale_local_id: saleLocalId, p_pid: body.pid, p_qty: body.qty,
         p_batch_local_id: body.batchLocalId != null ? String(body.batchLocalId) : null, p_meta: cleanMeta(body.meta),

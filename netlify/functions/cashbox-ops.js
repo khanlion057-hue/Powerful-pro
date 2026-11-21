@@ -53,7 +53,7 @@ const RECORD_KINDS = {
 
 const MAX_OPS = 20;
 const MAX_AMOUNT = 1e12;
-const RATE_BAND = 0.25;            // ko'chirish/almashtirish kursi serverdagi kursdan ±25% dan oshmasin
+const RATE_BAND = 0.05;            // v25.6.10: ko'chirish/almashtirish kursi serverdagidan ±5% (avval ±25% — kassada «pul yaratish» mumkin edi)
 const str = (v, max) => (v == null ? null : String(v).slice(0, max));
 const round2 = (n) => Math.round(n * 100) / 100;
 
@@ -151,6 +151,12 @@ exports.handler = async (event) => {
   if (!allowed) {
     await logSecurityEvent(admin, auth.staff, 'permission_denied', { need: kind.admin ? 'admin' : kind.perms, fn: 'cashbox-ops', kind: body.kind });
     return json({ error: kind.admin ? 'Bu amal faqat administrator uchun' : "Bu kassa amali uchun ruxsatingiz yo'q" }, 403);
+  }
+  // v25.6.10: faqat savdo ruxsati bor xodim kassaga «xarajat» nomi bilan pul KIRITA olmaydi (chiqim — o'z xarajati/oyligi uchun qoladi)
+  if (!auth.isAdmin && body.kind === 'expense' && Array.isArray(body.ops) && body.ops.some(o => o && o.dir === 'in')
+      && !['xarajatlar.create', 'kassalar.transact'].some(p => auth.permKeys.has(p))) {
+    await logSecurityEvent(admin, auth.staff, 'permission_denied', { need: ['xarajatlar.create', 'kassalar.transact'], fn: 'cashbox-ops', kind: 'expense_in' });
+    return json({ error: "Kassaga kirim uchun ruxsatingiz yo'q" }, 403);
   }
 
   const filial = resolveFilial(auth, body.filial);

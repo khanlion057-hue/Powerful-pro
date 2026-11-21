@@ -199,6 +199,10 @@ exports.handler = async (event) => {
     if (body.kind === 'batches_create' && !(data && data.replay)) {
       try { await require('./_lib/opsGuard').within(require('./_lib/tgEvents').notifyStockIn(admin, { filial, reason: body.payload.reason, batches: body.payload.batches, staffName: auth.staff?.name || null }), 2500, null); } catch (_) {}
     }
+    // v25.6.10: Bazadan filialga ko'chirish (filial buyurtmasini tasdiqlash) — ikkala guruhga «Tovar jo'natildi»
+    if (body.kind === 'stock_out' && payload.reason === 'transfer' && !(data && data.replay)) {
+      try { await require('./_lib/opsGuard').within(require('./_lib/tgEvents').notifyTransfer(admin, { kind: 'tr_ship', filial, payload: { to: payload.target, items: payload.items }, staffName: auth.staff?.name || null }), 2500, null); } catch (_) {}
+    }
     return json({ ...data, filial, ledger: true }, 200);
   } catch (e) {
     return serverError(e, 'stock-debt-ops', 'Server xatosi');

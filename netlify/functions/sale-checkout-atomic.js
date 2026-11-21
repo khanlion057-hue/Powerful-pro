@@ -198,7 +198,10 @@ exports.handler = async (event) => {
           items: items.map(i => ({ pid: i.pid, sku: i.sku, name: i.name, qty: i.qty, sellUsd: i.sellUsd, costUsd: i.costUsd,
             directSupply: !!i.directSupply, suppId: i.suppId || null })),
           discPct: discPct || 0, paidUsd, payType: body.payType || null, boxId: Number.isSafeInteger(boxId) ? boxId : null,
-          saleDate: typeof body.saleDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.saleDate) ? body.saleDate : null,
+          // v25.6.9: eski sana — faqat administrator; kelajak sanasi qabul qilinmaydi (Toshkent kuni)
+          saleDate: (() => { const d = typeof body.saleDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.saleDate) ? body.saleDate : null;
+            const today = new Date(Date.now() + 5 * 3600e3).toISOString().slice(0, 10);
+            if (!d || d > today) return null; return d === today || auth.isAdmin ? d : today; })(),
         },
         p_box_payments: boxPaymentsOut,
         p_staff_id: auth.isAdmin ? null : (auth.staff?.id ?? null),

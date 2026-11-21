@@ -145,6 +145,22 @@ function parseAmt(str) {
 
 // ── Yozayotganda "1600000" ni "1 600 000" ko'rinishida avtomatik formatlaydi ──
 // v25.6.9 (egasi qarori): chakana narx — $5 dan kam bo'lsa sentgacha (masalan $0.38), aks holda butun dollar (avvalgidek). Server: _lib/pricing.js retailRound
+// v25.6.9 (egasi talabi): ESKI SANA bilan kirim va savdo — faqat egasi/administrator. Kelajak sanasi va yopilgan (taqsimlangan) oy — yo'q.
+function fwBackdateAllowed() { try { return typeof _fwIsOwner === 'function' ? !!_fwIsOwner() : false; } catch (_) { return false; } }
+function fwBackdateCheck(d) {
+  if (!d || !/^\d{4}-\d{2}-\d{2}$/.test(d)) return true;
+  if (d > td()) { if (typeof toast === 'function') toast('Kelajak sanasi tanlab boʻlmaydi', 'error'); return false; }
+  try {
+    const per = typeof brPeriods === 'function' ? brPeriods().find(p => p && p.start && p.end && d >= String(p.start).slice(0, 10) && d <= String(p.end).slice(0, 10)) : null;
+    if (per) { if (typeof toast === 'function') toast('Bu oy yopilgan (foyda taqsimlangan) — avval taqsimotni bekor qiling', 'error'); return false; }
+  } catch (_) {}
+  return true;
+}
+function fwBackdateField(id, val, onchange) {
+  if (!fwBackdateAllowed()) return '';
+  return `<label class="form-label" for="${id}" style="display:block;margin:6px 0 4px">Sana <small style="color:var(--text-muted);font-weight:400">(eski sana bilan yozish mumkin)</small></label>
+    <input class="form-control" type="date" id="${id}" value="${val || td()}" max="${td()}" ${onchange ? `onchange="${onchange}"` : ''} style="margin-bottom:12px">`;
+}
 function fwRetailRound(x) { x = +x || 0; return x >= 5 ? Math.round(x) : Math.round(x * 100) / 100; }
 function liveFormatSpaces(el) {
   const pos = el.selectionStart;

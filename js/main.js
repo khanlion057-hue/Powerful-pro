@@ -3053,6 +3053,7 @@ const POS_ADMIN = {
   key: 'admin',
   el: () => document.getElementById('pos-mount'),
   rate: () => CUR.usdUzs,
+  backdate: () => fwBackdateAllowed(),   // v25.6.9: eski sana bilan savdo — faqat administrator
   cart: () => S.cart,
   setCart: (a) => { S.cart = a; },
   custId: () => S.savdoCustId || null,
@@ -3232,7 +3233,7 @@ async function _savdoCommitInner(ctx) {
       // v24: zarar bilan savdo tasdiqlangan bo'lsa — lossAck; server bazadagi FIFO bo'yicha zarar aniqlab
       // tasdiq so'rasa (LOSS_ACK_REQUIRED) — bir marta so'raladi va o'sha kalit bilan qayta yuboriladi
       const _body = (ack) => ({ items: srvItems, discPct: ctx.discPct, paidUsd: ctx.paidUsd, custId, boxPayments, inv, idemKey, filial: S.branch,
-          saleLocalId: saleId, payType: ctx.payType, boxId: ctx.boxId || null, custName: (S.customers.find(c => c.id === custId) || {}).name || 'Anonim', saleDate: td(),
+          saleLocalId: saleId, payType: ctx.payType, boxId: ctx.boxId || null, custName: (S.customers.find(c => c.id === custId) || {}).name || 'Anonim', saleDate: (POS.saleDate || td()),
           lossAck: !!ack, overpay, creditUseUzs, discountReason: ctx.discountReason || null, priceMode: ctx.mode === 'wholesale' ? 'wholesale' : 'retail', dueDate: ctx.dueDate || null, dueDays: ctx.dueDays || null, ...fwSaleRoundFields(ctx) });
       // v25: oflayn bo'lsa — savdo navbatga (internet qaytganda shu kalit bilan yuboriladi)
       offlineQ = { id: idemKey, kind: 'sale', url: '/.netlify/functions/sale-checkout-atomic', body: _body(!!ctx.lossAck || netUsd < -0.005), branch: S.branch };
@@ -3276,7 +3277,7 @@ async function _savdoCommitInner(ctx) {
   const cust = S.customers.find(c => c.id === custId);
   const ledgerSale = !!(atomicResult && atomicResult.ledger);
   const sale = {
-    id: saleId, date: td(), time: new Date().toTimeString().slice(0, 5), inv,
+    id: saleId, date: (POS.saleDate || td()), time: new Date().toTimeString().slice(0, 5), inv, ...(POS.saleDate ? { backdated: true } : {}),
     custId, custName: cust?.name || 'Anonim', staffName: (typeof CURRENT_USER !== 'undefined' && CURRENT_USER && CURRENT_USER.name) || (S.settings && S.settings.ownerName) || undefined,
     items,
     subtotalUsd: ctx.subtotalUsd, disc: Math.round((+ctx.discPct || 0) * 10000) / 10000, discUsd: ctx.subtotalUsd - totalUsd, totalUsd,
@@ -6308,6 +6309,7 @@ function pgKirim() {
           </div>
         </div>
 
+        ${fwBackdateField('k-date', S.kirimDate || '', "S.kirimDate = (this.value && this.value !== td()) ? this.value : ''")}
         <!-- HOLATI: YO'LDA / KELDI -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
           <button class="btn ${S.kirimStatus==='transit'?'btn-primary':'btn-ghost'}" id="k-transit-btn" onclick="kirimSetStatus('transit')" style="justify-content:center;font-size:12px">🚚 Yuklandi</button>
@@ -6789,6 +6791,7 @@ function kirimCalc() {
 // o'zgarmaydi (fail-closed). Boshqa manbalarda — avvalgi oqim (o'zgarishsiz).
 let _kirimBusy = false;
 async function kirimSave() {
+  if (S.kirimDate && !fwBackdateCheck(S.kirimDate)) return;   // v25.6.9: eski sana — kelajak / yopilgan oy emas
   if (_kirimBusy) return;
   if (document.getElementById('k-source-box')?.value !== 'firma') {
     _kirimBusy = true;
@@ -6918,7 +6921,7 @@ async function _kirimSaveCore(firmaPay) {
       id:uid(), pid:r.pid, bno, origin, cur, qty:r.qty, sold:0, costUsd:r.costUsd, _goodsUsd: r.qty > 0 ? Math.round((+r.prodUsd || 0) / r.qty * 10000) / 10000 : 0, bankFeeUsd: bankFee/rows.length, ...fwAccBatch(cur, r.costUsd),
       suppId, consignment: isConsign,
       rates:{usdUzs:CUR.usdUzs, usdCny: cur==='CNY' ? (S.kirimLocalCny||CUR.usdCny) : CUR.usdCny},
-      date:td(), status, arrivedDate: status==='transit' ? null : td(), performedBy: (CURRENT_USER?.name || 'Admin'),
+      date:(S.kirimDate||td()), status, arrivedDate: status==='transit' ? null : (S.kirimDate||td()), performedBy: (CURRENT_USER?.name || 'Admin'),   // v25.6.9: eski sana
       kirimRef, fkRef: (firmaPay && firmaPay.fkRef) || null, items: rows.map(x=>({pid:x.pid,qty:x.qty}))
     }));
     let r;
@@ -6960,7 +6963,7 @@ async function _kirimSaveCore(firmaPay) {
       bankFeeUsd: bankFee/rows.length, ...fwAccBatch(cur, r.costUsd),
       suppId, consignment: isConsign,
       rates:{usdUzs:CUR.usdUzs, usdCny: cur==='CNY' ? (S.kirimLocalCny||CUR.usdCny) : CUR.usdCny}, // shu kirim uchun HAQIQIY ishlatilgan CNY kurs saqlanadi (global emas)
-      date:td(), status: S.kirimStatus==='transit' ? 'transit' : 'active', arrivedDate: S.kirimStatus==='transit' ? null : td(),
+      date:(S.kirimDate||td()), status: S.kirimStatus==='transit' ? 'transit' : 'active', arrivedDate: S.kirimStatus==='transit' ? null : (S.kirimDate||td()),
       performedBy: (CURRENT_USER?.name || 'Admin'),
       kirimRef, fkRef: (firmaPay && firmaPay.fkRef) || null,
       items: rows.map(x=>({pid:x.pid,qty:x.qty}))
@@ -14598,6 +14601,7 @@ function openExcelImportModal() {
         Fayl avval toʻliq tekshiriladi: xato boʻlsa — hech narsa yozilmaydi.</p>
       <div class="form-group">
         <label class="form-label" for="ei-kind">Kirim turi</label>
+        ${fwBackdateField('ei-date', '')}
         <select class="form-control" id="ei-kind" onchange="eiKindChange()"><option value="opening">Bosh qoldiq (taʼminotchisiz)</option><option value="supplier">Taʼminotchidan xarid</option><option value="consign">📋 Konsignatsiya — sotish uchun olingan</option></select>
       </div>
       <div class="form-group">
@@ -14671,7 +14675,9 @@ async function importBatchXlsx() {
   const fErr = xlFileGuard(f); if (fErr) { toast('⛔ ' + fErr, 'error'); return; }
 
   const curSel = document.getElementById('ei-cur')?.value || 'USD';
-  const eiKind = document.getElementById('ei-kind')?.value || null;   // yo'q (eski oyna/test) — avvalgi xulq
+  const eiKind = document.getElementById('ei-kind')?.value || null;
+  const eiDate = document.getElementById('ei-date')?.value || td();   // v25.6.9: eski sana bilan kirim (faqat administrator)
+  if (eiDate !== td() && !fwBackdateCheck(eiDate)) return;   // yo'q (eski oyna/test) — avvalgi xulq
   let suppId = parseInt(document.getElementById('ei-supp')?.value||0) || null;
   if (eiKind === 'opening') suppId = null;
   if (eiKind === 'consign') { const sp = suppId && S.suppliers.find(x => x.id === suppId); if (!sp || !sp.isConsignment) { toast('Konsignatsiya uchun konsignatsiya taʼminotchisini tanlang', 'error'); return; } }
@@ -14856,7 +14862,7 @@ async function importBatchXlsx() {
     const newBatches = rows.map((r,i)=>{
       const finalCost = Math.round(r.baseCostUsd*10000)/10000;
       goodsTotal += (r.goodsUsd||0)*r.qty; // v10 (B13): qarzga faqat TOVAR qiymati (yo'lkira/bank/bojxona ta'minotchiga tegishli emas — qo'lda Kirim bilan bir xil)
-      return {id:_ids[i],pid:r.p.id,bno,origin,cur:'USD',qty:r.qty,sold:0,costUsd:finalCost,goodsUsd:Math.round((r.goodsUsd||0)*10000)/10000,bankFeeUsd:0,suppId,consignment:isConsignImport,rates:{usdUzs:CUR.usdUzs,usdCny:CUR.usdCny},date:td(),status:'active',performedBy:(CURRENT_USER?.name||'Admin'),items:[]};
+      return {id:_ids[i],pid:r.p.id,bno,origin,cur:'USD',qty:r.qty,sold:0,costUsd:finalCost,goodsUsd:Math.round((r.goodsUsd||0)*10000)/10000,bankFeeUsd:0,suppId,consignment:isConsignImport,rates:{usdUzs:CUR.usdUzs,usdCny:CUR.usdCny},date:eiDate,status:'active',performedBy:(CURRENT_USER?.name||'Admin'),items:[]};
     });
     // v24.6: server bir so'rovda eng ko'pi 500 partiya qabul qiladi — katta fayl 400 talik QISMLARGA bo'linadi
     // (har qism serverda bitta tranzaksiya; ta'minotchi qarzi — har qismning o'z tovar qiymati).

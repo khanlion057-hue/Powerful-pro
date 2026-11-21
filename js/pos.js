@@ -16,6 +16,7 @@
 // ════════════════════════════════════════════════════════════════════════════
 
 const POS = {
+  saleDate: '',               // v25.6.9: eski sana bilan savdo (faqat administrator; bo'sh — bugun)
   a: null,                    // adapter
   mode: 'retail',             // 'retail' | 'wholesale'
   cur: 'UZS',                 // 'UZS' | 'USD'
@@ -570,6 +571,7 @@ function posPayView() {
         : `<label class="pos-lbl">Olingan summa (${POS.cur === 'USD' ? '$' : 'soʻm'}) *${box ? ` <small>· ${esc(box.name || '')}</small>` : ''}</label>
            <input class="pos-in big" id="pos-paid" inputmode="decimal" placeholder="Summani kiriting" value="${esc(P.amount)}" data-autofocus oninput="liveFormatSpaces(this);POS.pay.amount=this.value;posPayGate()" onkeydown="if(event.key==='Enter')posFinish()">
            <div class="pos-quick"><button class="ok" onclick="posPaySet(${t.needN})">Toʻliq · ${POS.cur === 'USD' ? '$' + t.needN : fwNum(t.needN)}</button>${q.map(v => `<button onclick="posPaySet(${v})">${fwNum(v)}</button>`).join('')}<button onclick="posPaySet(0)">Qarzga (0)</button></div>`}
+      ${POS.a && POS.a.backdate && POS.a.backdate() ? `<label class="pos-lbl">Savdo sanasi <small>· eski sana bilan yozish mumkin</small></label><input class="pos-in" type="date" id="pos-date" value="${esc(POS.saleDate || td())}" max="${td()}" onchange="POS.saleDate = (this.value && this.value !== td()) ? this.value : ''">` : ''}
       <div id="pos-pay-st"></div>
       <button class="pos-card${cust ? ' set' : ''}" id="pos-pay-cust" onclick="posOpen('cust')"><span class="pos-card-ic">${PI.user}</span><span class="pos-card-t"><b>${cust ? esc(cust.name) : 'Mijoz tanlash'}</b><small>${cust ? esc(posCustSub(cust)) : 'Qidirish yoki yangi qoʻshish'}</small></span>${PI.chev}</button>
     </div>
@@ -755,6 +757,7 @@ async function posFinish() {
   if (POS.busy) return;
   const ctx = posBuildCtx();
   if (ctx.err) { toast(ctx.err, 'error'); posPayGate(); return; }
+  if (POS.saleDate && typeof fwBackdateCheck === 'function' && !fwBackdateCheck(POS.saleDate)) return;   // v25.6.9: eski sana — tekshiruv
   // Zarar bilan savdo — summa ko'rsatilib tasdiqlanadi (server ham tekshiradi)
   if (ctx.profitUsd < -0.005) {
     if (!confirm(`⚠️ Bu savdoda ${posFmtN(posUsdToN(-ctx.profitUsd))} ziyon — narx minimal narxdan past.${POS.a.key === 'seller' ? ' Administrator xabardor qilinadi.' : ''}\n\nRozimisiz?`)) return;
@@ -768,7 +771,7 @@ async function posFinish() {
   catch (e) { toast('⛔ ' + (e && e.message || 'Savdo amalga oshmadi'), 'error'); }
   finally { POS.busy = false; }
   if (!ok) { posPayGate(); return; }
-  POS.a.setCart([]); posResetSale();
+  POS.a.setCart([]); posResetSale(); POS.saleDate = '';
   POS.stack.length = 0;
   const ov = document.getElementById('pos-ov'); if (ov) ov.remove(); document.body.classList.remove('pos-lock');
   if (typeof fwBackDone === 'function') { for (let i = 8; i >= 1; i--) fwBackDone('pos:' + i); }

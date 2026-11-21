@@ -1,0 +1,59 @@
+# Powerful PRO — CI/CD: har push/PR'da tekshiruv + testlar. Production deploy AVTOMATIK EMAS (v23.10.2):
+# migratsiya (scripts/migrate-v24.5.sh) va zaxira bilan bir oynada bajarilishi kerak — shuning uchun faqat qo'lda:
+# Actions → CI → Run workflow → confirm = HA-PRODUCTION. Drag-and-drop deploy ishlatilmaydi (funksiyalar chiqmaydi).
+# Deploy uchun repo → Settings → Secrets and variables → Actions:
+#   NETLIFY_AUTH_TOKEN, NETLIFY_SITE_ID   (SUPABASE_* kalitlari Netlify'ning o'zida turadi)
+name: CI
+on:
+  push:
+    branches: [main, staging]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Production deploy uchun HA-PRODUCTION deb yozing (zaxira olingan, ish yo'q oyna)"
+        required: true
+        default: ""
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Statik tekshiruv
+        run: npm run check
+      - name: Build (dist)
+        run: npm run build
+      - name: Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Testlar
+        run: npm test
+
+  deploy:
+    needs: test
+    if: github.event_name == 'workflow_dispatch' && inputs.confirm == 'HA-PRODUCTION'
+    runs-on: ubuntu-latest
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Netlify'ga deploy
+        if: env.NETLIFY_AUTH_TOKEN != '' && env.NETLIFY_SITE_ID != ''
+        run: npx --yes netlify-cli@17.38.1 deploy --build --prod --message "CI ${{ github.sha }}"
+      - name: Deploydan keyin holat tekshiruvi
+        if: env.NETLIFY_AUTH_TOKEN != '' && env.NETLIFY_SITE_ID != ''
+        run: |
+          URL=$(npx --yes netlify-cli@17.38.1 api getSite --data "{\"site_id\":\"$NETLIFY_SITE_ID\"}" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log(JSON.parse(s).ssl_url||JSON.parse(s).url))")
+          curl -fsS "$URL/.netlify/functions/health"

@@ -1,0 +1,45 @@
+// ════════════════════════════════════════════════════════════
+// SHABLON — yangi Netlify Function yozish uchun.
+// Nusxa oling, nomini o'zgartiring (masalan telegram-webhook.js,
+// ai-yordamchi.js), ".txt" kengaytmasini olib tashlang.
+//
+// Bu shablon Telegram bot, AI (Claude/OpenAI) yoki boshqa tashqi
+// xizmat uchun ham, oddiy CRUD amali uchun ham ishlatiladi —
+// _lib/supabaseAdmin.js orqali xavfsiz Supabase kirish tayyor.
+// ════════════════════════════════════════════════════════════
+const { getAdminClient, json, methodGuard, parseBody, requireEnv } = require('./_lib/supabaseAdmin');
+
+exports.handler = async (event) => {
+  // 1) Metodni tekshirish
+  const methodErr = methodGuard(event, ['POST']); // yoki ['GET'], ['POST','GET'] va h.k.
+  if (methodErr) return methodErr;
+
+  // 2) So'rov tanasini o'qish
+  const body = parseBody(event);
+  if (!body) return json({ error: "Noto'g'ri so'rov formati" }, 400);
+
+  // 3) Tashqi xizmat kaliti kerak bo'lsa (masalan Telegram/OpenAI/Claude) —
+  //    Netlify muhit o'zgaruvchisidan o'qing, hech qachon kodga yozmang:
+  //    const TELEGRAM_TOKEN = requireEnv('TELEGRAM_BOT_TOKEN');
+  //    const AI_API_KEY = requireEnv('ANTHROPIC_API_KEY');
+
+  // 4) Supabase bilan ishlash kerak bo'lsa:
+  //    const admin = getAdminClient();
+  //    const { data, error } = await admin.from('jadval_nomi').select('*');
+
+  try {
+    // ... biznes mantiq shu yerda ...
+    return json({ ok: true }, 200);
+  } catch (e) {
+    return json({ error: e.message || "Noma'lum xatolik" }, 500);
+  }
+};
+
+// Frontend (js/main.js) dan chaqirish namunasi:
+//   const res = await fetch('/.netlify/functions/YANGI-FUNKSIYA-NOMI', {
+//     method: 'POST',
+//     headers: { 'Content-Type': 'application/json' },
+//     body: JSON.stringify({ ...maydonlar })
+//   });
+//   const data = await res.json();
+//   if (!res.ok) { toast(data.error, 'error'); return; }

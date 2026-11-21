@@ -13,7 +13,8 @@ TE.notifyTransfer = async (a, args) => { calls.push(['tr', args]); };
 let rpcData = {};
 const admin = { rpc: async (fn) => ({ data: rpcData[fn] || { ok: true }, error: null }), from: () => ({ select() { return this; }, eq() { return this; }, maybeSingle: async () => ({ data: null }), insert: async () => ({}) }) };
 SA.getAdminClient = () => admin;
-SA.requireStaffAuth = async () => ({ ok: true, isAdmin: true, filial: 'baza', staff: { id: 1, name: 'Ega' }, permKeys: new Set() });
+let AUTH = { ok: true, isAdmin: true, filial: 'baza', staff: { id: 1, name: 'Ega' }, permKeys: new Set() };
+SA.requireStaffAuth = async () => AUTH;
 LA.ledgerAuthorityOn = async () => true;
 const SDO = require('../netlify/functions/stock-debt-ops.js').handler;
 const BT = require('../netlify/functions/branch-transfer.js').handler;
@@ -41,3 +42,15 @@ async function run() {
   assert.equal(calls.length, 1); assert.equal(calls[0][1].payload.to, 'f729', 'so\'rov asosidagi jo\'natma: qabul qiluvchi serverdagi o\'tkazmadan');
 }
 module.exports = { name: 'P121 — Guruh xabarlari server funksiyasidan', cases: [{ name: 'kirim, filial buyurtmasi, soʻrov boʻyicha joʻnatma, takror — xabar', run }] };
+// v25.6.10: kirim sanasi serverda — kelajak yo'q, eski sana faqat administrator
+async function kirimDate() {
+  let sentPayload = null; admin.rpc = async (fn, a) => { if (fn === 'stock_debt_op') sentPayload = a.p_payload; return { data: {}, error: null }; };
+  const today = new Date(Date.now() + 5 * 3600e3).toISOString().slice(0, 10);
+  const send = (d) => post(SDO, { key: 'key-d' + d.replace(/-/g, ''), kind: 'batches_create', payload: { reason: 'kirim', batches: [{ localId: '31', pid: 1, qty: 1, costUsd: 1, meta: { date: d } }] } });
+  await send('2026-10-01'); assert.equal(sentPayload.batches[0].meta.date, '2026-10-01', 'admin — eski sana');
+  await send('2099-01-01'); assert.equal(sentPayload.batches[0].meta.date, today, 'kelajak — bugun');
+  AUTH = { ok: true, isAdmin: false, filial: 'f729', staff: { id: 2, name: 'Kassir' }, permKeys: new Set(['kirim.create']) };
+  await send('2026-10-02'); assert.equal(sentPayload.batches[0].meta.date, today, 'xodim — eski sana qabul qilinmaydi');
+  await send(today); assert.equal(sentPayload.batches[0].meta.date, today, 'xodim — bugungi sana');
+}
+module.exports.cases.push({ name: 'kirim sanasi serverda: kelajak yoʻq, eski sana faqat admin', run: kirimDate });

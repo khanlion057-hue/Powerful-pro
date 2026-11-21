@@ -168,6 +168,11 @@ exports.handler = async (event) => {
       break;
   }
 
+  // v25.6.10: kirim sanasi — kelajak yo'q; eski sana faqat administrator (savdodagi kabi, Toshkent kuni)
+  if (body.kind === 'batches_create') {
+    const today = new Date(Date.now() + 5 * 3600e3).toISOString().slice(0, 10);
+    payload.batches.forEach((x) => { const d = x.meta && x.meta.date; if (d && (d > today || (d < today && !auth.isAdmin))) x.meta.date = today; });
+  }
   try {
     if (body.kind === 'supp_cur') {
       const r = await admin.rpc('supp_set_currency', { p_filial: filial, p_supp: p.supplierId, p_currency: p.currency,

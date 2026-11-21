@@ -3039,7 +3039,7 @@ function dashShowSale(sid) {
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost btn-sm" onclick="closeModal();openEditSale(${JSON.stringify(s.id).replace(/"/g,'&quot;')})">✏️ Tahrirlash</button>
-      <button class="btn btn-danger btn-sm" onclick="closeModal();openSaleReturn(${JSON.stringify(s.id).replace(/"/g,'&quot;')})">↩️ Qaytarish</button>
+      ${hasPerm('qaytarish.create') ? `<button class="btn btn-danger btn-sm" onclick="closeModal();openSaleReturn(${JSON.stringify(s.id).replace(/"/g,'&quot;')})">↩️ Qaytarish</button>` : ''}
       <button class="btn btn-danger btn-sm" onclick="closeModal();deleteSale(${JSON.stringify(s.id).replace(/"/g,'&quot;')})">🗑 O'chirish</button>
       <button class="btn btn-ghost" onclick="closeModal()">Yopish</button>
       <button class="btn btn-primary" onclick="printReceipt(${JSON.stringify(s.id).replace(/"/g,'&quot;')})">🖨️ Chop</button>
@@ -3119,7 +3119,7 @@ function pgSavdoToday() {
       <td><span class="badge badge-${s.debtUsd > 0.005 ? 'danger' : 'success'}">${s.debtUsd > 0.005 ? 'Qarz' : 'Toʻlangan'}</span></td>
       <td style="display:flex;gap:4px">
         <button class="btn btn-ghost btn-sm" onclick="printReceipt(${JSON.stringify(s.id)})" aria-label="Chop etish">🖨️</button>
-        <button class="btn btn-danger btn-sm" onclick="openSaleReturn(${JSON.stringify(s.id).replace(/"/g,'&quot;')})" aria-label="Qaytarish">↩️</button>
+        ${hasPerm('qaytarish.create') ? `<button class="btn btn-danger btn-sm" onclick="openSaleReturn(${JSON.stringify(s.id).replace(/"/g,'&quot;')})" aria-label="Qaytarish">↩️</button>` : ''}
         <button class="btn btn-danger btn-sm" onclick="deleteSale(${JSON.stringify(s.id).replace(/"/g,'&quot;')})" aria-label="Oʻchirish">🗑</button>
       </td></tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">Bugun savdo yoʻq</td></tr>'}
     </tbody></table></div>`;
@@ -3236,7 +3236,8 @@ async function _savdoCommitInner(ctx) {
       // tasdiq so'rasa (LOSS_ACK_REQUIRED) — bir marta so'raladi va o'sha kalit bilan qayta yuboriladi
       const _body = (ack) => ({ items: srvItems, discPct: ctx.discPct, paidUsd: ctx.paidUsd, custId, boxPayments, inv, idemKey, filial: S.branch,
           saleLocalId: saleId, payType: ctx.payType, boxId: ctx.boxId || null, custName: (S.customers.find(c => c.id === custId) || {}).name || 'Anonim', saleDate: (POS.saleDate || td()),
-          lossAck: !!ack, overpay, creditUseUzs, discountReason: ctx.discountReason || null, priceMode: ctx.mode === 'wholesale' ? 'wholesale' : 'retail', dueDate: ctx.dueDate || null, dueDays: ctx.dueDays || null, ...fwSaleRoundFields(ctx) });
+          lossAck: !!ack, overpay, creditUseUzs, discountReason: ctx.discountReason || null, priceMode: ctx.mode === 'wholesale' ? 'wholesale' : 'retail', dueDate: ctx.dueDate || null, dueDays: ctx.dueDays || null, ...fwSaleRoundFields(ctx),
+          cur: ctx.cur || null, clientRate: +ctx.rate || +CUR.usdUzs || null });   // v25.6.10: server eskirgan kursni tuzatadi
       // v25: oflayn bo'lsa — savdo navbatga (internet qaytganda shu kalit bilan yuboriladi)
       offlineQ = { id: idemKey, kind: 'sale', url: '/.netlify/functions/sale-checkout-atomic', body: _body(!!ctx.lossAck || netUsd < -0.005), branch: S.branch };
       if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new TypeError('Failed to fetch (oflayn)');
@@ -3575,7 +3576,7 @@ function qrRows(list) {
       <div class="om-b-h"><code>${esc(s.inv||'')}</code>${s.edited?'<span class="fw-tag" style="--c:var(--gold)">Tahrirlangan</span>':''}${debt?'<span class="fw-tag" style="--c:var(--red)">Nasiya</span>':''}<time>${fmtD(s.date)}</time></div>
       <div class="qr-s-m"><span><b>${esc(fwCustLabel(s.custName))}</b><small>${esc(s.staffName||'Admin')} · ${items.length} xil · ${esc(items.slice(0,2).map(i=>i.name||i.sku).join(', '))}${items.length>2?'…':''}</small></span><b class="qr-s-t">${CUR.fmtUsd(s.totalUsd)}</b></div>
       <div class="fw-pc-a">
-        <button class="fw-btn qr-ret" onclick="openSaleReturn(${JSON.stringify(s.id).replace(/"/g,'&quot;')})">${ICONF.ret}<span>Qaytarish</span></button>
+        ${hasPerm('qaytarish.create') ? `<button class="fw-btn qr-ret" onclick="openSaleReturn(${JSON.stringify(s.id).replace(/"/g,'&quot;')})">${ICONF.ret}<span>Qaytarish</span></button>` : ''}
         <button class="fw-btn" onclick="openSaleEdit(${JSON.stringify(s.id).replace(/"/g,'&quot;')})">${ICONF.edit}<span>Tahrir</span></button>
         <button class="fw-btn icon" onclick="deleteSale(${JSON.stringify(s.id).replace(/"/g,'&quot;')})" title="Butunlay oʻchirish" aria-label="Savdoni butunlay oʻchirish">${ICONF.trash}</button>
       </div></article>`; }).join('')}</div>`;
@@ -3656,6 +3657,7 @@ function qrHistoryRows() {
 }
 
 function openSaleReturn(sid) {
+  if (!hasPerm('qaytarish.create')) { toast("Qaytarish uchun ruxsatingiz yoʻq", 'error'); return; }   // v25.6.10: server ham tekshiradi
   const s = S.sales.find(x=>x.id===sid); if(!s) return;
   modal(`
     <div class="modal-header"><div class="modal-title">↩️ Tovar qaytarish — ${esc(s.inv)}</div><button class="modal-close" onclick="closeModal()">×</button></div>
@@ -6270,7 +6272,7 @@ function pgKirim() {
       <div class="kx-rates">
         <label class="kx-rate">
           <span class="kx-cur"><i>$</i>1 dollar</span>
-          <span class="kx-val"><input type="number" inputmode="decimal" id="k-usduzs" value="${CUR.usdUzs}" oninput="kursUpdate()"><em>soʻm</em></span>
+          <span class="kx-val"><input type="number" inputmode="decimal" id="k-usduzs" value="${CUR.usdUzs}" readonly title="Tizim kursi — oʻzgartirish: yuqoridagi «Kurs» tugmasi (savdo va kassa bilan bir xil boʻlishi uchun)" style="opacity:.75"><em>soʻm</em></span>
         </label>
         ${fwAccMode()==='yuan'?`
         <label class="kx-rate">
@@ -6609,7 +6611,8 @@ function kirimSetDist(m) {
 }
 
 function kursUpdate() {
-  CUR.usdUzs = parseFloat(document.getElementById('k-usduzs')?.value||12800);
+  // v25.6.10: dollar kursi bu yerda O'ZGARMAYDI (avval global kursni almashtirib, savdo va kassa server kursidan farq qilardi:
+  // mijoz qarzi noto'g'ri yozilar yoki savdo rad etilardi). Kurs — faqat «Kurs» oynasidan, serverga saqlanadi.
   // MUHIM: bu yerdagi CNY kursi endi GLOBAL CUR.usdCny'ni O'ZGARTIRMAYDI — faqat
   // shu Kirim sessiyasiga tegishli mahalliy qiymatga yoziladi (S.kirimLocalCny).
   // Global kurs faqat "Kurs" oynasi (kursSave/confirmRateModal) orqali o'zgaradi.
@@ -12765,7 +12768,7 @@ function sxChecksHtml(D) {
       <div class="sx-chk-a">
         <button class="kh-ib sm" onclick="printReceipt(${JSON.stringify(s.id).replace(/"/g,'&quot;')})" aria-label="Chop etish">${ICONF.print}</button>
         <button class="kh-ib sm" onclick="openEditSale(${JSON.stringify(s.id).replace(/"/g,'&quot;')})" aria-label="Tahrirlash">${ICONF.edit}</button>
-        <button class="kh-ib sm kh-del" onclick="openSaleReturn(${JSON.stringify(s.id).replace(/"/g,'&quot;')})" aria-label="Qaytarish">${ICONF.ret}</button></div>
+        ${hasPerm('qaytarish.create') ? `<button class="kh-ib sm kh-del" onclick="openSaleReturn(${JSON.stringify(s.id).replace(/"/g,'&quot;')})" aria-label="Qaytarish">${ICONF.ret}</button>` : ''}</div>
     </div>`).join('') + (list.length>lim ? `<button class="sx-morebtn" onclick="S.sx.chk+=30;document.getElementById('sx-checks').innerHTML=sxChecksHtml(sxData())">Yana <em>${list.length-lim}</em></button>` : '')
     : `<div class="sx-empty">Bu davrda chek yoʻq.</div>`}`;
 }

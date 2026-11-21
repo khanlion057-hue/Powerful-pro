@@ -23,7 +23,7 @@ const PG_TABLES = ['app_data', 'app_data_branches', 'cashbox_balances', 'cashbox
   'sales', 'batches', 'customer_balances', 'supplier_balances', 'customer_debt_payments', 'supplier_payments', 'home_withdrawals',
   'idempotency_keys', 'ledger_ops', 'customer_debt_ledger', 'supplier_debt_ledger', 'stock_ledger'];
 const CID = 1759300000000123, CID2 = 1759300000000124, SID = 1759300000000456, SCON = 1759300000000457;
-const PERMS = ['savdo.create', 'mijozlar.debt_payment', 'mijozlar.edit', 'taminotchilar.edit', 'kassalar.transact', 'kirim.create', 'ombor.edit'];
+const PERMS = ['savdo.create', 'qaytarish.create', 'mijozlar.debt_payment', 'mijozlar.edit', 'taminotchilar.edit', 'kassalar.transact', 'kirim.create', 'ombor.edit'];
 const USERS = { 't-kas': { id: 'u-kas' }, 't-sel': { id: 'u-sel' } };
 const BOXES = [{ id: 1, name: "Naqd So'm", cur: 'UZS', type: 'cash', bal: 0 }, { id: 3, name: 'Dollar', cur: 'USD', type: 'usd', bal: 0 }];
 const BRANCH = {

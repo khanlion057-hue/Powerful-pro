@@ -90,7 +90,8 @@ exports.handler = async (event) => {
   if (!body || !Array.isArray(body.items) || !body.items.length) {
     return json({ error: 'items majburiy (array)' }, 400);
   }
-  const { items, discPct, paidUsd, custId, boxId, boxAmountNative, boxPayments, inv, idemKey } = body;
+  const { items, discPct, custId, boxId, boxAmountNative, boxPayments, inv, idemKey } = body;
+  let paidUsd = body.paidUsd;
 
   let admin;
   try { admin = getAdminClient(); }
@@ -131,6 +132,19 @@ exports.handler = async (event) => {
     return mainData;
   };
   const priceMode = body.priceMode === 'wholesale' ? 'wholesale' : 'retail';
+  // v25.6.10: so'mdagi savdo qurilmadagi (eskirgan) kurs bilan $ ga o'girilgan bo'lsa — server kursiga qayta hisoblanadi:
+  // mijoz to'lagan va qarz qolgan SO'M aniq saqlanadi (avval qarz noto'g'ri yozilar yoki savdo «to'langan summa oshdi» bilan rad etilardi)
+  if (body.cur === 'UZS' && isNum(body.clientRate, 1000, 1e6)) {
+    try {
+      const sr = Number(((await loadMain()).settings || {}).usdUzs) || 0;
+      const k = sr > 0 ? body.clientRate / sr : 1;
+      if (Math.abs(k - 1) > 0.001 && Math.abs(k - 1) < 0.25) {
+        const r4 = (x) => Math.round(x * 10000) / 10000;
+        items.forEach((i) => { if (i && isNum(i.sellUsd, 0, 1e9)) i.sellUsd = r4(i.sellUsd * k); });
+        paidUsd = r4(paidUsd * k); body.paidUsd = paidUsd;
+      }
+    } catch (e) { await releaseIdempotent(admin, claim); return serverError(e, 'sale-checkout-atomic', 'Server xatosi'); }
+  }
   if (!auth.isAdmin && items.some(i => i && i.directSupply)) {
     if (guarded && !auth.permKeys.has('savdo.direct_sale')) {
       await releaseIdempotent(admin, claim);

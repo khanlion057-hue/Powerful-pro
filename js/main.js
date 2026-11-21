@@ -12976,20 +12976,34 @@ async function tgqCall(body) {
   if (!r.ok || j.ok === false) throw new Error(j.error || 'Server xatosi');
   return j;
 }
+// v25.6.10: SODDA ULASH — bitta tugma: «Telegramda ulash» → Telegram ochiladi → «Start». Kod yozish shart emas.
 async function tgqOpen() {
-  let st = null;
-  if (_fwIsOwner()) { try { st = await tgqCall({ action: 'status' }); } catch (e) { toast(e.message, 'error'); return; } }
-  openSheet({ ic: 'send', c: 'sky', title: 'Telegram soʻrov boti', sub: st ? (st.set ? `Bot: @${esc(st.bot || '?')} · ulangan: ${st.links}` : 'Sozlanmagan') : '',
-    body: `<div class="fr-form"><p class="bs-note">Botga <b>/foyda</b> (bugun, hafta, oy), <b>/xarajat</b>, <b>/qarz</b>, <b>/kassa</b>, <b>/ombor</b>, <b>/mahsulot nom</b> yozib hisobot soʻraysiz. Faqat ruxsatingiz bor maʼlumot chiqadi; filial xodimi faqat oʻz filialini koʻradi.</p>
-      <div id="tgq-out"></div>
-      ${_fwIsOwner() ? `<div class="st-eyebrow">Administrator: bot tokeni (BotFather → yangi bot)</div><input class="form-control" id="tgq-token" autocomplete="off" placeholder="123456:ABC..."><button class="bs-btn ghost" onclick="tgqSetup(this)">Botni sozlash</button><p class="bs-note">Hisobot botidan ALOHIDA yangi bot oching — shunda hisobotlar va investor ulash buzilmaydi.</p>` : ''}
-    </div>`, foot: `<div class="fr-foot"><button class="bs-btn" onclick="tgqCode(this)">Ulash kodini olish</button></div>` });
+  const owner = _fwIsOwner();
+  openSheet({ ic: 'send', c: 'sky', title: 'Telegram soʻrov boti', sub: 'Botdan hisobot soʻrash',
+    body: `<div class="fr-form" id="tgq-box"><p class="bs-note">Yuklanmoqda…</p></div>` });
+  let r = null, err = '';
+  try { r = await tgqCall({ action: 'link_code' }); } catch (e) { err = e.message || 'Xato'; }
+  const box = document.getElementById('tgq-box'); if (!box) return;
+  const notSet = !r && /sozlanmagan/i.test(err);
+  const help = `<p class="bs-note">Ulangandan soʻng botga yozing: <b>/foyda</b>, <b>/kassa</b>, <b>/qarz</b>, <b>/xarajat</b>, <b>/ombor</b>. Faqat ruxsatingiz bor maʼlumot chiqadi.</p>`;
+  let main = '';
+  if (r && r.link) {
+    main = (r.linked ? `<div class="bs-card"><b>✅ Telegram ulangan</b><p class="bs-note">Boshqa telefonni ham ulash uchun pastdagi tugmani bosing.</p></div>` : '')
+      + `<a class="bs-btn" style="display:block;text-align:center;font-size:17px;padding:14px;text-decoration:none" href="${esc(r.link)}" target="_blank" rel="noopener">📲 ${r.linked ? 'Yana bir telefonni ulash' : 'Telegramda ulash'}</a>`
+      + `<p class="bs-note"><b>1.</b> Tugmani bosing — Telegram ochiladi.<br><b>2.</b> «<b>Start</b>» (Boshlash) ni bosing. Tamom ✅</p>`
+      + help + (r.linked ? `<button class="bs-btn ghost" onclick="tgqUnlink(this)">Telegramni uzish</button>` : '')
+      + `<details><summary class="bs-note">Tugma ishlamasa</summary><p class="bs-note">Telegramda <b>@${esc(r.bot || '?')}</b> ni toping va yozing: <b>/start ${esc(r.code)}</b> (${r.minutes} daqiqa amal qiladi)</p></details>`;
+  } else if (notSet) {
+    main = owner ? `<div class="bs-card"><b>Bot hali sozlanmagan</b><p class="bs-note">Bir marta: @BotFather → /newbot → bergan tokenni pastga qoʻying.</p></div>` : `<div class="bs-card"><b>Bot hali sozlanmagan</b><p class="bs-note">Administratorga ayting — u Sozlamalarda botni bir marta sozlaydi.</p></div>`;
+  } else main = `<p class="bs-note" style="color:var(--red)">${esc(err)}</p>`;
+  const setup = owner ? `<${notSet ? 'div' : 'details'}>${notSet ? '' : '<summary class="bs-note">Administrator: bot sozlamasi</summary>'}<div class="st-eyebrow">Bot tokeni (@BotFather)</div><input class="form-control" id="tgq-token" autocomplete="off" placeholder="123456:ABC..."><button class="bs-btn ${notSet ? '' : 'ghost'}" onclick="tgqSetup(this)">Botni sozlash</button><p class="bs-note">Hisobot botidan ALOHIDA bot boʻlsin.</p><div id="tgq-st" class="bs-note"></div></${notSet ? 'div' : 'details'}>` : '';
+  box.innerHTML = main + setup;
+  if (owner && !notSet) tgqCall({ action: 'status' }).then((st) => { const o = document.getElementById('tgq-st'); if (o) o.textContent = `Bot: @${st.bot || '?'} · ulangan: ${st.links}`; }).catch(() => {});
 }
-async function tgqCode(btn) {
+async function tgqUnlink(btn) {
   if (btn) btn.disabled = true;
-  try { const r = await tgqCall({ action: 'link_code' }); const o = document.getElementById('tgq-out');
-    if (o) o.innerHTML = `<div class="bs-card"><div class="dk-kv"><span>Bot</span><b>@${esc(r.bot || '?')}</b></div><div class="dk-kv"><span>Kod (${r.minutes} daqiqa)</span><b style="font-size:22px;letter-spacing:3px">${esc(r.code)}</b></div></div><p class="bs-note">Botni oching va yozing: <b>/start ${esc(r.code)}</b></p>`;
-  } catch (e) { toast(e.message, 'error'); } finally { if (btn) btn.disabled = false; }
+  try { await tgqCall({ action: 'unlink' }); toast('Telegram uzildi'); tgqOpen(); }
+  catch (e) { toast(e.message, 'error'); if (btn) btn.disabled = false; }
 }
 async function tgqSetup(btn) {
   const t = (document.getElementById('tgq-token')?.value || '').trim(); if (!t) { toast('Tokenni kiriting', 'error'); return; }

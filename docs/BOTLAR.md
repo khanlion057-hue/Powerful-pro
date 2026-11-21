@@ -59,7 +59,7 @@ Ulash: Onlayn-do'kon → Bot → token.
 | **Xodim** | Faqat **o'z filiali** va faqat **ruxsati bor** buyruq (foyda — `hisobot.view`, xarajat — `xarajatlar.view`, qarz — `mijozlar.view`, kassa — `kassalar.view`, ombor — `ombor.view`) |
 | **Guruh** | Javob bermaydi (faqat shaxsiy chat) |
 
-Ulash: Sozlamalar → «Botdan hisobot so'rash» → **kod** → botga `/start KOD`.
+Ulash (har xodim, bir marta): Sozlamalar → «Botdan hisobot so'rash» → **«📲 Telegramda ulash»** → Telegramda **Start**. Kod yozish shart emas.
 Egasi bir marta bot tokenini kiritadi: shu oynada «Botni sozlash».
 
 ---

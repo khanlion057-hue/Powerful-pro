@@ -16,6 +16,7 @@ const fakeAdmin = { from: (t) => ({
 // app_data uchun id ni eslab qolish
 const origFrom = fakeAdmin.from; fakeAdmin.from = (t) => { const q = origFrom(t); const eq = q.eq; q.eq = function (c, v) { if (t === 'app_data' && c === 'id') this._id = v; return eq.call(this, c, v); }; return q; };
 SA.getAdminClient = () => fakeAdmin;
+SA.requireStaffAuth = async () => ({ ok: true, staff: staff[2] });
 const sent = []; global.fetch = async (url, o) => { const body = JSON.parse(o.body); sent.push({ m: url.split('/').pop(), body }); return { json: async () => ({ ok: true, result: { username: 'testbot' } }) }; };
 const TQ = require('../netlify/functions/telegram-query.js'); TQ._load = async (a, filial) => ({ ...DATA, branchStore: Object.fromEntries(Object.entries(DATA.branchStore).filter(([k]) => !filial || k === filial)) });
 const H = TQ.handler; let UPD = 1;
@@ -41,4 +42,18 @@ async function run() {
   const dup = { httpMethod: 'POST', headers: { 'x-telegram-bot-api-secret-token': 'S3CRET' }, body: JSON.stringify({ update_id: 9999, message: { chat: { id: 11, type: 'private' }, text: '/kassa' } }) };
   await H(dup); const m = sent.length; await H(dup); assert.equal(sent.length, m, 'takror yetkazilganda qayta javob yo\'q');
 }
-module.exports = { name: 'P110 — Telegram soʻrov boti', cases: [{ name: 'webhook: maxfiy kalit, /start kod, ruxsat, filial cheklovi, guruh e\'tiborsiz', run }] };
+// v25.6.10: ilovadagi «Telegramda ulash» — kod haqiqatan saqlanadi, bir bosishli havola, keyin /start KOD ulaydi
+async function oneTap() {
+  const app = (b) => H({ httpMethod: 'POST', headers: { authorization: 'Bearer x' }, body: JSON.stringify(b) }).then((r) => JSON.parse(r.body));
+  UPD = 20000;   // oldingi holatdagi takror-himoyadan (update_id 9999) keyin
+  const r = await app({ action: 'link_code' });
+  assert.equal(r.ok, true); assert.match(r.code, /^\d{8}$/);
+  assert.equal(r.link, 'https://t.me/testbot?start=' + r.code, 'bir bosishli havola');
+  assert.ok(store.tg_query_bot.codes[r.code], 'kod bazaga saqlandi');
+  await upd(30, '/start ' + r.code); assert.match(sent.at(-1).body.text, /Ulandi/);
+  assert.equal(store.tg_query_bot.links['30'].staffId, 2);
+  assert.equal((await app({ action: 'link_code' })).linked, true, 'ulanganligi ko\'rinadi');
+  await upd(31, '/start'); assert.match(sent.at(-1).body.text, /Telegramda ulash/, 'kodsiz /start — tushunarli yo\'riqnoma, urinish hisoblanmaydi');
+  assert.equal((store.tg_query_bot.fails || {})['31'], undefined);
+}
+module.exports = { name: 'P110 — Telegram soʻrov boti', cases: [{ name: 'webhook: maxfiy kalit, /start kod, ruxsat, filial cheklovi, guruh e\'tiborsiz', run }, { name: 'bir bosishda ulash: kod saqlanadi, t.me havola', run: oneTap }] };

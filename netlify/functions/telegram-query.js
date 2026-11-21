@@ -62,13 +62,14 @@ async function answer(admin, cfg, msg) {
     if (Date.now() - f.t > 15 * 60e3) { f.n = 0; f.t = Date.now(); }
     if (f.n >= 5) return send("Juda ko'p noto'g'ri urinish — 15 daqiqadan keyin qayta urinib ko'ring.");
     const code = arg.replace(/\D/g, '').slice(0, 8), c = code && cfg.codes && cfg.codes[code];
-    if (!c || c.exp < Date.now()) { f.n++; cfg.fails[chatId] = f; await saveRow(admin, cfg); return send("Kod noto'g'ri yoki muddati tugagan. Ilovada Sozlamalar → Telegram bot orqali yangi kod oling."); }
+    if (!code) return send(cfg.links && cfg.links[chatId] ? '✅ Siz ulangansiz. Buyruqlar: /yordam' : "Ulanish uchun ilovada Sozlamalar → «Botdan hisobot soʻrash» → «Telegramda ulash» tugmasini bosing.");
+    if (!c || c.exp < Date.now()) { f.n++; cfg.fails[chatId] = f; await saveRow(admin, cfg); return send("Kod noto'g'ri yoki eskirgan. Ilovada Sozlamalar → «Botdan hisobot soʻrash» → «Telegramda ulash» tugmasini qayta bosing."); }
     delete cfg.fails[chatId];
     cfg.links = cfg.links || {}; cfg.links[chatId] = { staffId: c.staffId, at: Date.now() }; delete cfg.codes[code];
-    await saveRow(admin, cfg); return send('✅ Ulandi. Buyruqlar uchun /yordam');
+    await saveRow(admin, cfg); return send('✅ Ulandi! Endi pastdagi «Menyu» tugmasidan yoki yozib soʻrang:\n/foyda — foyda\n/kassa — kassalar\n/qarz — qarzlar\n/xarajat — xarajatlar\n/ombor — kam qolgan mahsulot');
   }
   const link = cfg.links && cfg.links[chatId];
-  if (!link) return send("Avval ulang: ilovada Sozlamalar → Telegram bot → kod oling, so'ng shu yerga /start KOD yozing.");
+  if (!link) return send("Avval ulang: ilovada Sozlamalar → «Botdan hisobot soʻrash» → «Telegramda ulash» tugmasini bosing.");
   const { data: staff } = await admin.from('staff').select('id,name,role,filial,active').eq('id', link.staffId).maybeSingle();
   if (!staff || staff.active === false) return send('Hisobingiz faol emas.');
   if (cmd === 'yordam' || cmd === 'help') return send(Q.HELP);
@@ -134,10 +135,14 @@ exports.handler = async (event) => {
     if (!cfg.token) return json({ error: "Bot hali sozlanmagan — administratorga ayting" }, 409);
     if (body.action === 'link_code') {
       const codes = {}; Object.entries(cfg.codes || {}).forEach(([k, v]) => { if (v.exp > Date.now()) codes[k] = v; });
-      const code = String(crypto.randomInt(10000000, 100000000));   // 8 xonali codes[code] = { staffId: auth.staff.id, exp: Date.now() + CODE_TTL };
+      // v25.6.10: kod endi haqiqatan saqlanadi (avval izoh ichida qolib ketgan edi — ulash ishlamagan)
+      const code = String(crypto.randomInt(10000000, 100000000));   // 8 xonali
+      codes[code] = { staffId: auth.staff.id, exp: Date.now() + CODE_TTL };
       await saveRow(admin, { ...cfg, codes });
-      const me = await tgApi(cfg.token, 'getMe');
-      return json({ ok: true, code, bot: me.ok && me.result ? me.result.username : null, minutes: 15 }, 200);
+      const me = await tgApi(cfg.token, 'getMe'); const bot = me.ok && me.result ? me.result.username : null;
+      const linked = Object.values(cfg.links || {}).some((v) => v && v.staffId === auth.staff.id);
+      // Bir bosishda ulash: t.me/<bot>?start=<kod> — Telegram'da faqat «Start» bosiladi
+      return json({ ok: true, code, bot, link: bot ? `https://t.me/${bot}?start=${code}` : null, linked, minutes: 15 }, 200);
     }
     // unlink — faqat o'z ulanishlari
     const links = {}; Object.entries(cfg.links || {}).forEach(([k, v]) => { if (v.staffId !== auth.staff.id) links[k] = v; });

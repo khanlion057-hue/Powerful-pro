@@ -1271,7 +1271,9 @@ function canSeePage(page) {
   const perm = PAGE_VIEW_PERMISSION[page]; return !perm || hasPerm(perm);
 }
 // Moliyaviy ko'rsatkichlar (foyda, sof foyda, biznes holati) — faqat hisobot huquqi bilan
-function canSeeFinance() { return hasPerm('hisobot.view'); }
+// v25.6.10: tannarx ko'rinmasa (server yashirgan) foyda $0 / marja 0% kabi NOTO'G'RI raqam chiqardi — foyda faqat tannarx huquqi bilan
+function canSeeCost() { return hasPerm('tannarx.view') && !(typeof fwCostHidden === 'function' && fwCostHidden(S.products)); }
+function canSeeFinance() { return hasPerm('hisobot.view') && canSeeCost(); }
 
 let CURRENT_USER = null;   // {kind:'owner'|'staff', staffId, name, roles:[{key,name}], perms:Set}
 let RBAC_ROLES_CACHE = []; // Rollar sahifasi uchun keshlangan rollar ro'yxati
@@ -1951,7 +1953,7 @@ function renderBranchBadge() {
   // v23: Hamkorlar (investor/ta'sischi) — HAR BIR filialning o'zi: filial o'z investorlari bilan
   // o'zi hisob-kitob qiladi (Baza bilan faqat tovar qarzi va pul qarzi orqali bog'langan).
   const hamkorNav = document.querySelector('[data-page="hamkorlar"]');
-  if (hamkorNav) hamkorNav.style.display = '';
+  if (hamkorNav) hamkorNav.style.display = canSeePage('hamkorlar') ? '' : 'none';   // v25.6.10: ruxsatsiz xodimga ko'rinmaydi
 }
 
 function openBranchSwitch() {
@@ -2287,8 +2289,7 @@ function initSidebarState() {
 let _hashLock = false;
 
 function go(page) {
-  const _perm = PAGE_VIEW_PERMISSION[page];
-  if (_perm && !hasPerm(_perm)) {
+  if (!canSeePage(page)) {   // v25.6.10: menyu bilan bir xil qoida (PAGE_VIEW_ANY ham)
     toast("Bu bo'limga ruxsatingiz yo'q", 'error');
     return;
   }
@@ -2771,7 +2772,7 @@ function dashSheet(key) {
     openSheet({ ic:'inventory', c:'purple', title:'Mahsulotlar', sub:'Ombor qoldigʻi — tannarxda va sotuv narxida',
       body:`<section class="ox-hero fw-hero" style="--hc:var(--sky);margin:0">
           <div class="ox-hero-top"><span>Ombor</span><span class="ox-date">${esc(branchName(S.branch))}</span></div>
-          <div class="ds-two"><div><span>Tannarxda</span><b>${fwMoneyUsd(k.cost)}</b></div><div title="Kassadagi chakana narx (butun $, soʻmda yaxlit) × qoldiq"><span>Sotuvda (kassa narxida)</span><b style="color:var(--sky)">${fwMoneyUsd(k.sell)}</b></div></div>
+          <div class="ds-two"><div><span>Tannarxda</span><b>${canSeeCost() ? fwMoneyUsd(k.cost) : '—'}</b></div><div title="Kassadagi chakana narx (butun $, soʻmda yaxlit) × qoldiq"><span>Sotuvda (kassa narxida)</span><b style="color:var(--sky)">${fwMoneyUsd(k.sell)}</b></div></div>
           <div class="ds-chips">${chip('',k.all,'Barcha mahsulotlar','sky')}${chip('low',k.low,'Kam','amber')}${chip('out',k.out,'Mavjud emas','red')}</div>
           <p class="fk-note">Qoldiq: <b>${k.units.toLocaleString('en-US').replace(/,/g,' ')} dona</b></p></section>
         <div class="ds-tools">
@@ -3083,7 +3084,7 @@ const POS_ADMIN = {
     S.customers.push(c); save(); auditLog(`Yangi mijoz: ${c.name}`); return c;
   },
   boxes: () => savdoBoxes(),
-  showProfit: () => hasPerm('hisobot.view'),
+  showProfit: () => canSeeFinance(),
   priceEditable: () => true,
   rounding: () => S.settings?.roundingEnabled !== false,
   commit: (ctx) => _savdoCommit(ctx),
@@ -4054,7 +4055,7 @@ function pgMahsulotlar() {
   el.innerHTML = `
   <section class="ox-hero pm-hero" aria-label="Ombor">
     <div class="ox-hero-top"><span>Ombor</span><span class="ox-date">${n(active.length)} ta mahsulot</span></div>
-    <div class="pmh-2"><div><span>Tannarxda</span><b>${usd(value)}</b></div><div title="Kassadagi chakana narx (butun $, soʻmda yaxlit) × qoldiq"><span>Sotuvda (kassa narxida)</span><b style="color:var(--sky)">${usd(sellV)}</b></div></div>
+    <div class="pmh-2"><div><span>Tannarxda</span><b>${canSeeCost() ? usd(value) : '—'}</b></div><div title="Kassadagi chakana narx (butun $, soʻmda yaxlit) × qoldiq"><span>Sotuvda (kassa narxida)</span><b style="color:var(--sky)">${usd(sellV)}</b></div></div>
     <div class="pmh-3">${big('','Barcha mahsulotlar','gold',active.length)}${big('low','Kam','amber',low)}${big('out','Mavjud emas','red',out)}</div>
     <div class="pmh-foot">Qoldiq: <b>${n(units)}</b> dona${arch?` · <button type="button" class="pm-archb${stF==='arch'?' on':''}" onclick="pmSetSt('arch')">arxivda ${n(arch)} ›</button>`:''}</div>
   </section>
@@ -4415,7 +4416,7 @@ function pcDyn() {
     el.innerHTML = `<div class="pc-kpis">
         <div style="--c:var(--sky)"><span>Sotildi</span><b>${fwFmtNumStr(X.qty)}</b></div>
         <div style="--c:var(--emerald)"><span>Tushum</span><b>${CUR.fmtUsd(X.rev)}</b></div>
-        <div style="--c:var(--amber)"><span>Foyda</span><b>${CUR.fmtUsd(X.profit)}</b></div>
+        <div style="--c:var(--amber)"><span>Foyda</span><b>${canSeeCost() ? CUR.fmtUsd(X.profit) : '—'}</b></div>
         <div style="--c:var(--red)"><span>Qaytarishlar</span><b>${fwFmtNumStr(X.retQty)}</b></div></div>
       <div class="pc-seg pc-mode">${[['qty','Miqdor'],['sum','Summa']].map(([k, l]) => `<button class="${PC.mode === k ? 'on' : ''}" onclick="PC.mode='${k}';pcDyn()">${l}</button>`).join('')}</div>
       <div class="pc-chart${X.R.keys.length > 12 ? ' dense' : ''}">${X.R.keys.map((k, i) => `<div class="pc-col" title="${esc(k)}: ${PC.mode === 'qty' ? fwFmtNumStr(vals[i]) : CUR.fmtUsd(vals[i])}">
@@ -8646,14 +8647,14 @@ function spStatsHtml() {
     ${g.length > 1 ? `<div class="fws-chips">${chip('all','Hammasi')}${g.map(o => chip(o.key, spName(o.key, o.sample))).join('')}</div>` : ''}
     ${fwKpisHtml([
       { l:'Tushum', v:fwUsd(rev), c:'emerald', trend:fwTrendHtml(rev, sum(sp,'totalUsd')), sub: esc(selName) },
-      { l:'Foyda', v:fwUsd(prof), c:'sky', trend:fwTrendHtml(prof, sum(sp,'profitUsd')), sub:`marja ${rev ? fwPct(prof, rev) : 0}%` },
+      ...(canSeeCost() ? [{ l:'Foyda', v:fwUsd(prof), c:'sky', trend:fwTrendHtml(prof, sum(sp,'profitUsd')), sub:`marja ${rev ? fwPct(prof, rev) : 0}%` }] : []),
       { l:'Cheklar', v:fwNum(sc.length), c:'purple', trend:fwTrendHtml(sc.length, sp.length), sub:`o'rtacha ${fwUsd(sc.length ? rev / sc.length : 0)}` },
       { l:'Sotilgan', v:fwNum(units) + ' dona', c:'amber', sub:`${fwNum(kinds)} xil mahsulot` },
     ])}
     <div class="fws-grid">
       ${fwCardHtml('Xodimlar reytingi', totRev > 0 ? fwRankHtml(rank, { c:'emerald' }) : fwEmptyHtml(g.length ? "Bu davrda savdo yoʻq" : "Xodim yoki savdo yoʻq"), '', '')}
       ${fwCardHtml('Dinamika', `<div class="fws-sub">${esc(selName)} · ${P.a === P.b ? 'soatlar' : P.per === 'year' ? 'oylar' : 'kunlar'} bo'yicha tushum</div>` + fwBarsHtml(fwSeries(sc, s => s.date, s => s.totalUsd, P, s => fwTsFromUid(s.id)), { c:'emerald', titleOf: fwPointTitle }), `<span class="fws-pill" style="--c:var(--emerald)">${fwUsd(rev)}</span>`)}
-      ${fwRankCardHtml({ mode: SP_UI.prod, fn:'spSetProd', range: fwRangeLabel(P) + ' · ' + selName, sold: fwSaleLines(sc), imgOf: fwProdImg, showProfit:true,
+      ${fwRankCardHtml({ mode: SP_UI.prod, fn:'spSetProd', range: fwRangeLabel(P) + ' · ' + selName, sold: fwSaleLines(sc), imgOf: fwProdImg, showProfit:canSeeCost(),
         unsold: (soldSet => (S.products||[]).filter(p => !p.archived && !p.directSale && !soldSet.has(String(p.id)) && getStock(p.id) > 0).map(p => ({ pid:p.id, name:p.name, sku:p.sku, qty:getStock(p.id) })))(new Set(fwSaleLines(sc).map(l => String(l.pid)))),
         unsoldNote: SP_UI.staff === 'all' ? '' : 'Bu xodim shu davrda sotmagan, omborda bor mahsulotlar.' })}
       ${fwCardHtml("To'lov turlari", fwPayStackHtml(sc))}
@@ -9876,7 +9877,7 @@ function dillerOrdersHtml() {
         <button class="btn btn-danger btn-sm" style="flex:1;justify-content:center" onclick="rejectDealerOrder(${o.id})">❌ Rad etish</button>
         <button class="btn btn-success btn-sm" style="flex:1;justify-content:center" onclick="approveDealerOrder(${o.id})">✅ Tasdiqlash va yuborish</button>
       </div>` : ''}
-      ${o.status==='rejected' ? `<div style="margin-top:8px"><button class="btn btn-ghost btn-sm" onclick="deleteDealerOrder(${o.id})">🗑 Oʻchirish</button></div>` : ''}
+      ${o.status==='rejected' && hasPerm('dillerlar.orders') ? `<div style="margin-top:8px"><button class="btn btn-ghost btn-sm" onclick="deleteDealerOrder(${o.id})">🗑 Oʻchirish</button></div>` : ''}
     </div>`;
   };
   return `
@@ -9885,7 +9886,7 @@ function dillerOrdersHtml() {
       <button class="btn btn-ghost btn-sm" onclick="dillerOrdersRefresh()">🔄 Yangilash</button>
     </div>
     <div style="font-size:13px;font-weight:700;color:var(--gold-dark);margin-bottom:8px">⏳ Kutilayotgan (${pending.length})</div>
-    ${pending.length ? pending.map(o=>renderOrder(o,true)).join('') : `<div class="card" style="text-align:center;padding:24px;color:var(--text-muted);margin-bottom:16px">Kutilayotgan buyurtma yo'q</div>`}
+    ${pending.length ? pending.map(o=>renderOrder(o, hasPerm('dillerlar.orders'))).join('') : `<div class="card" style="text-align:center;padding:24px;color:var(--text-muted);margin-bottom:16px">Kutilayotgan buyurtma yo'q</div>`}
     <div style="font-size:13px;font-weight:700;color:var(--text-muted);margin:18px 0 8px">🕘 So'nggi hal qilinganlar</div>
     ${resolved.length ? resolved.map(o=>renderOrder(o,false)).join('') : `<div class="card" style="text-align:center;padding:20px;color:var(--text-muted)">Hali yo'q</div>`}`;
 }
@@ -12560,9 +12561,9 @@ function pgHisobot() {
     <div class="ox-hero-top"><span>Tushum</span><span class="ox-date">${D.a===D.b?dmy(D.a):dmy(D.a)+' – '+dmy(D.b)}</span></div>
     <div class="ox-hero-big">${_sxUsd(D.rev)}</div>
     <div class="ox-hero-cols">
-      <div><b style="color:var(--emerald)">${_sxUsd(D.profit)}</b><span>Foyda</span></div>
+      <div><b style="color:var(--emerald)">${canSeeCost() ? _sxUsd(D.profit) : '—'}</b><span>Foyda</span></div>
       <div><b>${_sxN(D.sales.length)}</b><span>Cheklar</span></div>
-      <div><b>${marja}</b><span>Marja</span></div>
+      <div><b>${canSeeCost() ? marja : '—'}</b><span>Marja</span></div>
     </div>
     <button class="sx-rank" onclick="document.getElementById('sx-rank')?.scrollIntoView({behavior:'smooth',block:'start'})">
       <span class="sx-rank-ic">${ICONF.chart}</span>
@@ -12681,7 +12682,7 @@ function sxRankCardHtml(D) {
   const unsold = branchVisibleProducts(S.products).filter(p => !p.archived && !p.directSale && !soldSet.has(String(p.id)) && getStock(p.id) > 0)
     .map(p => ({ pid:p.id, name:p.name, sku:p.sku, qty:getStock(p.id) }));
   return fwRankCardHtml({ mode: (S.sx && S.sx.rk) || 'top', fn:'sxSetRank', range: `Oy boshidan: ${fwRangeLabel({ a, b })}`, sold: fwSaleLines(sales),
-    imgOf: fwProdImg, showProfit:true, unsold, cls:'sx-card', unsoldNote:"Omborda bor, lekin oy boshidan beri sotilmagan mahsulotlar." });
+    imgOf: fwProdImg, showProfit:canSeeCost(), unsold, cls:'sx-card', unsoldNote:"Omborda bor, lekin oy boshidan beri sotilmagan mahsulotlar." });
 }
 function sxSetRank(m) { sxRange(); S.sx.rk = m; const el = document.getElementById('sx-rank'); if (el) el.innerHTML = sxRankCardHtml(sxData()); }
 // ── Qarzlar grafigi: eng katta qarzdor mijozlar ──
@@ -12860,8 +12861,8 @@ function pgSozlamalar() {
       row({ic:'send', c:'sky', t:'Botdan hisobot soʻrash', sub:'/foyda, /xarajat, /qarz, /kassa, /ombor', on:"tgqOpen()"}),
     ])}
 
-    ${own ? group('Administrator · dastlabki sinov', [
-      row({ic:'trash', c:'red', t:'Sinov maʼlumotlarini tozalash', sub:'Faqat kirim qoladi · parol bilan', danger:true, on:"trialResetOpen()"}),
+    ${fwServerAdmin() ? group('Administrator · dastlabki sinov', [
+      row({ic:'trash', c:'red', t:'Sinov maʼlumotlarini tozalash', sub:'Parol bilan · kirimlarni ham oʻchirish mumkin', danger:true, on:"trialResetOpen()"}),
     ]) : ''}
 
     ${group(`${brL} · chek va printer`, [
@@ -13021,7 +13022,7 @@ async function trialCall(body) {
   return j;
 }
 async function trialResetOpen() {
-  if (!_fwIsOwner()) { toast('Faqat administrator uchun', 'error'); return; }
+  if (!fwServerAdmin()) { toast('Faqat administrator uchun', 'error'); return; }
   try { TRS.st = await trialCall({ action: 'status' }); } catch (e) { toast(e.message, 'error'); return; }
   TRS.counts = null; trialResetPaint();
 }
@@ -13405,7 +13406,7 @@ function _stTgTokenSet() { const st = S.settings||{}; return !!(st.tgBotToken ||
 // v24.7: Botlar xaritasi — qaysi bot qayerdan, qanday vazifani bajaradi (tokenlar faqat serverda, bu yerda faqat holat)
 function stBotsSheet() {
   stBotsPaint(null);
-  if (_fwIsOwner()) tgqCall({ action: 'status' }).then(q => { if (document.querySelector('.bt-map')) stBotsPaint(q); }).catch(() => {});   // so'rov boti holati (faqat administrator)
+  if (fwServerAdmin()) tgqCall({ action: 'status' }).then(q => { if (document.querySelector('.bt-map')) stBotsPaint(q); }).catch(() => {});   // so'rov boti holati (faqat administrator)
 }
 function stBotsPaint(q) {
   const st = S.settings || {}, tgOn = !!((st.tgBotToken || st.tgBotTokenSet) && st.tgChatId);

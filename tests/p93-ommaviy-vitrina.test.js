@@ -104,6 +104,11 @@ async function testBrowser() {
     const cartTotal = await page.$eval('.vt-tot.f span:last-child', (e) => e.textContent);
     await page.fill('#vt-form [name=name]', 'Aziz'); await page.fill('#vt-form [name=phone]', '901234567');
     assert.equal(await page.$eval('#vt-form [name=phone]', (e) => e.value), '+998 90 123 45 67', 'telefon niqobi');
+    // v25.6.10: savatda + bosilganda yozilganlar o'chmaydi
+    await page.fill('#vt-form [name=note]', 'Qoʻngʻiroq qiling'); await page.click('[data-cinc]'); await page.click('[data-cdec]');
+    assert.equal(await page.$eval('#vt-form [name=name]', (e) => e.value), 'Aziz', 'ism saqlandi');
+    assert.equal(await page.$eval('#vt-form [name=phone]', (e) => e.value), '+998 90 123 45 67', 'telefon saqlandi');
+    assert.equal(await page.$eval('#vt-form [name=note]', (e) => e.value), 'Qoʻngʻiroq qiling', 'izoh saqlandi');
     await page.click('#vt-send'); await page.waitForSelector('.vt-ok');
     assert.match(await page.$eval('.vt-ok', (e) => e.textContent), new RegExp('Jami: ' + cartTotal.replace(/\s/g, '\\s')));
     assert.equal(await page.$eval('#vt-cartc', (e) => e.textContent), '0', 'savat tozalandi');

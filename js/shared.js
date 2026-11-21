@@ -40,10 +40,11 @@ function setThemeMode(mode){ if(!FW_THEMES.includes(mode)) return; _fwSet('koma_
 // v23.5: standart o'lcham — 90% (ixcham, ko'proq ma'lumot sig'adi). Foydalanuvchi tanlovi saqlanadi.
 const FW_TEXT_SCALES = [80,90,100,110,120,130];
 function getTextScale(){ const v=parseInt(_fwGet('fw_text_scale')||'90',10); return FW_TEXT_SCALES.includes(v)?v:90; }
-function setTextScale(v){ v=FW_TEXT_SCALES.includes(+v)?+v:90; _fwSet('fw_text_scale',String(v)); document.documentElement.style.zoom = v===100 ? '' : (v/100); }
+function setTextScale(v){ v=FW_TEXT_SCALES.includes(+v)?+v:90; _fwSet('fw_text_scale',String(v)); document.documentElement.style.zoom = v===100 ? '' : (v/100); document.documentElement.style.setProperty('--fw-z', String(v/100)); }
 (function initTheme() {
   _fwApplyTheme(getThemeMode());
   if (getTextScale()!==100) document.documentElement.style.zoom = getTextScale()/100;
+  document.documentElement.style.setProperty('--fw-z', String(getTextScale()/100));   // v25.6.10: 100vh / zoom = haqiqiy ekran balandligi
   // Tizim foni o'zgarsa — darhol; eski Safari (addListener) ham; ilovaga qaytganda ham qayta tekshiriladi
   const _sys = () => { if (getThemeMode()==='system') _fwApplyTheme('system'); };
   if (window.matchMedia) { const mq = matchMedia('(prefers-color-scheme: dark)'); if (mq.addEventListener) mq.addEventListener('change', _sys); else if (mq.addListener) mq.addListener(_sys); }

@@ -3852,3 +3852,23 @@ button.pos-thumb{ cursor:zoom-in; }
 /* v25.6.9 (dizayner): tor ekranda (≤360px) kassalar bir ustunda — yorliqlar kesilmaydi; kichik tugmalarga qulay bosish maydoni */
 @media (max-width:360px){ .ks-grid{ grid-template-columns:1fr !important; } }
 .modal-close{ min-width:40px; min-height:40px; }
+
+/* ── v25.6.10: kompyuter auditi tuzatishlari ── */
+/* 1) Kirim formasi: tepadagi to'q sariq panel topbar ostiga yopishadi (oraliqdan matn ko'rinmaydi), maydonlar uning ostida qolmaydi */
+/* Kompyuterda panel yopishmaydi — forma bilan birga suriladi (hech narsa ostida qolmaydi); telefonda — topbarga zich yopishadi */
+#pg-kirim.k-mode-form .kr-add{ box-shadow:0 8px 18px rgba(0,0,0,.22); }
+@media (min-width:1025px){ #pg-kirim.k-mode-form .kr-add{ position:relative; top:auto; } }
+#pg-kirim.k-mode-form #k-form-card :is(input,select,textarea,button){ scroll-margin-top:calc(var(--topbar-height, 64px) + 80px); }
+/* 2) Yon menyu: html zoom (90%) bilan 100vh ekranning 90% i — pastki bandlar (Hisobotlar, Sozlamalar) ko'rinmay qolardi */
+.sidebar{ top:0; bottom:0; height:auto; }
+/* 3) Savdo (POS): o'ng panel topbar ostidan boshlanadi; Jami va To'lash tugmasi doim ko'rinadi */
+@media (min-width:1024px){
+  .pos-side{ top:calc(var(--topbar-height, 64px) + 12px); max-height:calc(100vh / var(--fw-z, 1) - 250px); }   /* ekranga sig'adi — Jami va To'lash doim ko'rinadi */
+  .pos-side > .pos-total{ position:sticky; bottom:58px; background:var(--bg-secondary); z-index:1; }
+  .pos-side > .pos-foot{ position:sticky; bottom:-12px; background:var(--bg-secondary); padding:8px 0 12px; z-index:1; }
+}
+/* 4) Yorug' mavzu: to'q jigarrang asosiy tugmada qora matn o'qilmasdi */
+html:not([data-theme="dark"]) .btn-primary{ color:#fff; }
+/* 5) Fayl tanlash maydoni (chek rasmi) — mavzuga mos */
+.form-control[type=file]::file-selector-button{ border:1px solid var(--border); background:var(--bg-hover, var(--bg-card)); color:var(--text-primary);
+  border-radius:8px; padding:4px 10px; margin-right:10px; cursor:pointer; font:inherit; }

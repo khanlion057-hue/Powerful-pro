@@ -22,21 +22,21 @@ async function checkPassword(email, password) {
 
 // v25.6.9: app_data JSON nusxasini ham tozalash (aks holda boshqa filial nusxasidagi eski savdo/xarajat qayta chiqadi).
 // Versiya +1 — eski nusxa ushlab turgan qurilmalar saqlay olmaydi (409) va qayta yuklaydi.
-function cleanBranch(b) {
+function cleanBranch(b, withKirim) {
   if (!b || typeof b !== 'object') return b;
-  const batches = (Array.isArray(b.batches) ? b.batches : []).filter((x) => x && x.status !== 'deleted')
+  const batches = withKirim ? [] : (Array.isArray(b.batches) ? b.batches : []).filter((x) => x && x.status !== 'deleted')
     .map((x) => ({ ...x, sold: 0, status: (Number(x.qty) || 0) > 0 ? 'active' : 'empty' }));
   return { ...b, batches, sales: [], expenses: [], dailyClosings: [], revisions: [], cashTxns: [],
     customers: (b.customers || []).map((c) => ({ ...c, debt: 0 })), suppliers: (b.suppliers || []).map((c) => ({ ...c, debt: 0 })),
     cashboxes: (b.cashboxes || []).map((c) => ({ ...c, bal: 0 })) };
 }
-async function cleanJson(admin) {
+async function cleanJson(admin, withKirim) {
   const now = new Date().toISOString();
   let r = await admin.from('app_data').select('data,version').eq('id', 'main').maybeSingle();
   const hasVer = !r.error; if (r.error) r = await admin.from('app_data').select('data').eq('id', 'main').maybeSingle();
   if (r.error) throw r.error;
   const d = (r.data && r.data.data) || {};
-  const bs = {}; Object.entries(d.branchStore || {}).forEach(([k, v]) => { bs[k] = cleanBranch(v); });
+  const bs = {}; Object.entries(d.branchStore || {}).forEach(([k, v]) => { bs[k] = cleanBranch(v, withKirim); });
   const main = { ...d, branchStore: bs, partnerPeriods: [], dealerTxns: [], dealerStock: [], filialOrders: [], auditLogs: [], branchDebt: {},
     partners: (d.partners || []).map((p) => ({ ...p, invested: 0 })), dealers: (d.dealers || []).map((x) => ({ ...x, debt: 0 })) };
   const up = hasVer ? { data: main, version: (Number(r.data && r.data.version) || 0) + 1, updated_at: now } : { data: main, updated_at: now };
@@ -44,7 +44,7 @@ async function cleanJson(admin) {
   let rows = await admin.from('app_data_branches').select('branch_key,data,version');
   const bVer = !rows.error; if (rows.error) rows = await admin.from('app_data_branches').select('branch_key,data');
   for (const row of (rows.data || [])) {
-    const u = bVer ? { data: cleanBranch(row.data), version: (Number(row.version) || 0) + 1, updated_at: now } : { data: cleanBranch(row.data), updated_at: now };
+    const u = bVer ? { data: cleanBranch(row.data, withKirim), version: (Number(row.version) || 0) + 1, updated_at: now } : { data: cleanBranch(row.data, withKirim), updated_at: now };
     const e = await admin.from('app_data_branches').update(u).eq('branch_key', row.branch_key); if (e.error) throw e.error;
   }
   return { branches: (rows.data || []).length };
@@ -76,6 +76,7 @@ exports.handler = async (event) => {
     if (!open) return json({ error: `Sinov muddati tugagan (${until}) — tozalash yopilgan` }, 403);
     if (action === 'dry') {
       const { data, error } = await admin.rpc('fw_trial_reset', { p_dry: true }); if (error) throw error;
+      if (body.withKirim) { const k = await admin.rpc('fw_trial_reset_kirim', { p_dry: true }); if (k.error) return json({ error: "Kirimlarni tozalash uchun 53-migratsiya qo'llanishi kerak" }, 409); data.kirim_batches = k.data && k.data.batches; }
       return json({ ok: true, counts: data }, 200);
     }
     // run
@@ -84,8 +85,11 @@ exports.handler = async (event) => {
     const { data: u } = await admin.auth.admin.getUserById(auth.staff.auth_user_id);
     const email = u && u.user && u.user.email;
     if (!email || !(await checkPassword(email, body.password))) return json({ error: "Parol noto'g'ri" }, 403);
+    const withKirim = !!body.withKirim;
+    if (withKirim) { const k0 = await admin.rpc('fw_trial_reset_kirim', { p_dry: true }); if (k0.error) return json({ error: "Kirimlarni tozalash uchun 53-migratsiya qo'llanishi kerak" }, 409); }
     const { data, error } = await admin.rpc('fw_trial_reset', { p_dry: false }); if (error) throw error;
-    const jr = await cleanJson(admin);
+    if (withKirim) { const k = await admin.rpc('fw_trial_reset_kirim', { p_dry: false }); if (k.error) throw k.error; data.kirim_batches = k.data && k.data.batches; }
+    const jr = await cleanJson(admin, withKirim);
     data.app_data_branches = jr.branches;
     await admin.from('app_data').upsert({ id: ROW, data: { ...cfg, lastRun: { at: new Date().toISOString(), by: auth.staff.name || auth.staff.login || null, counts: data } }, updated_at: new Date().toISOString() });
     return json({ ok: true, counts: data }, 200);

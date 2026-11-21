@@ -66,7 +66,19 @@ async function voidDirectAndRate() {
   assert.equal(Number(back[0].qty), 1, 'oddiy savdo o\'chirilganda tovar omborga qaytadi (avvalgidek)');
 }
 
+async function resetWithKirim() {
+  const w = await world();
+  for (const m of ['supabase-migration-49-sinov-tozalash.sql', 'supabase-migration-53-tozalash-kirim.sql']) await w.pg.exec(fs.readFileSync(path.join(ROOT, m), 'utf8'));
+  await w.op('k-r1', 'batches_create', { reason: 'kirim', batches: [{ localId: 'r1', pid: 401, qty: 5, costUsd: 3 }] });
+  await w.sell('s-r1', { localId: 'sr1', inv: 'I-r1', items: [{ pid: 401, qty: 2, sellUsd: 5, costUsd: 3 }], paidUsd: 0 });
+  const dry = (await w.q(`select fw_trial_reset_kirim(true) r`))[0].r;
+  assert.equal(dry.batches, 1);
+  await w.q(`select fw_trial_reset(false)`); await w.q(`select fw_trial_reset_kirim(false)`);
+  const n = (await w.q(`select (select count(*)::int from batches) b, (select count(*)::int from stock_ledger) l, (select count(*)::int from sales) s`))[0];
+  assert.deepEqual(n, { b: 0, l: 0, s: 0 }, 'kirimlar ham, jurnal ham, savdo ham — 0');
+}
 module.exports = { name: 'P117 — 51-migratsiya: konsignatsiya, oʻchirish, kurs', cases: [
   { name: 'konsignatsiya qarzi tovar narxidan; eski partiya avvalgidek', run: consignment },
   { name: 'savdo oʻchirish: toʻgʻridan-toʻgʻri qator omborga qaytmaydi, taʼminotchi qarzi kamayadi; savdo kunidagi kurs', run: voidDirectAndRate },
+  { name: '53: kirimlar bilan tozalash — ombor 0', run: resetWithKirim },
 ] };

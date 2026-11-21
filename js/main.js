@@ -13019,6 +13019,7 @@ const TRS_GROUPS = [
   ['Diller buyurtma, to‘lov, ombor', ['dealer_orders', 'dealer_pay_notices', 'dealer_payments', 'dealer_sales', 'dealer_stock', 'dealer_stock_moves', 'dealer_audit_log', 'fw_dealer_revisions']],
   ['Hamkor (investor) hisobi', ['partner_ledger', 'partner_payments', 'partner_periods']],
   ['Filial o‘tkazmalari va qarzlari', ['branch_transfer_shipments', 'branch_transfers', 'branch_debt_cur', 'branch_debt_cur_ledger']],
+  ['Kirim partiyalari (prixod)', ['kirim_batches']],
   ['Tarix va bildirishnomalar', ['fw_notifications', 'tg_outbox', 'fw_audit_events', 'staff_audit_log', 'ops_events', 'ops_alerts', 'ledger_ops', 'idempotency_keys']],
 ];
 function trialResetPaint() {
@@ -13034,6 +13035,7 @@ function trialResetPaint() {
       <div class="st-eyebrow">Sinov boshlangan sana</div>
       <input class="form-control" type="date" id="trs-start" value="${esc(st.start || '')}" max="${td()}" onchange="trialSetStart(this.value)">
       ${st.open ? `<button class="bs-btn ghost" onclick="trialDry(this)">Nimalar o‘chishini ko‘rish</button>${preview}
+      <label style="display:flex;gap:10px;align-items:flex-start;padding:10px 0"><input type="checkbox" id="trs-kirim" ${TRS.kirim ? 'checked' : ''} onchange="TRS.kirim=this.checked;TRS.counts=null;trialResetPaint()" style="width:20px;height:20px;margin-top:2px"><span><b>Kirimlar (prixod) ham oʻchsin</b><br><small style="color:var(--text-muted)">Ombor (FIFO) 0 boʻladi. Mahsulotlar roʻyxati (nomi, kodi, rasmi) qoladi — keyin yangidan kirim qilasiz.</small></span></label>
       <div class="st-eyebrow">Parolingiz</div><input class="form-control" type="password" id="trs-pw" autocomplete="current-password" placeholder="Administrator paroli">
       <div class="st-eyebrow">Tasdiqlash uchun <b>TOZALASH</b> deb yozing</div><input class="form-control" id="trs-ok" autocomplete="off" placeholder="TOZALASH">` : `<p class="bs-note">${st.start ? 'Sinov muddati tugagan — tozalash yopilgan.' : 'Avval sanani kiriting.'}</p>`}
     </div>`,
@@ -13044,7 +13046,7 @@ async function trialSetStart(v) {
 }
 async function trialDry(btn) {
   if (btn) btn.disabled = true;
-  try { TRS.counts = (await trialCall({ action: 'dry' })).counts; trialResetPaint(); } catch (e) { toast(e.message, 'error'); if (btn) btn.disabled = false; }
+  try { TRS.counts = (await trialCall({ action: 'dry', withKirim: !!TRS.kirim })).counts; trialResetPaint(); } catch (e) { toast(e.message, 'error'); if (btn) btn.disabled = false; }
 }
 async function trialRun(btn) {
   const pw = document.getElementById('trs-pw')?.value || '', ok = document.getElementById('trs-ok')?.value || '';
@@ -13053,7 +13055,7 @@ async function trialRun(btn) {
   if (TRS.busy || !confirm('Barcha sinov harakatlari butunlay oʻchadi. Davom etasizmi?')) return;
   TRS.busy = true; if (btn) btn.disabled = true;
   try {
-    await trialCall({ action: 'run', password: pw, confirm: 'TOZALASH' });
+    await trialCall({ action: 'run', password: pw, confirm: 'TOZALASH', withKirim: !!TRS.kirim });
     // Server JSON nusxani ham tozaladi va versiyani oshirdi — bu qurilmadagi eski nusxa YUBORILMAYDI, faqat qayta yuklanadi
     try { localStorage.removeItem('bp_data'); } catch (_) {}
     closeSheet(); toast('✅ Tozalandi — balanslar 0, kirim saqlandi. Boshqa qurilmalarda ham ilovani qayta oching'); setTimeout(() => location.reload(), 1200);

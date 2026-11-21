@@ -4567,7 +4567,7 @@ function pmForm(p, prefillName) {
 
       <div class="pmf-card"><div class="pmf-h">Ombor va diller</div>
         <div class="me-2">
-          ${meField('Min qoldiq', `<input class="form-control" id="ep-min" type="number" min="0" value="${p.minStock != null ? p.minStock : (S.settings?.lowStockDefault ?? 5)}">`, 'Shu songa tushsa — «kam qoldi»')}
+          ${meField('Min qoldiq', `<input class="form-control" id="ep-min" type="number" min="0" value="${p.minStock != null ? p.minStock : (S.settings?.lowStockDefault ?? 1)}">`, 'Shu songa tushsa — «kam qoldi»')}
           ${meField('Max qoldiq', `<input class="form-control" id="ep-max" type="number" min="0" value="${p.maxStock != null ? p.maxStock : 100}">`)}
         </div>
         ${meField('Diller ball foizi', `<div class="me-amt"><input class="form-control" id="ep-point-pct" type="number" step="0.5" min="0" value="${+p.pointPct || 0}"><i>%</i></div>`, 'Sotuv summasidan qancha ball hisoblanadi')}
@@ -12877,7 +12877,7 @@ function pgSozlamalar() {
       ro({ic:'percent', c:'red', t:'Maksimal chegirma', sub:'Admin boʻlmagan xodim narxni shundan koʻp tushira olmaydi (chakana / optom narxdan)', val:`${stMaxDiscPct()}%`, on:"stEditMaxDisc()"}),
       ro({ic:'calc', c:'indigo', t:'Savdoda soʻm yaxlitlash', sub:`Narx ${fwNum(FWRound.steps({ ...st, roundingEnabled: true }).price)} soʻmga, jami summa ${fwNum(FWRound.steps({ ...st, roundingEnabled: true }).total)} soʻmga yaxlitlanadi (mijoz foydasiga)`, toggle:true, id:'st-rounding', checked: st.roundingEnabled!==false, on:"stSetRounding(this.checked)"}),
       ro({ic:'calc', c:'sky', t:'Yaxlitlash qadamlari', sub:'Narx — eng yaqin qadamga (yarmi tepaga); jami — har doim pastga', val:`${fwNum(FWRound.steps({ ...st, roundingEnabled: true }).price)} / ${fwNum(FWRound.steps({ ...st, roundingEnabled: true }).total)}`, on:"stRoundStepsSheet()"}),
-      ro({ic:'warning', c:'amber', t:'\u00abOmborda kam\u00bb chegarasi', sub:'Yangi mahsulotlar uchun', val:`${n(st.lowStockDefault??5)} dona`, on:"stLowStockSheet()"}),
+      ro({ic:'warning', c:'amber', t:'\u00abOmborda kam\u00bb chegarasi', sub:'Yangi mahsulotlar uchun', val:`${n(st.lowStockDefault??1)} dona`, on:"stLowStockSheet()"}),
       ro({ic:'receipt', c:'indigo', t:'Chek dizayni', sub:'Logo, bannerlar, shior, ranglar, koʻrsatiladigan maʼlumotlar — jonli koʻrinish (PDF va termoprinter)', on:"stReceiptDesign()"}),
       ro({ic:'edit', c:'indigo', t:'Chek yozuvi (standart)', sub: esc(st.receipt||'Xaridingiz uchun rahmat!') + ' · filial oʻz matnini bersa — oʻshanisi', on:"stEditReceipt()"}),
     ]) : group('Butun firma', [
@@ -13098,7 +13098,7 @@ function stLowStockSheet() {
   openSheet({ic:'warning', c:'amber', title:'«Omborda kam» chegarasi', sub:'Qoldiq shu songa tushganda «kam qoldi» deb koʻrsatiladi',
     body:`<div class="bs-card">
       <label class="bs-lbl" for="st-low">Chegara, dona</label>
-      <input class="bs-in" id="st-low" type="number" inputmode="numeric" min="0" value="${st.lowStockDefault??5}">
+      <input class="bs-in" id="st-low" type="number" inputmode="numeric" min="0" value="${st.lowStockDefault??1}">
       <label class="bs-check"><input type="checkbox" id="st-low-all"> Hozirgi barcha mahsulotlarga ham qoʻllash</label>
     </div><p class="bs-info">${ICONF.info}<span>Yangi qoʻshiladigan mahsulotlar shu chegarani oladi. Har bir mahsulotning chegarasini uning kartasida alohida oʻzgartirish mumkin.</span></p>`,
     foot:`<button class="bs-btn" onclick="stSaveLowStock()">Saqlash</button>`});
@@ -14564,7 +14564,7 @@ async function importProducts(input) {
         updated++;
         p = existing;
       } else {
-        p = {id:uid(),sku,name,cat:xlText(v[3+off])||'Boshqa',brand:xlText(v[4+off]),unit:'dona',minStock:(S.settings?.lowStockDefault??5),maxStock:100,image:null,markupPct:25,optMarkupPct:15,pointPct:0};
+        p = {id:uid(),sku,name,cat:xlText(v[3+off])||'Boshqa',brand:xlText(v[4+off]),unit:'dona',minStock:(S.settings?.lowStockDefault??1),maxStock:100,image:null,markupPct:25,optMarkupPct:15,pointPct:0};
         S.products.push(p);
         added++;
       }
@@ -14758,7 +14758,7 @@ async function importBatchXlsx() {
       let p = S.products.find(x=>x.sku===r.sku);
       if (!p) {
         // Yangi SKU — avtomatik yangi mahsulot yaratamiz
-        p = { id:uid(), sku:r.sku, name:r.name||r.sku, cat:r.cat||'Boshqa', brand:r.brand, unit:'dona', minStock:(S.settings?.lowStockDefault??5), maxStock:100, image:null, markupPct:25, optMarkupPct:15, pointPct:0 };
+        p = { id:uid(), sku:r.sku, name:r.name||r.sku, cat:r.cat||'Boshqa', brand:r.brand, unit:'dona', minStock:(S.settings?.lowStockDefault??1), maxStock:100, image:null, markupPct:25, optMarkupPct:15, pointPct:0 };
         S.products.push(p);
         newProdCnt++;
       } else {

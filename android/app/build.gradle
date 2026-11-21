@@ -7,8 +7,8 @@ android {
         applicationId 'uz.powerfulgroup.app'
         minSdk 21
         targetSdk 35
-        versionCode 8
-        versionName '1.0.7'
+        versionCode 9
+        versionName '1.0.8'
     }
     // v25.3: ikki ilova bitta loyihadan — xodimlar (ERP) va xaridorlar (onlayn do'kon). Kalit bir xil.
     flavorDimensions 'app'
@@ -21,8 +21,8 @@ android {
         shop {
             dimension 'app'
             applicationId 'uz.powerfulgroup.shop'
-            versionCode 4
-            versionName '1.0.3'
+            versionCode 5
+            versionName '1.0.4'
             manifestPlaceholders = [hostName: 'powerful-pro.netlify.app', defaultUrl: 'https://powerful-pro.netlify.app/dokon', launcherName: 'PG Doʻkon']
         }
     }

@@ -144,6 +144,8 @@ function parseAmt(str) {
 }
 
 // ── Yozayotganda "1600000" ni "1 600 000" ko'rinishida avtomatik formatlaydi ──
+// v25.6.9 (egasi qarori): chakana narx — $5 dan kam bo'lsa sentgacha (masalan $0.38), aks holda butun dollar (avvalgidek). Server: _lib/pricing.js retailRound
+function fwRetailRound(x) { x = +x || 0; return x >= 5 ? Math.round(x) : Math.round(x * 100) / 100; }
 function liveFormatSpaces(el) {
   const pos = el.selectionStart;
   const before = el.value;

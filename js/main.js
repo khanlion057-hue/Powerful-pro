@@ -1605,7 +1605,7 @@ function sellPrice(p, cost) {
 // Kassada narxi $0 bo'lib qoladigan (arzon tannarx) mahsulot — 0.
 function fwShelfUsd(p, cost) {
   if (!(cost > 0)) return 0;
-  const base = Math.round(sellPrice(p, cost));
+  const base = fwRetailRound(sellPrice(p, cost));
   if (!(base > 0)) return 0;
   const rate = +CUR.usdUzs || 0, usdMode = typeof POS !== 'undefined' && POS && POS.cur === 'USD';
   if (usdMode || !(rate > 0) || typeof posRound !== 'function') return base;
@@ -3066,7 +3066,7 @@ const POS_ADMIN = {
   basePrice: (p, mode) => {
     const sp = fwServerPrice(p, mode); if (sp != null) return sp;
     const cost = (p && p.directSale && +p.dsCostUsd > 0) ? +p.dsCostUsd : getCostFIFO(p.id);
-    return mode === 'wholesale' ? Math.round(optPrice(p, cost) * 100) / 100 : Math.round(sellPrice(p, cost));
+    return mode === 'wholesale' ? Math.round(optPrice(p, cost) * 100) / 100 : fwRetailRound(sellPrice(p, cost));
   },
   canSell: () => true,                                  // admin: qoldiq 0 bo'lsa — ta'minotchidan sotish oynasi
   special: (p) => {
@@ -3141,7 +3141,7 @@ function resolveBoxByType(type) {
 function openDirectSupplySale(pid) {
   const p = S.products.find(x=>x.id===pid); if (!p) return;
   const lastCost = getCostFIFO(pid) || 0; // agar avval kirim bo'lgan bo'lsa, taxminiy narx sifatida ko'rsatamiz
-  const suggestSell = lastCost>0 ? Math.round(sellPrice(p, lastCost)) : '';
+  const suggestSell = lastCost>0 ? fwRetailRound(sellPrice(p, lastCost)) : '';
   const unit = p.unit||'dona';
   const isWhole = unit==='dona';
   modal(`
@@ -5333,15 +5333,29 @@ function omRender() {
       </article>`; }).join('')}</div>`;
 }
 
+// v25.6.9 (egasi talabi): sotilgan kirim O'CHIRILMAYDI (hisob hammada buziladi). Avval shu mahsulot savdolari ko'rsatiladi —
+// qayerda, kim, qachon sotgani; savdoni bosib ochib o'chirish mumkin, keyin kirim o'chiriladi.
+function kirimSoldBlock(batches, soldQty, title) {
+  const pids = new Set(batches.map(b => b.pid)), names = {};
+  (S.products || []).forEach(p => { if (pids.has(p.id)) names[p.id] = p.name; });
+  const sales = (S.sales || []).filter(s => s && s.status !== 'voided' && s.status !== 'cancelled' && (s.items || []).some(i => pids.has(i.pid)))
+    .sort((a, z) => String(z.date || '').localeCompare(String(a.date || ''))).slice(0, 60);
+  const rows = sales.map(s => { const q = (s.items || []).filter(i => pids.has(i.pid)).reduce((a, i) => a + (+i.qty || 0), 0);
+    return `<button class="dk-kv" style="width:100%;text-align:left;border:0;background:none;font:inherit;color:inherit;cursor:pointer;padding:10px 0" onclick="closeSheet();dashShowSale(${JSON.stringify(s.id).replace(/"/g, '&quot;')})">
+      <span><b>${esc(s.inv || '#' + s.id)}</b><br><small style="color:var(--text-muted)">${fmtD(s.date)} · ${esc(s.staffName || 'Egasi / admin')}${s.custName ? ' · ' + esc(s.custName) : ''}</small></span><b>${q} dona ›</b></button>`; }).join('');
+  openSheet({ ic: 'warning', c: 'red', title: 'Kirimni oʻchirib boʻlmaydi', sub: esc(title),
+    body: `<div class="fr-form"><p class="bs-note"><b>${soldQty} dona sotilgan.</b> Sotilgan kirimni oʻchirsangiz, savdolar, foyda va qarz hisobi buziladi. Avval quyidagi savdolarni oʻchiring (savdoni bosing → «Oʻchirish»), keyin kirimni oʻchirasiz.</p>
+      <div class="st-eyebrow">Shu mahsulot savdolari (${sales.length})</div>
+      <div class="bs-card">${rows || '<p class="bs-note">Bu qurilmada savdo topilmadi — sahifani yangilab qayta urinib koʻring.</p>'}</div></div>` });
+}
 // ── Butun partiyani (bir xil #bno ga tegishli BARCHA mahsulot qatorlarini) o'chirish ──
 async function deleteBatchGroup(bno) {
   const list = S.batches.filter(b=>b.bno===bno);
   if (!list.length) { toast('Partiya topilmadi', 'error'); return; }
   const totalSold = list.reduce((s,b)=>s+(b.sold||0), 0);
   const totalQty = list.reduce((s,b)=>s+b.qty, 0);
-  if (totalSold > 0) {
-    if (!confirm(`⚠️ DIQQAT: Partiya #${bno}dan jami ${totalSold} dona SOTILGAN. Butun partiyani o'chirsangiz, o'sha savdolarning tannarx hisob-kitobi buziladi. Baribir o'chirasizmi?`)) return;
-  } else {
+  if (totalSold > 0) { kirimSoldBlock(list, totalSold, `Partiya #${bno}`); return; }   // v25.6.9 (egasi): sotilgan kirim o'chirilmaydi — avval savdo
+  else {
     if (!confirm(`Partiya #${bno} (${list.length} xil mahsulot, jami ${totalQty} dona) BUTUNLAY o'chirilsinmi?`)) return;
   }
   // v23.2 (F4b): o'chirish — SERVERDA (partiya FIFO'dan chiqadi, tarix saqlanadi); rad etilsa hech narsa o'zgarmaydi
@@ -5386,9 +5400,8 @@ async function deleteBatch(batchId) {
   const b = S.batches.find(x=>String(x.id)===String(batchId));
   if (!b) { toast('Partiya topilmadi', 'error'); return; }
   const p = S.products.find(x=>x.id===b.pid);
-  if ((b.sold||0) > 0) {
-    if (!confirm(`⚠️ DIQQAT: Bu partiyadan ${b.sold} dona SOTILGAN. O'chirsangiz, o'sha savdolarning tannarx hisob-kitobi buziladi. Baribir o'chirasizmi?`)) return;
-  } else {
+  if ((b.sold||0) > 0) { kirimSoldBlock([b], b.sold, `Partiya #${b.bno} — ${p?.name||''}`); return; }   // v25.6.9 (egasi): avval savdo
+  else {
     if (!confirm(`Partiya #${b.bno} (${p?.name||''}, ${b.qty} dona) o'chirilsinmi?`)) return;
   }
   if (fwLedgerRemote()) {
@@ -13326,11 +13339,11 @@ function stRoundStepsSheet() {
   const opt = (list, v) => list.map(x => `<option value="${x}" ${x === v ? 'selected' : ''}>${fwNum(x)} soʻm</option>`).join('');
   openSheet({ ic: 'calc', c: 'sky', title: 'Yaxlitlash qadamlari', sub: 'Faqat soʻmdagi savdo uchun',
     body: `<div class="bs-card"><label class="bs-lbl" for="st-rp">Tovar narxi — eng yaqin</label>
-      <select class="bs-in" id="st-rp">${opt([100, 500, 1000, 5000], cur.price)}</select>
-      <small class="bs-note">Masalan 1 000: 12 400 → 12 000; 12 500 → 13 000</small>
+      <select class="bs-in" id="st-rp">${opt([1, 100, 500, 1000, 5000], cur.price)}</select>
+      <small class="bs-note">1 soʻm — narx aniq (7 325). 1 000: 12 400 → 12 000; 12 500 → 13 000</small>
       <label class="bs-lbl" for="st-rt" style="margin-top:10px">Savat jami — pastga</label>
       <select class="bs-in" id="st-rt">${opt([1, 10, 50, 100, 500, 1000], cur.total)}</select>
-      <small class="bs-note">Masalan 100: 17 975 → 17 900; farq chekda «Yaxlitlash chegirmasi» boʻlib chiqadi</small></div>`,
+      <small class="bs-note">Masalan 1 000: 29 300 → 29 000; farq (300) chekda «Yaxlitlash chegirmasi» boʻlib chiqadi</small></div>`,
     foot: `<button class="bs-btn" onclick="stRoundStepsSave()">Saqlash</button>` });
 }
 function stRoundStepsSave() {

@@ -72,8 +72,10 @@ function basePrice(p, cost, mode, own) {
     return Math.round(c * (1 + pct / 100) * 100) / 100;
   }
   const pct = own && own.r != null ? own.r : p && p.markupPct != null && num(p.markupPct) != null ? num(p.markupPct) : DEFAULT_MARKUP;
-  return Math.round(c * (1 + pct / 100));
+  return retailRound(c * (1 + pct / 100));
 }
+// v25.6.9 (egasi qarori): arzon tovar ($5 dan kam) — narx sentgacha ($0.38), $0 bo'lib qolmaydi; qolganlari — butun dollar (avvalgidek)
+function retailRound(x) { return x >= 5 ? Math.round(x) : Math.round(x * 100) / 100; }
 
 // Chegirma chegarasi (sale_checkout_v37 qo'llanmagan bazada — JS'da o'sha qoida). null — joiz; aks holda {pid, floor, max}
 function discountViolation({ products, settings, items, discPct, mode, costMap, filial }) {
@@ -235,7 +237,7 @@ function redactBranchValues(vals, auth) {
   return !vals || typeof vals !== 'object' || canSeeCost(auth) ? vals : redactBranch(vals);
 }
 
-module.exports = { branchOwn,
+module.exports = { retailRound, branchOwn,
   redactLedgerResponse, redactBranch, redactSnapshot, redactTopValues, redactBranchValues,
   DEFAULT_MAX_DISCOUNT, canSeeCost, canSeePartners, maxDiscountPct, fifoCostMap, unitCost, basePrice, discountViolation, dbFifoCostMap,
   redactForStaff, restoreProducts, restoreBranch, restorePartnersTop, PRODUCT_COST_FIELDS, BATCH_COST_FIELDS,

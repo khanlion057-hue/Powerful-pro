@@ -29,7 +29,7 @@ async function testPosRules() {
       eval(seedSrc)(); try { localStorage.removeItem('fw_pos_prefs_admin'); } catch (_) {}
       go('savdo'); POS.mode = 'retail'; POS.cur = 'UZS';
       const out = {};
-      // Yaxlitlash: 84 × 1.25 = 105 $ → 1 312 500 so'm → 1 313 000; disk 0.6×1.25=0.75 → round(0.75)=1 $ → 12 500 → 13 000
+      // Yaxlitlash: 84 × 1.25 = 105 $ → 1 312 500 so'm → 1 313 000; disk 0.6×1.25=0.75 → v25.6.9: $5 dan arzon — sentgacha 0.75 $ → 9 375 → 9 000
       posAdd(1); posAdd(2);
       out.units = POS.a.cart().map(i => posLineUnitN(i));
       out.r1 = [fwRound1000(107200), fwRound1000(107500), fwRound1000(10500), fwRound1000(10499)];
@@ -61,19 +61,19 @@ async function testPosRules() {
       return out;
     }, `(${seed.toString()})`);
     assert.deepEqual(r.r1, [107000, 108000, 11000, 10000], 'eng yaqin mingga (500 — yuqoriga)');
-    assert.deepEqual(r.units, [1313000, 13000], 'narxlar 1 000 ga yaxlit');
-    assert.equal(r.totN, 1326000);
+    assert.deepEqual(r.units, [1313000, 9000], 'narxlar 1 000 ga yaxlit (arzon tovar — sentgacha, $1 ga emas)');
+    assert.equal(r.totN, 1322000);
     assert.equal(r.empty.dis, true, 'summa kiritilmaguncha — yopilmaydi'); assert.match(r.empty.txt, /summani kiriting/i);
     assert.equal(r.exact.dis, false); assert.match(r.exact.msg, /Naqd savdo/);
     assert.equal(r.short.dis, true, 'kam — mijozsiz yopilmaydi'); assert.equal(r.short.need, true);
     assert.equal(r.over1, true, "ko'p — mijozsiz yopilmaydi"); assert.equal(r.over2, false, 'mijoz bilan — yopiladi');
-    assert.deepEqual(r.ctx.box, [{ box_id: 1, amount_native: 1326000, cur: 'UZS' }], 'kassaga — chek summasi');
-    assert.deepEqual(r.ctx.ov, { box_id: 1, amount_native: 74000, cur: 'UZS' }, 'ortiqcha — alohida (mijoz qarzi/haqi)');
-    assert.equal(r.ctx.paidUsd, r.ctx.totalUsd); assert.equal(r.ctx.pay, 'cash_uzs'); assert.equal(r.ctx.rounded, 1326000);
-    assert.deepEqual(r.debt, { pay: 'debt', box: 0, debt: 106.08 });
-    assert.equal(r.disc, 1313000);
-    assert.equal(r.sent.length, 1); assert.deepEqual(r.sent[0].ov, { box_id: 1, amount_native: 74000 }); assert.equal(r.sent[0].cust, 501);
-    assert.deepEqual(r.sale, { inv: 'INV-0001', cur: 'UZS', rounded: 1326000, ov: 74000 });
+    assert.deepEqual(r.ctx.box, [{ box_id: 1, amount_native: 1322000, cur: 'UZS' }], 'kassaga — chek summasi');
+    assert.deepEqual(r.ctx.ov, { box_id: 1, amount_native: 78000, cur: 'UZS' }, 'ortiqcha — alohida (mijoz qarzi/haqi)');
+    assert.equal(r.ctx.paidUsd, r.ctx.totalUsd); assert.equal(r.ctx.pay, 'cash_uzs'); assert.equal(r.ctx.rounded, 1322000);
+    assert.deepEqual(r.debt, { pay: 'debt', box: 0, debt: 105.76 });
+    assert.equal(r.disc, 1309000);
+    assert.equal(r.sent.length, 1); assert.deepEqual(r.sent[0].ov, { box_id: 1, amount_native: 78000 }); assert.equal(r.sent[0].cust, 501);
+    assert.deepEqual(r.sale, { inv: 'INV-0001', cur: 'UZS', rounded: 1322000, ov: 78000 });
     assert.equal(r.credit, 87000, 'mijoz haqi — serverdan'); assert.equal(r.cartAfter, 0);
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }
@@ -103,7 +103,7 @@ async function testHeldModesCustomer() {
       posCloseAll();
       return out;
     }, `(${seed.toString()})`);
-    assert.equal(r.uzs, 26000); assert.equal(r.usd, 2); assert.equal(r.opt, 1.38);
+    assert.equal(r.uzs, 18000); assert.equal(r.usd, 1.5); assert.equal(r.opt, 1.38);   // v25.6.9: 2 × 0.75 $
     assert.deepEqual(r.afterHold, { cart: 0, held: 1 }); assert.match(r.heldTxt, /Kassaga qaytarish/);
     assert.deepEqual(r.back, { cart: 1, held: 0, top: 'cart' });
     assert.equal(r.badPhone, 1, "telefon to'liq bo'lmasa — saqlanmaydi");
@@ -138,7 +138,7 @@ async function testNavHistoryAndForms() {
       return { t, v, sel: sel && sel.name, ex, fields };
     });
     assert.match(f.t, /Yangi ta'minotchi/); assert.equal(f.v, 'Yiwu Tools'); assert.equal(f.sel, 'Yiwu Tools', 'saqlangach kirimda tanlandi');
-    assert.match(f.ex, /bosh qoldiq/i); assert.match(f.ex, /Shablonni yuklab olish/); assert.equal(f.fields, 1, "faqat ta'minotchi tanlovi (v24.6), valyuta/xarajat maydonlari yo'q");
+    assert.match(f.ex, /bosh qoldiq/i); assert.match(f.ex, /Shablonni yuklab olish/); assert.equal(f.fields, 2, "v25.6.9 (egasi talabi): tannarx valyutasi + ta'minotchi; yo'lkira/bojxona maydonlari yo'q");
     // Sozlamalar: «Xavfli hudud» yo'q, skaner va zaxira bor
     const st = await page.evaluate(() => { go('sozlamalar'); return document.getElementById('pg-sozlamalar').textContent; });
     assert.doesNotMatch(st, /Xavfli hudud|Test rejimi|Xavfsizlik PIN/); assert.doesNotMatch(st, /\d+ mahsulot · \d+ savdo/);

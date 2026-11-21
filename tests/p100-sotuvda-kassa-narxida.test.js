@@ -29,11 +29,11 @@ async function testShelf() {
       return { u1: u(1), u2: u(2), u3: u(3), sell: ds.sell, cost: Math.round(ds.cost * 100) / 100, tiles };
     });
     assert.equal(r.u1, 15, 'tannarx 12 × 1.25 = 15$ (kassada 180 000 soʻm)');
-    assert.equal(r.u2, 0, "tannarx 0.23: chakana 0.39$ → kassada butun $ ga yaxlitlanadi → 0 (narxsiz)");
+    assert.equal(Math.round(r.u2 * 10000) / 10000, 0.4167, "v25.6.9 (egasi qarori): tannarx 0.23 → chakana 0.39$ sentgacha → kassada 5 000 soʻm (0 emas)");
     assert.equal(r.u3, 13, '7.4 × 1.7 = 12.58$ → 13$ (156 000 soʻm)');
-    assert.equal(Math.round(r.sell * 100) / 100, 3 * 15 + 4 * 0 + 10 * 13, "Sotuvda = Σ qoldiq × kassa narxi (=175$), yaxlitlanmagan 172.36$ emas");
+    assert.equal(Math.round(r.sell * 100) / 100, 176.67, "Sotuvda = Σ qoldiq × kassa narxi (45 + 4×0.4167 + 130)");
     assert.equal(r.cost, 110.92, 'tannarx oʻzgarmagan');
-    assert.ok(r.tiles.some((t) => /Sotuvda/.test(t) && /\$175\b/.test(t)), 'Mahsulotlar sahifasida $175: ' + JSON.stringify(r.tiles));
+    assert.ok(r.tiles.some((t) => /Sotuvda/.test(t) && /\$176\.67/.test(t)), 'Mahsulotlar sahifasida $176.67: ' + JSON.stringify(r.tiles));
     assert.ok(r.tiles.some((t) => /Tannarxda/.test(t) && /\$110\.92/.test(t)));
   });
 }

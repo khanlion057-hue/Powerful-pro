@@ -13,6 +13,7 @@
 // FOYDA: tushum = tolangan_jami; tannarx O'ZGARMAYDI; foyda = tolangan_jami − tannarx.
 (function (root) {
   'use strict';
+  // Standart qadamlar. Egasi qoidasi (narx aniq, jami 1 000 gacha pastga) — Sozlamalar → «Yaxlitlash qadamlari»: narx 1, jami 1 000
   var DEF_PRICE_STEP = 1000, DEF_TOTAL_STEP = 100;
   var STEPS_OK = [1, 10, 50, 100, 200, 500, 1000, 5000, 10000];
 

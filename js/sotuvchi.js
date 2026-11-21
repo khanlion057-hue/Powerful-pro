@@ -697,7 +697,7 @@ const POS_SELLER = {
     const sp = fwServerPrice(p, mode); if (sp != null) return sp;
     const cost = p && p.directSale ? (+p.dsCostUsd || 0) : getCostFIFO(p.id);
     if (mode === 'wholesale') { const pct = (p && p.optMarkupPct != null) ? +p.optMarkupPct : 15; return Math.round(cost * (1 + pct / 100) * 100) / 100; }
-    return Math.round(sellPrice(p, cost));
+    return fwRetailRound(sellPrice(p, cost));
   },
   canSell: (p) => p.directSale ? svDirectOk(p) : getStock(p.id) > 0,
   dsLine: (p) => ({ directSupply: true, suppId: p.dsSuppId }),

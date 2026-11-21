@@ -141,7 +141,7 @@ exports.handler = async (event) => {
     }
 
     // ── Kirgan xodim ──────────────────────────────────────────────────────
-    const auth = await requireStaffAuth(event, admin, { fn: 'pw-reset', allowPwChange: true, loadPermissions: body.action === 'admin_reset' });
+    const auth = await requireStaffAuth(event, admin, { fn: 'pw-reset', allowPwChange: true, loadPermissions: ['admin_reset', 'admin_unlock', 'admin_locks'].includes(body.action) });
     if (!auth.ok) return auth.response;
     const me = auth.staff;
 

@@ -57,3 +57,11 @@ async function oneTap() {
   assert.equal((store.tg_query_bot.fails || {})['31'], undefined);
 }
 module.exports = { name: 'P110 — Telegram soʻrov boti', cases: [{ name: 'webhook: maxfiy kalit, /start kod, ruxsat, filial cheklovi, guruh e\'tiborsiz', run }, { name: 'bir bosishda ulash: kod saqlanadi, t.me havola', run: oneTap }] };
+// v25.6.10: asosiy hisobot botining tokeni so'rov botiga qo'yilmaydi
+async function sameToken() {
+  store.main = { settings: { tgBotToken: '777000:MAINBOTTOKENxxxxxxxxxxxxxxxxxx' } };
+  const r = await H({ httpMethod: 'POST', headers: { authorization: 'Bearer x' }, body: JSON.stringify({ action: 'setup', token: '777000:OTHERSECRETyyyyyyyyyyyyyyyyyyyy' }) });
+  assert.equal(r.statusCode, 400); assert.match(JSON.parse(r.body).error, /ALOHIDA/);
+  assert.ok(!sent.some((x) => x.m === 'setWebhook'), 'webhook o\'rnatilmadi');
+}
+module.exports.cases.push({ name: 'asosiy bot tokeni rad etiladi', run: sameToken });

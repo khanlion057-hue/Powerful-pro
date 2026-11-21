@@ -99,8 +99,8 @@ exports.handler = async (event) => {
       // v25.1: diller portaldan pul yubordi — dillerlar guruhiga (kassir tasdig'i kutilmoqda)
       if (!data.replay) {
         const PT = { cash_uzs: "naqd so'm", card: 'karta', cash_usd: 'naqd $' };
-        await notifyDealerPayment(admin, { dealerId: a.dealer.id, amountUsd: Number(data.notice && data.notice.amount_usd) || 0, debtAfterUsd: Number(data.dealerDebtUsd),
-          via: (PT[body.payType] || body.payType) + ' · tasdiq kutilmoqda', filial: data.notice && data.notice.filial || a.dealer.filial || 'baza' });
+        try { await require('./_lib/opsGuard').within(notifyDealerPayment(admin, { dealerId: a.dealer.id, amountUsd: Number(data.notice && data.notice.amount_usd) || 0, debtAfterUsd: Number(data.dealerDebtUsd),
+          via: PT[body.payType] || body.payType, state: 'pending', filial: data.notice && data.notice.filial || a.dealer.filial || 'baza' }), 2500, null); } catch (_) {}
       }
       return json({ ok: true, replay: !!data.replay, notice: noticeToClient(data.notice), rate, dealerDebtUsd: Number(data.dealerDebtUsd), dealerTotalPaidUsd: Number(data.dealerTotalPaidUsd) }, 200);
     }
@@ -138,14 +138,23 @@ exports.handler = async (event) => {
       if (box.cur !== n.currency) return json({ error: `Kassa valyutasi ${box.cur}, toʻlov ${n.currency} da` }, 400);
       const { data, error } = await admin.rpc('dealer_pay_notice_accept', { p_id: body.id, p_filial: filial, p_box: body.boxId, p_box_name: String(box.name || '').slice(0, 200), ...staff });
       if (error) { if (isMissingFunction(error)) return pending(); return serverError(error, 'dealer-pay', 'Qabul qilinmadi', 400); }
-      if (!data.replay) await notifyDealer(admin, data.notice, true, staff.p_staff_name);
+      if (!data.replay) {
+        await notifyDealer(admin, data.notice, true, staff.p_staff_name);
+        // v25.6.10: guruhga ham — qabul qilindi (avval faqat «kutilmoqda» borardi)
+        try { await require('./_lib/opsGuard').within(notifyDealerPayment(admin, { dealerId: Number(data.notice && data.notice.dealer_id), amountUsd: Number(data.notice && data.notice.amount_usd) || 0, debtAfterUsd: null,
+          via: String(box.name || ''), filial, staffName: staff.p_staff_name }), 2500, null); } catch (_) {}
+      }
       return json({ ok: true, replay: !!data.replay, notice: noticeToClient(data.notice), balances: data.balances || {} }, 200);
     }
 
     // reject
     const { data, error } = await admin.rpc('dealer_pay_notice_reject', { p_id: body.id, p_filial: filial, p_reason: body.reason.trim(), ...staff });
     if (error) { if (isMissingFunction(error)) return pending(); return serverError(error, 'dealer-pay', 'Rad etilmadi', 400); }
-    if (!data.replay) await notifyDealer(admin, data.notice, false, staff.p_staff_name);
+    if (!data.replay) {
+      await notifyDealer(admin, data.notice, false, staff.p_staff_name);
+      try { await require('./_lib/opsGuard').within(notifyDealerPayment(admin, { dealerId: Number(data.notice && data.notice.dealer_id), amountUsd: Number(data.notice && data.notice.amount_usd) || 0,
+        debtAfterUsd: data.dealerDebtUsd != null ? Number(data.dealerDebtUsd) : null, state: 'rejected', filial, staffName: staff.p_staff_name }), 2500, null); } catch (_) {}
+    }
     return json({ ok: true, replay: !!data.replay, notice: noticeToClient(data.notice), dealerDebtUsd: Number(data.dealerDebtUsd), dealerTotalPaidUsd: Number(data.dealerTotalPaidUsd) }, 200);
   } catch (e) {
     return serverError(e, 'dealer-pay', 'Server xatosi');

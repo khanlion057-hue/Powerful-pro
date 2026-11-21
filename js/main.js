@@ -1301,7 +1301,8 @@ async function loadCurrentUserPermissions(staffId, pre) {
       staffId,
       name: data.name || 'Xodim',
       roles: data.roles || [],
-      perms: new Set(data.permKeys || [])
+      perms: new Set(data.permKeys || []),
+      isAdmin: !!data.isAdmin   // v25.6.10: serverdagi administrator (role=admin)
     };
   } catch(e) {
     console.warn('RBAC ruxsatlar yuklanmadi — xavfsizlik uchun hech qanday ruxsat berilmaydi:', e);
@@ -5269,8 +5270,8 @@ function filialOrdersHtml() {
         <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">${ICONF.building} <b>${branchName(o.fromBranch)}</b> — ${fmtD(o.createdAt)} — ${o.items.length} xil mahsulot</div>
         <div style="font-size:12px;margin-bottom:8px">${o.items.map(i=>`<div><code style="color:var(--gold)">${esc(i.sku)}</code> ${esc(i.name)} — <strong>${i.qty}</strong> dona</div>`).join('')}</div>
         <div style="display:flex;gap:6px">
-          <button class="btn btn-success btn-sm" onclick="approveFilialOrder('${o.id}')">✅ Berildi (jo'nat)</button>
-          <button class="btn btn-danger btn-sm" onclick="rejectFilialOrder('${o.id}')">❌ Rad etish</button>
+          ${fwServerAdmin() ? `<button class="btn btn-success btn-sm" onclick="approveFilialOrder('${o.id}')">✅ Berildi (jo'nat)</button>
+          <button class="btn btn-danger btn-sm" onclick="rejectFilialOrder('${o.id}')">❌ Rad etish</button>` : `<span style="font-size:12px;color:var(--text-muted)">Tasdiqlash — administrator</span>`}
         </div>
       </div>`).join('')}
     </div>`;
@@ -12978,7 +12979,7 @@ async function tgqCall(body) {
 }
 // v25.6.10: SODDA ULASH — bitta tugma: «Telegramda ulash» → Telegram ochiladi → «Start». Kod yozish shart emas.
 async function tgqOpen() {
-  const owner = _fwIsOwner();
+  const owner = fwServerAdmin();   // bot sozlamasi serverda faqat administratorga
   openSheet({ ic: 'send', c: 'sky', title: 'Telegram soʻrov boti', sub: 'Botdan hisobot soʻrash',
     body: `<div class="fr-form" id="tgq-box"><p class="bs-note">Yuklanmoqda…</p></div>` });
   let r = null, err = '';
@@ -13490,6 +13491,8 @@ function stEditTelegram() {
       ${meSw('st-tg-ev-customer', 'Mijozning oʻziga ham (botga ulanganlarga)', 'Nasiya xaridi, toʻlov va qaytarish kuni eslatmasi — mijozning shaxsiy Telegramiga, faqat oʻz maʼlumoti. Ulash: Mijozlar → kartada «Bot»', on('customer'))}
       ${meSw('st-tg-ev-pay', 'Mijoz qarz toʻlovi', 'Har toʻlovda: kim, qancha toʻladi va qancha qoldi; toʻliq yopilsa — alohida belgi', on('pay'))}
       ${meSw('st-tg-ev-dealer', 'Diller oldi-berdisi va toʻlovlari', 'Joʻnatma (sotish uchun yoki qarzga), qaytarish, diller savdosi, toʻlov — mahsulotlar roʻyxati va qarz qoldigʻi bilan', on('dealer'))}
+      ${meSw('st-tg-ev-stock', 'Tovar kirimi va filiallar oʻtkazmasi', 'Kirim (yetib kelganda), joʻnatma, soʻrov va qabul — faqat mahsulot va soni, narxsiz', on('stock'))}
+      ${meSw('st-tg-ev-shop', 'Onlayn doʻkon buyurtmasi', 'Vitrinadan yangi buyurtma kelganda: mijoz, mahsulotlar, summa', on('shop'))}
       ${meSw('st-tg-ev-month', 'Oy yakuni — dillerlar hisoboti', 'Har oyning 1-kuni: oʻtgan oy boʻyicha har diller olgani, toʻlagani va qarzi', on('month'))}
       ${meSw('st-tg-ev-copyMain', 'Asosiy guruhga hammasidan nusxa', 'Yoqiq boʻlsa — barcha filial va dillerlar xabarlari sizning asosiy guruhingizga ham keladi (umumiy nazorat)', on('copyMain'))}
       ${meField('Barcha dillerlar umumiy guruhi (ixtiyoriy)', `<input class="form-control" id="st-tg-dealer-chats" placeholder="@kanal_nomi, -1001234567890" value="${esc((Array.isArray(st.tgDealerChats)?st.tgDealerChats:[]).join(', '))}">`, "Faqat egasi/rahbariyat uchun — barcha dillerlar xabarlari. Boʻsh qolsa — asosiy guruhga.")}`; })()}
@@ -13595,7 +13598,7 @@ function stSaveTelegram() {
   const _badDl = _dlChats.find(x => !/^-?\d{3,20}$|^@[A-Za-z0-9_]{4,64}$/.test(x));
   if (_badDl) { toast(`Dillerlar guruhi notoʻgʻri: ${_badDl} (@nom yoki -100… raqam)`, 'error'); return; }
   S.settings.tgDealerChats = [...new Set(_dlChats)].slice(0, 5);
-  S.settings.tgEvt = Object.fromEntries(['credit', 'pay', 'remind', 'dealer', 'month', 'copyMain', 'customer'].map(k => [k, !!document.getElementById('st-tg-ev-' + k)?.checked]));
+  S.settings.tgEvt = Object.fromEntries(['credit', 'pay', 'remind', 'dealer', 'stock', 'shop', 'month', 'copyMain', 'customer'].map(k => [k, !!document.getElementById('st-tg-ev-' + k)?.checked]));
   // v25.1: filial va diller guruhlari — MAXFIYLIK: bitta guruh ikki filial/dillerga yoki egasining guruhiga berilmaydi
   const _CHAT_OK = (x) => /^-?\d{3,20}$|^@[A-Za-z0-9_]{4,64}$/.test(x);
   const _own = [];
@@ -13928,6 +13931,8 @@ async function fwOwnerConfirm(message, opts) {
 //    o'zgartirib bo'lmaydi — himoya); fayldan katalog, mijoz/ta'minotchi ro'yxatlari, sozlamalar tiklanadi.
 // ════════════════════════════════════════════════════════════
 const FW_BACKUP_SECRET = ['tgBotToken', 'shopBotToken', 'appPin', 'branchPin'];
+// v25.6.10: server administrator deb biladigan foydalanuvchi (eski sana, filial buyurtmasini tasdiqlash — serverda faqat shu)
+function fwServerAdmin() { return !CURRENT_USER || CURRENT_USER.kind === 'owner' || !!CURRENT_USER.isAdmin; }
 function _fwIsOwner() { return !CURRENT_USER || CURRENT_USER.kind === 'owner' || hasPerm('rollar.manage'); }
 const FW_APP_VERSION = '24.5';   // zaxira fayl formati versiyasi (ilova versiyasi emas)
 const FW_RELEASE = '25.4';       // v25: Sozlamalar → Versiya (avval qo'lda «v24.7» yozilgan, yangilanmay qolardi)
@@ -14716,7 +14721,7 @@ async function importBatchXlsx() {
     const imgMap = wsImagesByRow(wb, ws);
     const off = detectColOffset(ws);
     // v25.6.9: fayl sarlavhasidagi valyuta tanlangan valyutaga mos bo'lishi shart (so'm / yuan / dollar aralashmasin)
-    const fileCur = xlHeaderCur(ws.getRow(1).getCell(6 + off).value);
+    const fileCur = xlHeaderCur(((ws.getRow(1) || {}).values || [])[6 + off]);   // qatorlar bilan bir xil o'qish (values)
     if (fileCur && fileCur !== curSel) { btnReset(); xlShowErrors([`Fayl «${XL_CUR_NAME[fileCur]}» shabloni, siz esa «${XL_CUR_NAME[curSel] || curSel}» tanladingiz. Valyutani to'g'rilang yoki mos shablonni yuklab oling.`]); return; }
 
     // v24.5 (v23.10 dan): avval BUTUN fayl o'qiladi va tekshiriladi — xato bo'lsa hech narsa o'zgarmaydi.

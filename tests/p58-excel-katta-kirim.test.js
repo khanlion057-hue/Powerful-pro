@@ -33,7 +33,7 @@ async function withApp(fn) {
         return wb.xlsx.writeBuffer();
       };
       window.__imp = async (buf, supp) => {
-        openExcelImportModal(); if (supp) document.getElementById('ei-supp').value = String(supp);
+        openExcelImportModal(); if (supp) { document.getElementById('ei-kind').value = 'supplier'; eiKindChange(); document.getElementById('ei-supp').value = String(supp); }   // v25.6.9: kirim turi tanlanadi
         const dt = new DataTransfer(); dt.items.add(new File([buf], 'k.xlsx')); document.getElementById('ei-file').files = dt.files;
         await importBatchXlsx(); const t = document.querySelector('#modal-ov')?.textContent || ''; return t;
       };

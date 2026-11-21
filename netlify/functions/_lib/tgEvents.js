@@ -91,16 +91,17 @@ async function send(st, kind, text, ctx = {}) {
 }
 
 // ── 1) Nasiya savdo ──
-function creditSaleText({ st, filial, cust, items, discPct, paidUsd, creditUseUzs, rate, dueDate, dueDays, inv, staffName, custDebtUzs }) {
+function creditSaleText({ st, filial, cust, items, discPct, paidUsd, creditUseUzs, rate, dueDate, dueDays, inv, staffName, custDebtUzs, serverDebtUsd, serverTotalUsd }) {
   const k = 1 - Math.min(100, Math.max(0, num(discPct))) / 100;
   const lines = (items || []).slice(0, 40).map((i) => {
     const q = num(i.qty), pr = num(i.sellUsd) * k;
     return [esc(cut(i.name || i.sku || ('#' + i.pid), W)), row(`  ${sp(q, 3)} × ${usd(pr)}`, usd(q * pr))].join('\n');
   });
   if ((items || []).length > 40) lines.push(esc(`… yana ${items.length - 40} ta`));
-  const total = (items || []).reduce((a, i) => a + num(i.qty) * num(i.sellUsd) * k, 0);
-  const paid = num(paidUsd) + (rate > 0 ? num(creditUseUzs) / rate : 0);
-  const debt = Math.max(0, total - paid);
+  let total = (items || []).reduce((a, i) => a + num(i.qty) * num(i.sellUsd) * k, 0);
+  let paid = num(paidUsd) + (rate > 0 ? num(creditUseUzs) / rate : 0);
+  let debt = Math.max(0, total - paid);
+  if (serverDebtUsd != null) { if (serverTotalUsd != null) total = num(serverTotalUsd); debt = Math.max(0, num(serverDebtUsd)); paid = Math.max(0, total - debt); }   // v25.6.10: bazadagi qiymat
   const both = (v) => rate > 0 ? `${usd(v)} · ${uzs(Math.round(v * rate))}` : usd(v);
   const R = [...lines, LINE, row('Jami', usd(total)), row('Toʻlandi', usd(paid)), row('Qarzga', usd(debt))];
   const out = [
@@ -182,34 +183,55 @@ async function notifyDealerOp(admin, { kind, mode, dealerId, items, filial, staf
     await send(st, 'dealer', text, { dealerId, admin });
   } catch (e) { console.warn('[tgEvents] dealer', e && e.message); }
 }
-async function notifyDealerPayment(admin, { dealerId, amountUsd, debtAfterUsd, via, filial, staffName }) {
+async function notifyDealerPayment(admin, { dealerId, amountUsd, debtAfterUsd, via, filial, staffName, state }) {
   try {
     const { st } = await loadSettings(admin);
     if (!evtOn(st, 'dealer')) return;
     const d = await dealerRow(admin, dealerId);
     const after = debtAfterUsd != null ? num(debtAfterUsd) : num(d.debt_usd);
     const full = after <= 0.005;
-    const text = [full ? '✅ <b>Diller qarzi toʻliq yopildi</b>' : '💵 <b>Diller toʻlovi</b>',
+    // v25.6.10: state — 'pending' (diller yubordi, kassir tasdig'i kutilmoqda), 'rejected' (rad etildi — qarz qaytdi)
+    const head = state === 'pending' ? '⏳ <b>Diller pul yubordi — tasdiq kutilmoqda</b>' : state === 'rejected' ? '❌ <b>Diller toʻlovi rad etildi</b>' : full ? '✅ <b>Diller qarzi toʻliq yopildi</b>' : '💵 <b>Diller toʻlovi qabul qilindi</b>';
+    const text = [head,
       `👤 <b>${esc(d.name)}</b>${d.phone ? ' · ' + esc(d.phone) : ''}`,
       `🏢 ${esc(branchName(st, filial))}${staffName ? ' · ' + esc(staffName) : ''}${via ? ' · ' + esc(via) : ''}`,
-      pre([row('Toʻlandi', usd(amountUsd)), row('Qolgan qarz', usd(Math.max(0, after)))])].join('\n');
+      pre([row(state === 'rejected' ? 'Rad etildi' : state === 'pending' ? 'Yubordi' : 'Toʻlandi', usd(amountUsd)), row(state === 'pending' ? 'Tasdiqlansa qarz' : 'Qolgan qarz', usd(Math.max(0, after)))])].join('\n');
     await send(st, 'dealer', text, { dealerId, admin });
   } catch (e) { console.warn('[tgEvents] dealer-pay', e && e.message); }
 }
 
 // ── 4) Eslatma: nasiya qaytarish kuni (bugun) va muddati o'tganlar — kuniga bir marta ──
+// v25.6.10: ilovadagi fwCustDues bilan BIR XIL hisob — qarz eng yangi nasiyalardan boshlab taqsimlanadi (eski to'langanlar
+// ochiq emas), muddat uzaytirish (c.dueOv), eski qarz muddati (c.debtDue), bekor qilingan/rad etilgan savdolar hisobga olinmaydi.
+const DEAD = new Set(['cancelled', 'void', 'voided']);
+function custOpenDues(c, sales, rate) {
+  let rem = Math.max(0, Math.round(num(c && c.debt)));
+  const out = []; if (!c || rem <= 0) return out;
+  const list = (sales || []).filter((s) => s && s.custId != null && String(s.custId) === String(c.id) && !DEAD.has(s.status) && num(s.debtUsd) > 0.004)
+    .slice().sort((a, z) => String(z.date || '').localeCompare(String(a.date || '')) || (String(z.id) > String(a.id) ? 1 : -1));
+  for (const s of list) {
+    if (rem <= 0) break;
+    const r = num(s.rateUsdUzs) || rate;
+    const amt = r > 0 ? Math.min(rem, Math.max(0, Math.round(num(s.debtUsd) * r))) : rem;
+    if (amt <= 0) continue;
+    rem -= amt;
+    const ov = c.dueOv && typeof c.dueOv === 'object' ? c.dueOv[String(s.id)] : null;
+    const due = ov && /^\d{4}-\d{2}-\d{2}$/.test(ov) ? ov : (s.dueDate ? String(s.dueDate).slice(0, 10) : null);
+    out.push({ due, amt });
+  }
+  if (rem > 0) out.push({ due: c.debtDue ? String(c.debtDue).slice(0, 10) : null, amt: rem });
+  return out;
+}
 function dueList(data, date) {
-  const out = [];
+  const out = [], rate = num(data && data.settings && data.settings.usdUzs);
   for (const [k, b] of Object.entries((data && data.branchStore) || {})) {
-    const debtors = new Map((b.customers || []).filter((c) => c && num(c.debt) > 0.5).map((c) => [Number(c.id), c]));
-    const firstDue = new Map();
-    for (const s of b.sales || []) {
-      if (!s || !s.dueDate || !(num(s.debtUsd) > 0) || s.status === 'cancelled' || s.status === 'void') continue;
-      const c = debtors.get(Number(s.custId)); if (!c) continue;
-      const due = String(s.dueDate).slice(0, 10); if (due > date) continue;
-      const prev = firstDue.get(c.id); if (!prev || due < prev) firstDue.set(c.id, due);
+    for (const c of b.customers || []) {
+      if (!c || !(num(c.debt) > 0.5)) continue;
+      const dues = custOpenDues(c, b.sales, rate).filter((x) => x.due && /^\d{4}-\d{2}-\d{2}$/.test(x.due) && x.due <= date);
+      if (!dues.length) continue;
+      const due = dues.map((x) => x.due).sort()[0];
+      out.push({ filial: k, custId: Number(c.id), name: c.name, phone: c.phone, debt: num(c.debt), due });
     }
-    for (const [id, due] of firstDue) { const c = debtors.get(id); out.push({ filial: k, custId: Number(id), name: c.name, phone: c.phone, debt: num(c.debt), due }); }
   }
   return out.sort((a, z) => a.due.localeCompare(z.due) || z.debt - a.debt);
 }
@@ -287,13 +309,13 @@ async function notifyTransfer(admin, args) {
     const { st, main } = await loadSettings(admin);
     if (!evtOn(st, 'stock')) return;
     const p = args.payload || {}, names = await productNames(main), q = qtyLines(p.items, names);
-    const me = args.filial, other = String(args.kind === 'tr_request' ? p.from : p.to || '');
+    const me = args.filial, other = String((args.kind === 'tr_request' || args.kind === 'tr_receive' ? p.from : p.to) || '');   // v25.6.10: qabulda — yuboruvchi
     const FIL = /^[A-Za-z0-9_-]{1,40}$/, kinds = { tr_request: ['📨', "Tovar so'rovi"], tr_ship: ['🚚', "Tovar jo'natildi"], tr_receive: ['📦', 'Tovar qabul qilindi'] };
     const k = kinds[args.kind]; if (!k || (!q.kinds && args.kind !== 'tr_receive')) return;
     const mk = (who, dir) => [`${k[0]} <b>${k[1]}</b>`, `🏢 ${esc(branchName(st, me))}${other && FIL.test(other) ? ` ${dir} ${esc(branchName(st, other))}` : ''}${args.staffName ? ' · ' + esc(args.staffName) : ''}`,
       ...(q.kinds ? [pre([...q.lines, LINE, row(`Jami (${q.kinds} xil)`, sp(q.total, 2) + ' dona')])] : [])].join('\n');
-    await send(st, 'stock', mk(me, args.kind === 'tr_request' ? '←' : '→'), { filial: me, admin });
-    if (other && FIL.test(other) && other !== me && args.kind !== 'tr_receive') await send(st, 'stock', mk(other, args.kind === 'tr_request' ? '←' : '→'), { filial: other, admin, onlyOwn: true });
+    await send(st, 'stock', mk(me, args.kind === 'tr_ship' ? '→' : '←'), { filial: me, admin });
+    if (other && FIL.test(other) && other !== me) await send(st, 'stock', mk(other, args.kind === 'tr_ship' ? '→' : '←'), { filial: other, admin, onlyOwn: true });
   } catch (e) { console.warn('[tgEvents] transfer', e && e.message); }
 }
 

@@ -146,7 +146,7 @@ function parseAmt(str) {
 // ── Yozayotganda "1600000" ni "1 600 000" ko'rinishida avtomatik formatlaydi ──
 // v25.6.9 (egasi qarori): chakana narx — $5 dan kam bo'lsa sentgacha (masalan $0.38), aks holda butun dollar (avvalgidek). Server: _lib/pricing.js retailRound
 // v25.6.9 (egasi talabi): ESKI SANA bilan kirim va savdo — faqat egasi/administrator. Kelajak sanasi va yopilgan (taqsimlangan) oy — yo'q.
-function fwBackdateAllowed() { try { return typeof _fwIsOwner === 'function' ? !!_fwIsOwner() : false; } catch (_) { return false; } }
+function fwBackdateAllowed() { try { return typeof fwServerAdmin === 'function' ? !!fwServerAdmin() : false; } catch (_) { return false; } }   // v25.6.10: serverdagi qoida bilan bir xil
 function fwBackdateCheck(d) {
   if (!d || !/^\d{4}-\d{2}-\d{2}$/.test(d)) return true;
   if (d > td()) { if (typeof toast === 'function') toast('Kelajak sanasi tanlab boʻlmaydi', 'error'); return false; }

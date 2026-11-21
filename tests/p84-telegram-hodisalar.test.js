@@ -106,6 +106,14 @@ async function testReminder() {
   assert.match(t, /Bugun toʻlash kerak \(1\)[\s\S]*Ali[\s\S]*1 200 000 so'm/);
   assert.match(t, /Muddati oʻtgan \(1\)[\s\S]*Vali[\s\S]*Kechikdi\s+6 kun/);
   assert.match(t, /JAMI qarz\s+1 700 000 so'm/);
+  // v25.6.10: ilova bilan bir xil — eski to'langan nasiya, uzaytirilgan muddat, rad etilgan savdo soxta eslatma bermaydi
+  const d2 = { settings: { usdUzs: 12500 }, branchStore: { baza: {
+    customers: [{ id: 9, name: 'Bek', debt: 500000, dueOv: { 93: '2026-12-20' } }, { id: 8, name: 'Eski', debt: 200000, debtDue: '2026-11-01' }],
+    sales: [
+      { id: 91, custId: 9, date: '2026-01-01', debtUsd: 40, dueDate: '2026-01-15' },              // eski — qarz FIFO bo'yicha yangisiga tegishli
+      { id: 92, custId: 9, date: '2026-11-10', debtUsd: 30, dueDate: '2026-11-12', status: 'voided' }, // rad etilgan
+      { id: 93, custId: 9, date: '2026-11-15', debtUsd: 40, dueDate: '2026-11-18' } ] } } };      // 500 000 = 40$ x 12500, uzaytirilgan
+  assert.deepEqual(ev.dueList(d2, date).map((x) => [x.name, x.due]), [['Eski', '2026-11-01']], 'faqat eski qarz muddati o\'tgani chiqadi');
 }
 
 
@@ -158,3 +166,10 @@ module.exports = {
     { name: 'Oy yakuni: egasiga umumiy jadval, har dillerga faqat oʻzi (olgan, qaytargan, toʻlagan, qarz)', run: testMonthPerDealer },
   ],
 };
+// v25.6.10: nasiya xabaridagi qarz — bazadagi qiymat (brauzer yuborgan summa emas)
+module.exports.cases.push({ name: 'Nasiya xabari: qarz bazadagi qiymatdan', run: async () => {
+  const t = ev.creditSaleText({ st: { branchNames: {} }, filial: 'baza', cust: { name: 'Ali' }, items: [{ name: 'X', qty: 1, sellUsd: 100 }], paidUsd: 0, rate: 12500, serverDebtUsd: 40, serverTotalUsd: 90 });
+  assert.equal(t.debt, 40); assert.match(t.text, /Qarzga\s+\$40/);
+  const t2 = ev.creditSaleText({ st: { branchNames: {} }, filial: 'baza', cust: { name: 'Ali' }, items: [{ name: 'X', qty: 1, sellUsd: 100 }], paidUsd: 0, rate: 12500, serverDebtUsd: 0, serverTotalUsd: 100 });
+  assert.equal(t2.debt, 0, 'bazada qarz yo\'q — nasiya xabari yuborilmaydi');
+} });

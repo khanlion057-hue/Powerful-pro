@@ -75,7 +75,10 @@ function creditNotice(admin, body, auth, filial, data) {
   const due = typeof body.dueDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.dueDate) ? body.dueDate : null;
   const days = Number.isSafeInteger(body.dueDays) && body.dueDays > 0 && body.dueDays <= 365 ? body.dueDays : null;
   return notifyCreditSale(admin, { filial, custId: body.custId, custName: body.custName, items: body.items, discPct: body.discPct,
-    paidUsd: body.paidUsd, creditUseUzs: body.creditUseUzs, dueDate: due, dueDays: days, inv: body.inv,
+    paidUsd: body.paidUsd, creditUseUzs: body.creditUseUzs, dueDate: due,
+    // v25.6.10: qarz va jami — bazadagi haqiqiy qiymat (brauzer summasi emas)
+    serverDebtUsd: (() => { const v = data && (data.debtUsd != null ? data.debtUsd : data.sale && data.sale.debtUsd); return v != null && Number.isFinite(Number(v)) ? Number(v) : null; })(),
+    serverTotalUsd: (() => { const v = data && (data.totalUsd != null ? data.totalUsd : data.sale && data.sale.totalUsd); return v != null && Number.isFinite(Number(v)) ? Number(v) : null; })(), dueDays: days, inv: body.inv,
     staffName: auth.staff?.name || (auth.isAdmin ? 'Admin' : null) });
 }
 
@@ -229,7 +232,7 @@ exports.handler = async (event) => {
         let st = {}; try { st = ((await loadMain()) || {}).settings || {}; } catch (_) {}
         await saveRoundingFields(admin, filial, body.saleLocalId != null ? String(body.saleLocalId) : opKey.slice(0, 64), body, st);
       }
-      await creditNotice(admin, body, auth, filial, data);
+      try { await require('./_lib/opsGuard').within(creditNotice(admin, body, auth, filial, data), 2500, null); } catch (_) {}   // v25.6.10: Telegram sekin bo'lsa savdo javobi kechikmasin
       return json(out, 200);
     }
     const { data, error } = await admin.rpc('sale_checkout_atomic_v2', {
@@ -251,7 +254,7 @@ exports.handler = async (event) => {
       return serverError(error, 'sale-checkout-atomic', 'Checkout amalga oshmadi', 400);
     }
     await completeIdempotent(admin, claim, data);
-    await creditNotice(admin, body, auth, filial, data);
+    try { await require('./_lib/opsGuard').within(creditNotice(admin, body, auth, filial, data), 2500, null); } catch (_) {}
     return json(data, 200);
   } catch (e) {
     await releaseIdempotent(admin, claim);

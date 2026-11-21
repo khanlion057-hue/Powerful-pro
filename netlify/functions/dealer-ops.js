@@ -98,7 +98,7 @@ exports.handler = async (event) => {
     }
     if (error) return serverError(error, 'dealer-ops', 'Amal bajarilmadi', 400);
     // v25.1: diller oldi-berdisi — Telegram (dillerlar guruhi); takroriy kalitda (replay) yuborilmaydi
-    if (!(data && data.replay)) await notifyDealerOp(admin, { kind: body.kind, mode, dealerId: body.dealerId, items: body.items, filial, staffName: staff.p_staff_name, pct: body.pct });
+    if (!(data && data.replay)) { try { await require('./_lib/opsGuard').within(notifyDealerOp(admin, { kind: body.kind, mode, dealerId: body.dealerId, items: body.items, filial, staffName: staff.p_staff_name, pct: body.pct }), 2500, null); } catch (_) {} }
     return json({ ...data, filial, ledger: true }, 200);
   } catch (e) {
     return serverError(e, 'dealer-ops', 'Server xatosi');

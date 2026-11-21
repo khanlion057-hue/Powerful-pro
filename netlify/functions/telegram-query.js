@@ -123,6 +123,10 @@ exports.handler = async (event) => {
     if (body.action === 'setup') {
       const token = String(body.token || '').trim();
       if (!TOKEN_RE.test(token)) return json({ error: "Token formati noto'g'ri" }, 400);
+      // v25.6.10: asosiy (hisobot) botining tokeni bo'lmasin — webhook uning mijoz/xodim ulash ishini buzadi
+      { const { data: mr } = await admin.from('app_data').select('data').eq('id', 'main').maybeSingle();
+        const mainTok = String((mr && mr.data && mr.data.settings && mr.data.settings.tgBotToken) || '');
+        if (mainTok && mainTok.split(':')[0] === token.split(':')[0]) return json({ error: "Bu asosiy hisobot botining tokeni. So'rov boti uchun @BotFather'da ALOHIDA yangi bot oching." }, 400); }
       const me = await tgApi(token, 'getMe'); if (!me.ok) return json({ error: 'Token ishlamadi: ' + String(me.description || '').slice(0, 120) }, 400);
       const base = process.env.URL || process.env.DEPLOY_PRIME_URL; if (!base) return json({ error: 'Sayt manzili aniqlanmadi (URL)' }, 500);
       const secret = crypto.randomBytes(24).toString('hex');

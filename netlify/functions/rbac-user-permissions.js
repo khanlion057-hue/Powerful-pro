@@ -41,7 +41,7 @@ exports.handler = async (event) => {
       permKeys = [...new Set((rp || []).map(x => x.permissions?.key).filter(Boolean))];
     }
 
-    return json({ name: staff.name, roles, permKeys }, 200);
+    return json({ name: staff.name, roles, permKeys, isAdmin: !!auth.isAdmin }, 200);   // v25.6.10: server administratori (eski sana, filial buyurtmasi)
   } catch (e) {
     return json({ error: "Ma'lumot yuklashda xatolik" }, 500);
   }

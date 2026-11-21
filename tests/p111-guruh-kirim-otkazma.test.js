@@ -13,5 +13,9 @@ async function run() {
   const byChat = {}; sent.forEach((x) => { byChat[x.chat] = (byChat[x.chat] || 0) + 1; });
   assert.deepEqual(byChat, { '-201': 1, '-100': 1, '-202': 1 }, 'ikkala filial guruhi + egasi (takrorsiz)');
   assert.match(sent.find((x) => x.chat === '-202').text, /jo'natildi/i);
+  // v25.6.10: qabul — «Filial ← Baza», yuboruvchi guruhiga ham
+  sent.length = 0; await T.notifyTransfer(admin, { kind: 'tr_receive', filial: 'f729', payload: { from: 'baza', to: 'f729', items: [{ pid: 1, qty: 4 }] }, staffName: 'Ali' });
+  assert.deepEqual(sent.map((x) => x.chat).sort(), ['-100', '-201', '-202'], 'qabul: qabul qiluvchi + yuboruvchi + egasi');
+  assert.match(sent[0].text, /729-filial ← Baza/); assert.doesNotMatch(sent[0].text, /729-filial → 729-filial/);
 }
 module.exports = { name: 'P111 — Guruh: kirim va oʻtkazma', cases: [{ name: 'kirim/oʻtkazma xabarlari: guruhlar, maxfiylik (narx yoʻq), takrorsiz', run }] };

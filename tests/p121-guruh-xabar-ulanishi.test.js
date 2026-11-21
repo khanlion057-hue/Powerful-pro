@@ -54,3 +54,15 @@ async function kirimDate() {
   await send(today); assert.equal(sentPayload.batches[0].meta.date, today, 'xodim — bugungi sana');
 }
 module.exports.cases.push({ name: 'kirim sanasi serverda: kelajak yoʻq, eski sana faqat admin', run: kirimDate });
+// v25.6.10: yo'ldagi partiya — kirimda xabar yo'q; «Yetib keldi» bosilganda xabar
+async function transit() {
+  AUTH = { ok: true, isAdmin: true, filial: 'baza', staff: { id: 1, name: 'Ega' }, permKeys: new Set() };
+  admin.rpc = async () => ({ data: {}, error: null });
+  admin.from = () => ({ select() { return this; }, eq() { return this; }, in() { return Promise.resolve({ data: [{ pid: 1, qty: 7 }] }); }, maybeSingle: async () => ({ data: null }), insert: async () => ({}) });
+  calls.length = 0;
+  await post(SDO, { key: 'key-tr1', kind: 'batches_create', payload: { reason: 'kirim', batches: [{ localId: '41', pid: 1, qty: 7, costUsd: 1, status: 'transit' }] } });
+  assert.equal(calls.length, 0, 'yo\'ldagi tovar — hali xabar yo\'q');
+  await post(SDO, { key: 'key-tr2', kind: 'batch_arrive', payload: { localIds: ['41'] } });
+  assert.equal(calls.length, 1, 'yetib keldi — xabar'); assert.equal(calls[0][1].batches[0].qty, 7);
+}
+module.exports.cases.push({ name: 'yoʻldagi tovar: xabar yetib kelganda', run: transit });

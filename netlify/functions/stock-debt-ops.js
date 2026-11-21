@@ -201,8 +201,16 @@ exports.handler = async (event) => {
     });
     if (error) return serverError(error, 'stock-debt-ops', 'Amal bajarilmadi', 400);
     // v25.6.9: filial guruhiga kirim xabari (takroriy kalitda — yuborilmaydi; xato amalni buzmaydi)
-    if (body.kind === 'batches_create' && !(data && data.replay)) {
-      try { await require('./_lib/opsGuard').within(require('./_lib/tgEvents').notifyStockIn(admin, { filial, reason: body.payload.reason, batches: body.payload.batches, staffName: auth.staff?.name || null }), 2500, null); } catch (_) {}
+    // v25.6.10: yo'ldagi (transit) partiya — xabar yetib kelganda (batch_arrive), oldin emas
+    const arrivedNow = body.kind === 'batches_create' ? payload.batches.filter((x) => x.status !== 'transit') : [];
+    if (body.kind === 'batches_create' && arrivedNow.length && !(data && data.replay)) {
+      try { await require('./_lib/opsGuard').within(require('./_lib/tgEvents').notifyStockIn(admin, { filial, reason: body.payload.reason, batches: arrivedNow, staffName: auth.staff?.name || null }), 2500, null); } catch (_) {}
+    }
+    if (body.kind === 'batch_arrive' && !(data && data.replay)) {
+      try { await require('./_lib/opsGuard').within((async () => {
+        const { data: rows } = await admin.from('batches').select('pid,qty').eq('filial', filial).in('local_id', payload.localIds);
+        if (rows && rows.length) await require('./_lib/tgEvents').notifyStockIn(admin, { filial, reason: 'kirim', batches: rows, staffName: auth.staff?.name || null });
+      })(), 2500, null); } catch (_) {}
     }
     // v25.6.10: Bazadan filialga ko'chirish (filial buyurtmasini tasdiqlash) — ikkala guruhga «Tovar jo'natildi»
     if (body.kind === 'stock_out' && payload.reason === 'transfer' && !(data && data.replay)) {

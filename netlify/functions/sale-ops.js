@@ -132,6 +132,14 @@ exports.handler = async (event) => {
         if (cu) return json({ error: "Bu savdo mijoz haqidan toʻlangan — tahrirlab boʻlmaydi. Qaytarish yoki oʻchirishdan foydalaning" }, 409);
       }
       const p = body.payload;
+      // v25.6.10: xodim narxni tannarxdan past qila olmaydi (zarar — faqat administrator; avval tahrir orqali chegirma va zarar tekshiruvini aylanib o'tish mumkin edi)
+      if (body.mode === 'price' && !auth.isAdmin) {
+        const { data: sr, error: se } = await admin.from('sales').select('items').eq('filial', filial).eq('local_id', saleLocalId).maybeSingle();
+        if (se) return serverError(se, 'sale-ops', 'Server xatosi');
+        const its = (sr && Array.isArray(sr.items)) ? sr.items : [];
+        const bad = its.findIndex((it, i) => Number(p.prices[i]) + 1e-9 < Number(it && it.cost_usd || 0));
+        if (bad >= 0) return json({ error: `«${(its[bad] && its[bad].name) || 'Mahsulot'}» narxi tannarxdan past — zarar bilan narxni faqat administrator oʻzgartiradi` }, 403);
+      }
       const payload = body.mode === 'price' ? { prices: p.prices }
         : { items: p.items.map(i => ({ idx: i.idx, qty: i.qty ?? null, sellUsd: i.sellUsd ?? null })),
             discPct: p.discPct ?? 0, restockIds: (p.restockIds || []).map(x => (x == null ? null : String(x))), meta: cleanMeta(p.meta) };

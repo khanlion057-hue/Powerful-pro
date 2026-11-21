@@ -50,6 +50,10 @@ async function run() {
   assert.equal(r.statusCode, 200, 'o\'z yangi savdosi — qaytaradi: ' + r.body);
   r = await ops(post({ filial: 'f729', action: 'return', key: 'ret-old-3', saleLocalId: 'old1', pid: 101, qty: 1, batchLocalId: 'rb-w' }, 't-admin'));
   assert.equal(r.statusCode, 200, 'administrator — eski savdoni ham');
+  // narx tahriri: xodim tannarxdan (40$) past narx qo'ya olmaydi
+  await sell('own1'); await pg.query(`update sales set staff_id = 7 where local_id='own1'`);
+  r = await ops(post({ filial: 'f729', action: 'edit', mode: 'price', key: 'ed-own-1', saleLocalId: 'own1', payload: { prices: [1] } }, 't-s1'));
+  assert.equal(r.statusCode, 403, 'zarar bilan narx — rad: ' + r.body);
   // kassa: savdo ruxsati bilan «xarajat» nomida pul kiritish yo'q; chiqim (o'z xarajati) — bor
   r = await cb(post({ filial: 'f729', key: 'exp-in-1', kind: 'expense', ops: [{ box: 3, dir: 'in', amount: 999 }] }, 't-s1'));
   assert.equal(r.statusCode, 403, 'xarajat nomida kirim — yo\'q');

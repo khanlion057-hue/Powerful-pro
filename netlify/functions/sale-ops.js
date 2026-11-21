@@ -137,7 +137,8 @@ exports.handler = async (event) => {
         const { data: sr, error: se } = await admin.from('sales').select('items').eq('filial', filial).eq('local_id', saleLocalId).maybeSingle();
         if (se) return serverError(se, 'sale-ops', 'Server xatosi');
         const its = (sr && Array.isArray(sr.items)) ? sr.items : [];
-        const bad = its.findIndex((it, i) => Number(p.prices[i]) + 1e-9 < Number(it && it.cost_usd || 0));
+        const bad = its.findIndex((it, i) => { const np = Number(p.prices[i]), c = Number(it && it.cost_usd || 0), op = Number(it && it.sell_usd || 0);
+          return np + 1e-9 < c && np + 1e-9 < op; });   // zararni oshirish yo'q (narxni ko'tarib zararni kamaytirish — mumkin)
         if (bad >= 0) return json({ error: `«${(its[bad] && its[bad].name) || 'Mahsulot'}» narxi tannarxdan past — zarar bilan narxni faqat administrator oʻzgartiradi` }, 403);
       }
       const payload = body.mode === 'price' ? { prices: p.prices }

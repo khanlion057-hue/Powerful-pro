@@ -6888,7 +6888,7 @@ async function _kirimSaveCore(firmaPay) {
     const bno = String((S.batchCounter||0)+1).padStart(2,'0');
     const status = S.kirimStatus==='transit' ? 'transit' : 'active';
     const objs = rows.map(r=>({
-      id:uid(), pid:r.pid, bno, origin, cur, qty:r.qty, sold:0, costUsd:r.costUsd, bankFeeUsd: bankFee/rows.length, ...fwAccBatch(cur, r.costUsd),
+      id:uid(), pid:r.pid, bno, origin, cur, qty:r.qty, sold:0, costUsd:r.costUsd, _goodsUsd: r.qty > 0 ? Math.round((+r.prodUsd || 0) / r.qty * 10000) / 10000 : 0, bankFeeUsd: bankFee/rows.length, ...fwAccBatch(cur, r.costUsd),
       suppId, consignment: isConsign,
       rates:{usdUzs:CUR.usdUzs, usdCny: cur==='CNY' ? (S.kirimLocalCny||CUR.usdCny) : CUR.usdCny},
       date:td(), status, arrivedDate: status==='transit' ? null : td(), performedBy: (CURRENT_USER?.name || 'Admin'),
@@ -6899,7 +6899,7 @@ async function _kirimSaveCore(firmaPay) {
       r = await fwLedgerCall('stock-debt-ops', { kind:'batches_create', payload:{
         reason:'kirim', kirimRef, fkRef:(firmaPay && firmaPay.fkRef) || null,
         batches: objs.map(o=>({ localId:o.id, pid:o.pid, qty:o.qty, costUsd:o.costUsd, status,
-          meta:{ bno, origin, cur, bankFeeUsd:o.bankFeeUsd, rateUsdUzs:o.rates.usdUzs, rateUsdCny:o.rates.usdCny, date:o.date, performedBy:o.performedBy } })),
+          meta:{ bno, origin, cur, bankFeeUsd:o.bankFeeUsd, rateUsdUzs:o.rates.usdUzs, rateUsdCny:o.rates.usdCny, date:o.date, performedBy:o.performedBy, ...(o._goodsUsd > 0 ? { goodsUsd:o._goodsUsd } : {}) } })),
         supplier: suppId ? { id:suppId, consignment:isConsign, goodsUsd:goodsTotalUsd, givenUsd: isConsign ? 0 : given } : null } });
     } catch(e) {
       toast('⛔ Kirim serverda saqlanmadi: ' + e.message + (given>0 ? " — to'lov allaqachon o'tgan (" + kirimRef + "), qayta bosing: ikkinchi marta to'lanmaydi." : ''), 'error');
@@ -14829,7 +14829,7 @@ async function importBatchXlsx() {
     const newBatches = rows.map((r,i)=>{
       const finalCost = Math.round(r.baseCostUsd*10000)/10000;
       goodsTotal += (r.goodsUsd||0)*r.qty; // v10 (B13): qarzga faqat TOVAR qiymati (yo'lkira/bank/bojxona ta'minotchiga tegishli emas — qo'lda Kirim bilan bir xil)
-      return {id:_ids[i],pid:r.p.id,bno,origin,cur:'USD',qty:r.qty,sold:0,costUsd:finalCost,bankFeeUsd:0,suppId,consignment:isConsignImport,rates:{usdUzs:CUR.usdUzs,usdCny:CUR.usdCny},date:td(),status:'active',performedBy:(CURRENT_USER?.name||'Admin'),items:[]};
+      return {id:_ids[i],pid:r.p.id,bno,origin,cur:'USD',qty:r.qty,sold:0,costUsd:finalCost,goodsUsd:Math.round((r.goodsUsd||0)*10000)/10000,bankFeeUsd:0,suppId,consignment:isConsignImport,rates:{usdUzs:CUR.usdUzs,usdCny:CUR.usdCny},date:td(),status:'active',performedBy:(CURRENT_USER?.name||'Admin'),items:[]};
     });
     // v24.6: server bir so'rovda eng ko'pi 500 partiya qabul qiladi — katta fayl 400 talik QISMLARGA bo'linadi
     // (har qism serverda bitta tranzaksiya; ta'minotchi qarzi — har qismning o'z tovar qiymati).
@@ -14846,7 +14846,7 @@ async function importBatchXlsx() {
         try {
           await fwLedgerCall('stock-debt-ops', { kind:'batches_create', payload:{ reason:'import',
             batches: part.map(o=>({ localId:String(o.id), pid:o.pid, qty:o.qty, costUsd:o.costUsd,
-              meta:{ bno, origin:o.origin, cur:'USD', rateUsdUzs:o.rates.usdUzs, rateUsdCny:o.rates.usdCny, date:o.date, performedBy:o.performedBy } })),
+              meta:{ bno, origin:o.origin, cur:'USD', rateUsdUzs:o.rates.usdUzs, rateUsdCny:o.rates.usdCny, date:o.date, performedBy:o.performedBy, ...(o.goodsUsd > 0 ? { goodsUsd:o.goodsUsd } : {}) } })),   // 51: konsignatsiya qarzi tovar narxidan
             supplier: suppId ? { id:suppId, consignment:isConsignImport, goodsUsd:Math.round(goods*10000)/10000 } : null } });
         } catch(e) { failMsg = e.message; break; }
         prog.done.push(c); prog.bno = bno; xlImportProgSet(prog);

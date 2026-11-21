@@ -42,7 +42,7 @@ function cleanMeta(m) {
   for (const k of ['bno', 'origin', 'performedBy']) if (o[k] != null) out[k] = String(o[k]).slice(0, k === 'bno' ? 20 : 300);
   if (typeof o.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(o.date)) out.date = o.date;
   if (o.cur != null && ['USD', 'UZS', 'CNY', 'KRW'].includes(o.cur)) out.cur = o.cur;
-  for (const k of ['bankFeeUsd', 'rateUsdUzs', 'rateUsdCny']) if (isNum(o[k], 0, 1e9)) out[k] = o[k];
+  for (const k of ['bankFeeUsd', 'rateUsdUzs', 'rateUsdCny', 'goodsUsd']) if (isNum(o[k], 0, 1e9)) out[k] = o[k];   // 51: goodsUsd — konsignatsiya qarzi tovar narxidan
   return out;
 }
 

@@ -156,10 +156,10 @@ async function testModalSupplier() {
       const wb = await fwBuildXlTemplate(); const ws = wb.getWorksheet('Shablon');
       ws.addRow(['', 'SP-1', 'Taʼminotchidan', 'Asbob', '', 4, 2.5, '', '']);
       const sid = S.suppliers[0].id, d0 = S.suppliers[0].debt || 0;
-      openExcelImportModal(); const opts = [...document.querySelectorAll('#ei-supp option')].map(o => o.value); closeModal();
+      openExcelImportModal(); const opening = [...document.querySelectorAll('#ei-supp option')].map(o => o.value); const kk = document.getElementById('ei-kind'); kk.value = 'supplier'; kk.dispatchEvent(new Event('change')); const opts = [...document.querySelectorAll('#ei-supp option')].map(o => o.value); closeModal();   // v25.6.9: ro'yxat «Kirim turi»ga qarab
       await __xlImportModal(await wb.xlsx.writeBuffer(), sid);
       const p = S.products.find(x => x.sku === 'SP-1'); const b = S.batches.find(x => x.pid === p?.id);
-      return { opts: opts.length === S.suppliers.length + 1 && opts[0] === '', supp: b?.suppId === sid, origin: b?.origin, debt: Math.round(((S.suppliers[0].debt || 0) - d0) * 100) / 100, note: /qarziga yoziladi/.test(window.__eiNote || '') };
+      return { opts: opening.length === 1 && opening[0] === '' && opts.length === S.suppliers.filter(x => !x.isConsignment).length && !opts.includes(''), supp: b?.suppId === sid, origin: b?.origin, debt: Math.round(((S.suppliers[0].debt || 0) - d0) * 100) / 100, note: /qarziga yoziladi/.test(window.__eiNote || '') };
     });
     assert.deepEqual(r, { opts: true, supp: true, origin: 'Excel import', debt: 10, note: true });
   });

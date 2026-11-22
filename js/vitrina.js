@@ -87,9 +87,11 @@
   function hero() {
     var s = [], cats = catList();
     (D.banners || []).forEach(function (b) { s.push('<div class="vt-slide img"><img src="' + esc(b.url) + '" alt="' + esc(b.title || D.shop.name) + '"></div>'); });
-    s.push(slideHtml(0, 'Professional arra tigʻlari', 'Rover va formatli stanoklar uchun — original, kafolatli', ['Katalogni koʻrish', 'grid']));
-    if (D.shop.delivery) s.push(slideHtml(1, D.shop.freeMin > 0 ? money(D.shop.freeMin) + ' dan — bepul yetkazish' : 'Yetkazib berish xizmati', 'Buyurtmani onlayn bering — doʻkon tasdiqlab, yetkazib beradi', ['Savatni ochish', 'cart']));
-    if (cats.length > 1) s.push(slideHtml(2, cats.length + ' ta kategoriya', cats.slice(0, 4).join(' · '), ['Tigʻ tanlash', 'finder']));
+    if (!s.length) { $('vt-hero').innerHTML = ''; $('vt-hero').hidden = true; clearInterval(SLT); return; }
+    $('vt-hero').hidden = false;
+    if (0) s.push(slideHtml(0, 'Professional arra tigʻlari', 'Rover va formatli stanoklar uchun — original, kafolatli', ['Katalogni koʻrish', 'grid']));
+    if (0) s.push(slideHtml(1, D.shop.freeMin > 0 ? money(D.shop.freeMin) + ' dan — bepul yetkazish' : 'Yetkazib berish xizmati', 'Buyurtmani onlayn bering — doʻkon tasdiqlab, yetkazib beradi', ['Savatni ochish', 'cart']));
+    if (0) s.push(slideHtml(2, cats.length + ' ta kategoriya', cats.slice(0, 4).join(' · '), ['Tigʻ tanlash', 'finder']));
     var dots = s.length > 1 ? '<div class="vt-dots">' + s.map(function (_, i) { return '<button aria-label="' + (i + 1) + '-slayd"></button>'; }).join('') + '</div>' : '';
     $('vt-hero').innerHTML = s.join('') + dots;
     show(0);
@@ -101,7 +103,8 @@
     for (var k = 0; k < sl.length; k++) { sl[k].classList.toggle('on', k === SLIDE); if (dt[k]) dt[k].classList.toggle('on', k === SLIDE); }
   }
 
-  function perks() {
+  function perks() { $('vt-perks').innerHTML = ''; $('vt-perks').hidden = true; }
+  function perksOld() {
     var sh = D.shop, P = [];
     P.push(['🚚', sh.delivery ? 'Yetkazib berish' : 'Olib ketish', sh.delivery ? (sh.freeMin > 0 ? money(sh.freeMin) + ' dan bepul' + (sh.fee > 0 ? ', aks holda ' + money(sh.fee) : '') : (sh.fee > 0 ? money(sh.fee) : 'Bepul')) : (sh.address || 'Doʻkondan')]);
     P.push(['✅', 'Original mahsulot', PR.length + ' ta mahsulot sotuvda']);
@@ -134,19 +137,28 @@
     chips();
   }
   function chips() { var c = $('vt-chips').children; for (var i = 0; i < c.length; i++) c[i].classList.toggle('on', ST.fav ? c[i].dataset.fav === '1' : (c[i].dataset.cat === ST.cat && !c[i].dataset.fav));
-    [].forEach.call(document.querySelectorAll('.vt-cat'), function (b) { b.classList.toggle('on', !ST.fav && b.dataset.catc === ST.cat); }); }
+    [].forEach.call(document.querySelectorAll('.vt-cat'), function (b) { b.classList.toggle('on', !ST.fav && b.dataset.catc === ST.cat); });
+    if (D && $('vt-fmat').children.length) finderVis(); }
 
   // ── arra tanlash yordamchisi ──
   function finder() {
     var sw = PR.map(function (p) { return { p: p, s: sawInfo(p) }; }).filter(function (x) { return x.s.dia; });
     if (sw.length < 3) { $('vt-finder').hidden = true; return; }
-    $('vt-finder').hidden = false;
+    finderVis();
     var uniq = function (f) { var m = {}; sw.forEach(function (x) { var v = f(x.s); if (v) m[v] = 1; }); return Object.keys(m); };
     var mats = uniq(function (s) { return s.mat; }), dias = uniq(function (s) { return s.dia; }).map(Number).sort(function (a, b) { return a - b; });
     var teeth = uniq(function (s) { return s.tooth; }).map(Number).sort(function (a, b) { return a - b; });
     var seg = function (el, list, k, fmt) { $(el).innerHTML = '<button data-k="' + k + '" data-v="">Hammasi</button>' + list.map(function (v) { return '<button data-k="' + k + '" data-v="' + esc(v) + '">' + esc(fmt ? fmt(v) : v) + '</button>'; }).join(''); };
     seg('vt-fmat', mats, 'mat'); seg('vt-fdia', dias, 'dia', function (v) { return 'Ø' + v; }); seg('vt-ftooth', teeth, 'tooth', function (v) { return v + 'T'; });
     finderUi();
+  }
+  // egasi: yordamchi faqat arra tig'lari bo'limi ochilganda (shu bo'limdagi mahsulotlarning ko'pi arra tig'i bo'lsa)
+  function finderVis() {
+    var inCat = ST.cat ? PR.filter(function (p) { return p.cat === ST.cat; }) : [];
+    var saws = inCat.filter(function (p) { return sawInfo(p).dia; }).length;
+    var on = !ST.fav && inCat.length > 0 && saws >= 3 && saws >= inCat.length / 2;
+    if (!on && (ST.mat || ST.dia || ST.tooth)) { ST.mat = ST.dia = ST.tooth = ''; finderUi(); }
+    $('vt-finder').hidden = !on;
   }
   function finderUi() {
     ['vt-fmat', 'vt-fdia', 'vt-ftooth'].forEach(function (id) { var b = $(id).children; for (var i = 0; i < b.length; i++) b[i].classList.toggle('on', String(ST[b[i].dataset.k]) === b[i].dataset.v); });

@@ -1197,8 +1197,7 @@ function sfShopHtml(c, sh) {
   return `
     ${home ? (ban.length ? `<div class="sf-ban"><div class="sf-ban-track" style="transform:translateX(-${(SF.bi % ban.length) * 100}%)">${ban.map(b => `<img src="${esc(b.url)}" alt="">`).join('')}</div>
         ${ban.length > 1 ? `<div class="sf-dots">${ban.map((_, i) => `<i class="${i === SF.bi % ban.length ? 'on' : ''}"></i>`).join('')}</div>` : ''}</div>`
-      : `<div class="sf-hello"><div><small>Onlayn-doʻkon</small><b>${esc(c.name)}</b><span>${esc(c.about || 'Sifatli mahsulotlar — buyurtma bering, biz tez yetkazamiz yoki tayyorlab qoʻyamiz.')}</span>
-          <div class="sf-perks"><i>${SF_SHIELD}Rasmiy kafolat</i><i>${c.delivery ? ICONF.car + 'Yetkazib berish' : ICONF.store + 'Doʻkondan olib ketish'}</i><i role="button" tabindex="0" onclick="sfGo('about')">${ICONF.phone}Tez aloqa</i></div></div></div>`) : ''}
+      : `<div class="sf-hello"><div><small>Onlayn-doʻkon</small><b>${esc(c.name)}</b><span>${esc(c.about || 'Sifatli mahsulotlar — buyurtma bering, biz tez yetkazamiz yoki tayyorlab qoʻyamiz.')}</span></div></div>`) : ''}
     ${cats.length > 1 ? `<div class="sf-cats">${['', ...cats].map(k => `<button class="${SF.cat === k ? 'on' : ''}" onclick="SF.cat=${JSON.stringify(k).replace(/"/g, '&quot;')};sfRender()">${k ? (shopCatImg(k) ? `<i class="img" style="--t:${sfTone(k)}"><img src="${esc(shopCatImg(k))}" alt="" loading="lazy"></i>` : `<i style="--t:${sfTone(k)}">${sfCatIc(k)}</i>`) : `<i style="--t:#0f172a">${_ci('<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>')}</i>`}<span>${k ? esc(k) : 'Hammasi'}</span></button>`).join('')}</div>` : ''}
     ${home ? row('tag', 'Chegirmalar', disc, 'hot') + row('chart', 'Ommabop', popular) + row('add', 'Yangi kelganlar', newest) : ''}
     <section class="sf-sec">

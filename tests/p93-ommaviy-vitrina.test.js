@@ -98,7 +98,11 @@ async function testBrowser() {
     await page.fill('#vt-q', 'ø250 80t'); await page.waitForTimeout(400);
     assert.equal(await page.$$eval('#vt-grid .vt-pc', (a) => a.length), 1);
     await page.fill('#vt-q', ''); await page.waitForTimeout(300);
-    // Arra tanlash yordamchisi: Alyuminiy → 2 ta
+    // Arra tanlash yordamchisi: bosh sahifada yo'q, faqat «Arra tigʻlari» bo'limida; Alyuminiy → 2 ta
+    assert.equal(await page.isVisible('#vt-finder'), false, 'bosh sahifada yordamchi yo\'q');
+    assert.equal(await page.isVisible('#vt-perks'), false, 'ortiqcha afzalliklar bloki yo\'q');
+    await page.click('.vt-cat[data-catc="Arra tigʻlari"]'); await page.waitForTimeout(200);
+    assert.equal(await page.isVisible('#vt-finder'), true);
     await page.click('#vt-fmat button[data-v="Alyuminiy"]'); await page.waitForTimeout(200);
     assert.equal(await page.$$eval('#vt-grid .vt-pc', (a) => a.length), 2);
     await page.evaluate(() => window.vtHome());

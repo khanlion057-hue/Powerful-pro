@@ -2007,7 +2007,7 @@ function appLogout() {
   if (!confirm("Tizimdan chiqasizmi? Qayta kirish uchun login/parol (yoki PIN) kerak bo'ladi.")) return;
   if (typeof fwqLogoutOk === 'function' && !fwqLogoutOk()) return;   // v25.6.9: yuborilmagan oflayn savdo
   if (typeof fwLogoutFlow === 'function') { fwLogoutFlow(_db, CURRENT_USER?.kind === 'staff' ? CURRENT_USER.name : (S.settings?.ownerName || '')); return; }
-  try { localStorage.removeItem('fw_off_auth_v1'); localStorage.removeItem('fw_quick_v1'); } catch (_) {}
+  try { localStorage.removeItem('fw_off_auth_v1'); localStorage.removeItem('fw_quick_v1'); localStorage.removeItem('fw_remember_v1'); } catch (_) {}
   sessionStorage.removeItem('bp_auth_ok');
   sessionStorage.removeItem('bp_pin_ok');
   sessionStorage.removeItem('bp_branch_ok');
@@ -15311,9 +15311,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     // v25: tez kirish — shu qurilmada avval kirilgan bo'lsa, PIN yoki barmoq izi (internetsiz ham)
     // v25.3: 5 daqiqa ichida qayta ochilsa — PIN so'ralmaydi; admin — sahifa qayta yuklanmaydi (shu yerda davom etadi)
     let entered = false;
-    if (typeof fwQuickGet === 'function' && fwQuickGet()) {
-      let uid = null, has = false;
-      try { const { data: { session } } = await _db.auth.getSession(); uid = session?.user?.id || null; has = !!session; } catch (_) {}
+    // v25.6.10 (egasi): «Chiqish» bosilmaguncha — qayta kirish so'ralmaydi. Server sessiyasi tirik (yoki internet yo'q) va
+    // shu qurilmada eslab qolingan foydalanuvchi o'sha bo'lsa — PIN/parolsiz to'g'ridan-to'g'ri ichkariga.
+    let uid = null, has = false;
+    try { const { data: { session } } = await _db.auth.getSession(); uid = session?.user?.id || null; has = !!session; } catch (_) {}
+    const remembered = (has || navigator.onLine === false) && typeof fwRememberGet === 'function' ? fwRememberGet(uid) : null;
+    if (remembered) { if (fwEnterWithInfo(remembered, true) !== 'here') return; entered = true; }
+    if (!entered && typeof fwQuickGet === 'function' && fwQuickGet()) {
       if (has || navigator.onLine === false) {
         const info = (typeof fwQuickRecent === 'function' && fwQuickRecent(uid)) || await fwQuickUnlock(uid);
         if (info) { if (fwEnterWithInfo(info, true) !== 'here') return; entered = true; }
@@ -15411,6 +15415,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 // v25: tasdiqlangan (oflayn parol / PIN / barmoq izi) kirish — o'z sahifasiga
 // v25.3: inPlace=true — admin sahifasi QAYTA YUKLANMAYDI ('here' qaytadi, chaqiruvchi shu yerda davom etadi)
 function fwEnterWithInfo(info, inPlace) {
+  if (typeof fwRememberSet === 'function') fwRememberSet(info);   // v25.6.10: «Chiqish» bosilmaguncha eslab qolinadi
+  if (info.dest === 'dealer') { location.replace('diller.html'); return 'away'; }
   if (info.dest === 'seller') {
     try { sessionStorage.setItem('fw_fast_staff', JSON.stringify({ uid: info.uid, t: Date.now(), staff: info.staff, offline: navigator.onLine === false })); } catch (_) {}
     location.replace('sotuvchi.html'); return 'away';
@@ -15579,7 +15585,7 @@ function showUnifiedLogin() {
       const dealerAuth = lg.kind === 'dealer' ? { data: lg.data, error: null } : { error: lg.error || { message: 'xodim' } };
       if (!dealerAuth.error && dealerAuth.data?.user) {
         const { data: dealerRow } = await _db.from('dealers').select('id').eq('auth_user_id', dealerAuth.data.user.id).maybeSingle();
-        if (dealerRow) { btn.textContent = 'Kirilmoqda…'; location.replace('diller.html'); return; }
+        if (dealerRow) { if (typeof fwRememberSet === 'function') fwRememberSet({ dest: 'dealer', uid: dealerAuth.data.user.id }); btn.textContent = 'Kirilmoqda…'; location.replace('diller.html'); return; }
         await _db.auth.signOut().catch(()=>{});
       }
 

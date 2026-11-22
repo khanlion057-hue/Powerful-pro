@@ -14,6 +14,7 @@ const ROOT = path.join(__dirname, '..');
 async function reopen(page, { agoMs, uid = null, dest = 'admin' }) {
   await page.evaluate(({ agoMs, uid, dest, data }) => {
     sessionStorage.clear();
+    localStorage.removeItem('fw_remember_v1');   // v25.6.10: eslab qolish yo'q holat (yangilanishdan oldingi qurilma) — PIN qoidasi; eslab qolingan — P130
     localStorage.setItem('bp_data', JSON.stringify(data));
     localStorage.setItem('bp_cur', JSON.stringify({ usdUzs: 12650, usdCny: 7.1, lastRateDate: new Date().toISOString().slice(0, 10) }));
     localStorage.setItem('fw_quick_v1', JSON.stringify({ salt: 'c2FsdA==', hash: 'x', uid, info: { dest, branch: 'baza', uid, name: 'Egasi' }, fails: 0, t: Date.now() }));

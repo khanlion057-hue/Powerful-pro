@@ -2060,7 +2060,7 @@ function fwReceiptFitPage(doc, widthMm) {
 // signOut kutiladi (oldin reload undan oldin bo'lib, sessiya ba'zan qolib ketardi); 1.2 soniyadan oshsa — baribir davom etadi (chiqish uzoq cho'zilmasin).
 async function fwLogoutFlow(client, name) {
   try { ['bp_auth_ok','bp_pin_ok','bp_branch_ok','bp_staff_id','fw_fast_staff'].forEach(k => sessionStorage.removeItem(k)); } catch (e) {}
-  try { localStorage.removeItem('fw_off_auth_v1'); localStorage.removeItem('fw_quick_v1'); localStorage.removeItem('fw_last_active'); } catch (e) {}   // v25: chiqqanda oflayn va tez kirish ham o'chadi
+  try { localStorage.removeItem('fw_off_auth_v1'); localStorage.removeItem('fw_quick_v1'); localStorage.removeItem('fw_last_active'); localStorage.removeItem('fw_remember_v1'); } catch (e) {}   // v25: chiqqanda oflayn, tez kirish va eslab qolish o'chadi
   const h = new Date().getHours(), bye = h < 5 || h >= 18 ? 'Xayrli kech' : 'Yaxshi dam oling';
   const el = document.createElement('div');
   el.className = 'fw-bye fw-brand-bg';
@@ -2613,6 +2613,22 @@ if (typeof window !== 'undefined') {
 // Server bilan bog'liq amallar (savdo) oflayn navbatga tushadi; internet qaytganda sessiya tokeni yangilanadi va
 // server har so'rovni odatdagidek tekshiradi — oflayn kirish serverdagi ruxsatlarni chetlab o'tmaydi.
 const FW_OFF_AUTH = 'fw_off_auth_v1';
+// v25.6.10 (egasi): «Chiqish» bosilmaguncha qayta kirish so'ralmaydi. Kim kirgani (maxfiy emas: yo'nalish, filial, xodim
+// raqami, ism, auth uid) qurilmada saqlanadi; ilova qayta ochilganda server sessiyasi (Supabase) shu uid bilan tirik
+// bo'lsa — to'g'ridan-to'g'ri ichkariga. Parol yoki kalit saqlanmaydi; ruxsatlar baribir serverda tekshiriladi.
+const FW_REMEMBER = 'fw_remember_v1';
+function fwRememberSet(info) {
+  try { if (info && info.dest) localStorage.setItem(FW_REMEMBER, JSON.stringify({ info, uid: info.uid || null, t: Date.now() })); } catch (_) {}
+}
+function fwRememberGet(uid) {
+  try {
+    const r = JSON.parse(localStorage.getItem(FW_REMEMBER) || 'null');
+    if (!r || !r.info || !r.info.dest) return null;
+    if (uid && r.uid && r.uid !== uid) return null;   // boshqa foydalanuvchi sessiyasi — eslab qolingani ishlatilmaydi
+    return r.info;
+  } catch (_) { return null; }
+}
+function fwRememberClear() { try { localStorage.removeItem(FW_REMEMBER); } catch (_) {} }
 async function _fwPbkdf2(pass, saltB64) {
   const enc = new TextEncoder();
   const salt = Uint8Array.from(atob(saltB64), c => c.charCodeAt(0));
@@ -2621,6 +2637,7 @@ async function _fwPbkdf2(pass, saltB64) {
   return btoa(String.fromCharCode(...new Uint8Array(bits)));
 }
 async function fwOffAuthSave(login, pass, info) {
+  fwRememberSet(info);
   try {
     if (!(window.crypto && crypto.subtle)) return;
     const salt = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16))));
@@ -2953,18 +2970,10 @@ if (typeof window !== 'undefined') {
   setInterval(() => { if (!document.hidden) fwTouchActive(); }, 30000);
 }
 
-// Fonda 5 daqiqadan ko'p turgan ilova — qaytganda PIN (sahifa qayta yuklanmaydi, ish joyida qoladi)
+// v25.6.10 (egasi): fonda turib qaytganda (ekran o'chib-yonishi, boshqa ilovaga o'tish) PIN/parol SO'RALMAYDI va sahifa qayta
+// yuklanmaydi — «Chiqish» bosilmaguncha foydalanuvchi ichkarida qoladi. Faqat oxirgi faollik vaqti yangilanadi.
 if (typeof document !== 'undefined') {
-  document.addEventListener('visibilitychange', async () => {
-    try {
-      if (document.hidden) { sessionStorage.setItem('fw_hid_at', String(Date.now())); fwTouchActive(); return; }
-      const at = +sessionStorage.getItem('fw_hid_at') || 0; sessionStorage.removeItem('fw_hid_at');
-      const r = fwQuickGet();
-      if (!r || !at || Date.now() - at < FW_QUICK_IDLE_MS || document.getElementById('fw-pin-ov') || document.getElementById('ul-login')) return;
-      const info = await fwQuickUnlock(null);
-      if (!info) { ['bp_auth_ok', 'bp_branch_ok', 'bp_staff_id', 'fw_fast_staff'].forEach(k => sessionStorage.removeItem(k)); location.replace('index.html'); }
-    } catch (_) {}
-  });
+  document.addEventListener('visibilitychange', () => { try { if (document.hidden) fwTouchActive(); } catch (_) {} });
 }
 
 // ════════════════════════════════════════════════════════════

@@ -94,9 +94,11 @@ async function testBrowser() {
     await page.goto(`http://127.0.0.1:${S.port}/dokon.html?s=powerful`);
     await page.waitForSelector('.vt-pc');
     assert.equal(await page.$$eval('.vt-pc', (a) => a.length), 16);
-    // Qidiruv: «Ø250 80T» → bitta
-    await page.fill('#vt-q', 'ø250 80t'); await page.waitForTimeout(400);
-    assert.equal(await page.$$eval('#vt-grid .vt-pc', (a) => a.length), 1);
+    // Qidiruv: «Ø250 80T» → bitta; boshqa yozilishlar ham («d250 80 т», «250mm 80T», «250x»)
+    for (const q of ['ø250 80t', 'd250 80 т', '250mm 80T', 'ф250 80z', '250*3.2 80t']) {
+      await page.fill('#vt-q', q); await page.waitForTimeout(400);
+      assert.equal(await page.$$eval('#vt-grid .vt-pc', (a) => a.length), 1, q);
+    }
     await page.fill('#vt-q', ''); await page.waitForTimeout(300);
     // Arra tanlash yordamchisi: bosh sahifada yo'q, faqat «Arra tigʻlari» bo'limida; Alyuminiy → 2 ta
     assert.equal(await page.isVisible('#vt-finder'), false, 'bosh sahifada yordamchi yo\'q');
@@ -153,8 +155,8 @@ async function testImages() {
     assert.ok(await page.locator('.vt-pic:not(.has) svg').count() > 0, 'rasmsiz — bir xil o\'rinbosar');
     assert.equal(await page.locator('.vt-pic:not(.has) svg.vt-noimg').count(), await page.locator('.vt-pic:not(.has)').count(), 'rasmsiz — hammasida bir xil o\'rinbosar');
     const fill = await multi.evaluate((el) => { const a = el.getBoundingClientRect(), b = el.querySelector('img').getBoundingClientRect(); return Math.abs(a.width - b.width) < 1 && Math.abs(a.height - b.height) < 1 && getComputedStyle(el.querySelector('img')).objectFit; });
-    // v25.6.10 (egasi): rasm — bir xil kvadrat, oq fonda, markazda, chetlarida bo'shliq (kesilmaydi)
-    assert.equal(fill, 'contain', "rasm kvadrat ichida to'liq ko'rinadi (kesilmaydi)");
+    // egasi namunasi: rasm kvadrat kartochka tepasini to'liq to'ldiradi
+    assert.equal(fill, 'cover', "rasm kartochka tepasini to'ldiradi");
     assert.equal(await multi.evaluate((el) => { const r = el.getBoundingClientRect(); return Math.round(r.width) === Math.round(r.height); }), true, 'kvadrat');
     await multi.locator('.vt-dots i').nth(2).click();
     assert.match(await multi.locator('img').getAttribute('src'), /c\.png$/);

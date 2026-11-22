@@ -29,8 +29,14 @@
     var s = (p.name + ' ' + (p.specs || []).join(' ') + ' ' + p.cat).toLowerCase();
     var d = /ø\s?(\d{2,3})/.exec(s) || /(\d{3})\s?(?:mm|мм)\b/.exec(s) || /\b(\d{3})\s?[x×*]/.exec(s);
     var t = /\b(\d{2,3})\s?(?:t|т|z)\b/.exec(s);
-    var mat = /alyumin|alumin|алюмин/.test(s) ? 'Alyuminiy' : /laminat|ldsp|dsp|лдсп|дсп|mdf|мдф/.test(s) ? 'Laminat / DSP' : /yog.?och|wood|дерев|древ/.test(s) ? 'Yogʻoch' : '';
-    return { dia: d ? +d[1] : null, tooth: t ? +t[1] : null, mat: mat };
+    // egasi: materiallar — Yog'och, MDF / HDF, Laminat, Temir, Alyuminiy (bitta tig' bir nechtasiga mos bo'lishi mumkin)
+    var mats = [];
+    if (/yog.?och|wood|дерев|древ|derev|drev|construction/.test(s)) mats.push('Yogʻoch');
+    if (/\bmdf\b|\bhdf\b|мдф|хдф|dvp|двп/.test(s)) mats.push('MDF / HDF');
+    if (/laminat|ламинат|ldsp|лдсп|\bdsp\b|дсп/.test(s)) mats.push('Laminat');
+    if (/temir|metal|металл|stal|сталь|steel|\biron\b|черн/.test(s)) mats.push('Temir');
+    if (/alyumin|alumin|алюмин|цветн/.test(s)) mats.push('Alyuminiy');
+    return { dia: d ? +d[1] : null, tooth: t ? +t[1] : null, mat: mats[0] || '', mats: mats };
   }
   // Rasmsiz mahsulot — arra tig'i rasmi (Ø va tish soni bilan)
   function sawSvg(p) {
@@ -138,15 +144,19 @@
   }
   function chips() { var c = $('vt-chips').children; for (var i = 0; i < c.length; i++) c[i].classList.toggle('on', ST.fav ? c[i].dataset.fav === '1' : (c[i].dataset.cat === ST.cat && !c[i].dataset.fav));
     [].forEach.call(document.querySelectorAll('.vt-cat'), function (b) { b.classList.toggle('on', !ST.fav && b.dataset.catc === ST.cat); });
-    if (D && $('vt-fmat').children.length) finderVis(); }
+    if (D) finderVis(); }
 
   // ── arra tanlash yordamchisi ──
   function finder() {
-    var sw = PR.map(function (p) { return { p: p, s: sawInfo(p) }; }).filter(function (x) { return x.s.dia; });
+    // variantlar — faqat ochiq bo'limdagi tig'lardan (boshqa bo'lim o'lchamlari aralashmaydi)
+    var src = ST.cat ? PR.filter(function (p) { return p.cat === ST.cat; }) : PR;
+    var sw = src.map(function (p) { return { p: p, s: sawInfo(p) }; }).filter(function (x) { return x.s.dia; });
     if (sw.length < 3) { $('vt-finder').hidden = true; return; }
-    finderVis();
+    if (!FBUSY) finderVis();
     var uniq = function (f) { var m = {}; sw.forEach(function (x) { var v = f(x.s); if (v) m[v] = 1; }); return Object.keys(m); };
-    var mats = uniq(function (s) { return s.mat; }), dias = uniq(function (s) { return s.dia; }).map(Number).sort(function (a, b) { return a - b; });
+    var MATS = ['Yogʻoch', 'MDF / HDF', 'Laminat', 'Temir', 'Alyuminiy'], has = {};
+    sw.forEach(function (x) { x.s.mats.forEach(function (m) { has[m] = 1; }); });
+    var mats = MATS.filter(function (m) { return has[m]; }), dias = uniq(function (s) { return s.dia; }).map(Number).sort(function (a, b) { return a - b; });
     var teeth = uniq(function (s) { return s.tooth; }).map(Number).sort(function (a, b) { return a - b; });
     var seg = function (el, list, k, fmt) { $(el).innerHTML = '<button data-k="' + k + '" data-v="">Hammasi</button>' + list.map(function (v) { return '<button data-k="' + k + '" data-v="' + esc(v) + '">' + esc(fmt ? fmt(v) : v) + '</button>'; }).join(''); };
     seg('vt-fmat', mats, 'mat'); seg('vt-fdia', dias, 'dia', function (v) { return 'Ø' + v; }); seg('vt-ftooth', teeth, 'tooth', function (v) { return v + 'T'; });
@@ -156,27 +166,42 @@
   function finderVis() {
     var inCat = ST.cat ? PR.filter(function (p) { return p.cat === ST.cat; }) : [];
     var saws = inCat.filter(function (p) { return sawInfo(p).dia; }).length;
-    var on = !ST.fav && inCat.length > 0 && saws >= 3 && saws >= inCat.length / 2;
+    var blade = /tig|disk|диск|полотн|polotn|blade/i.test(ST.cat || '');
+    var on = !ST.fav && blade && inCat.length > 0 && saws >= 3 && saws >= inCat.length / 2;
     if (!on && (ST.mat || ST.dia || ST.tooth)) { ST.mat = ST.dia = ST.tooth = ''; finderUi(); }
+    if (on && FCAT !== ST.cat) { FCAT = ST.cat; FBUSY = true; finder(); FBUSY = false; }
     $('vt-finder').hidden = !on;
   }
+  var FCAT = null, FBUSY = false;
   function finderUi() {
     ['vt-fmat', 'vt-fdia', 'vt-ftooth'].forEach(function (id) { var b = $(id).children; for (var i = 0; i < b.length; i++) b[i].classList.toggle('on', String(ST[b[i].dataset.k]) === b[i].dataset.v); });
     var tip = '';
     if (ST.tooth) { var t = +ST.tooth; tip = t >= 80 ? 'Koʻp tish — toza, silliq kesim (laminat, DSP, ishlov berilgan yogʻoch).' : t >= 48 ? 'Universal — koʻndalang va boʻylama kesish uchun.' : 'Kam tish — tez boʻylama kesish (massiv yogʻoch).'; }
+    else if (ST.mat === 'Temir') tip = 'Temir uchun koʻp tishli, metall kesishga moʻljallangan (Cermet) tigʻ tanlang.';
+    else if (ST.mat === 'MDF / HDF' || ST.mat === 'Laminat') tip = 'Laminat va MDF uchun koʻp tishli (60T+) tigʻ — chetlari uchmaydi.';
     else if (ST.mat === 'Alyuminiy') tip = 'Alyuminiy uchun manfiy burchakli, koʻp tishli (TCG) tigʻ tanlang.';
     $('vt-fhint').textContent = tip;
   }
 
+  // v25.6.10: qidiruv me'yori — o'lcham va tish yozilishining har xil shakllari bir xil topiladi
+  function norm(t) {
+    return String(t || '').toLowerCase()
+      .replace(/[ʻʼ'`’‘]/g, '')
+      .replace(/(^|[^a-zа-я])(?:ø|ф|d|д)\s?(\d)/g, '$1$2')       // Ø250, ф250, d250 → 250
+      .replace(/(\d)\s*[x×х*]\s*/g, '$1x')               // 250 x 30, 250*30, 250×30 → 250x30
+      .replace(/(\d)\s*(?:tish|t|т|z)(?![a-zа-я])/g, '$1t')                  // 80 T, 80т, 80z → 80t
+      .replace(/(\d)\s*(?:mm|мм)(?![a-zа-я])/g, '$1')                        // 250mm → 250
+      .replace(/[,;()]/g, ' ');
+  }
   // ── ro'yxat ──
   function list() {
-    var q = ST.q.toLowerCase().trim(), words = q ? q.split(/\s+/) : [];
+    var q = norm(ST.q).trim(), words = q ? q.split(/\s+/).filter(Boolean) : [];
     var out = PR.filter(function (p) {
       if (ST.fav && FAV.indexOf(String(p.id)) < 0) return false;
       if (ST.cat && p.cat !== ST.cat) return false;
       if (ST.br && p.brand !== ST.br) return false;
-      if (ST.mat || ST.dia || ST.tooth) { var s = sawInfo(p); if (ST.mat && s.mat !== ST.mat) return false; if (ST.dia && s.dia !== +ST.dia) return false; if (ST.tooth && s.tooth !== +ST.tooth) return false; }
-      if (words.length) { var hay = (p.name + ' ' + p.sku + ' ' + p.brand + ' ' + p.cat + ' ' + (p.specs || []).join(' ')).toLowerCase().replace(/ø/g, 'ø'); for (var i = 0; i < words.length; i++) if (hay.indexOf(words[i]) < 0) return false; }
+      if (ST.mat || ST.dia || ST.tooth) { var s = sawInfo(p); if (ST.mat && s.mats.indexOf(ST.mat) < 0) return false; if (ST.dia && s.dia !== +ST.dia) return false; if (ST.tooth && s.tooth !== +ST.tooth) return false; }
+      if (words.length) { var hay = norm(p.name + ' ' + p.sku + ' ' + p.brand + ' ' + p.cat + ' ' + (p.specs || []).join(' ')), hc = hay.replace(/\s+/g, ''); for (var i = 0; i < words.length; i++) if (hay.indexOf(words[i]) < 0 && hc.indexOf(words[i]) < 0) return false; }
       return true;
     });
     var by = { lo: function (a, b) { return a.price - b.price; }, hi: function (a, b) { return b.price - a.price; }, az: function (a, b) { return a.name.localeCompare(b.name); },
@@ -271,7 +296,7 @@
     RECENT = [String(id)].concat(RECENT.filter(function (x) { return x !== String(id); })).slice(0, 12); lsSet(key('recent'), RECENT); recent();
     history.replaceState(null, '', '#p=' + id);
     var q = Math.max(1, CART[id] || 1), imgs = p.img || [];
-    var si = sawInfo(p), meta = [p.sku && 'Kod: ' + p.sku, p.brand, si.dia && 'Ø' + si.dia + ' mm', si.tooth && si.tooth + ' tish', si.mat].filter(Boolean).concat(p.specs || []);
+    var si = sawInfo(p), meta = [p.sku && 'Kod: ' + p.sku, p.brand, si.dia && 'Ø' + si.dia + ' mm', si.tooth && si.tooth + ' tish'].concat(si.mats).filter(Boolean).concat(p.specs || []);
     var ask = D.shop.tg ? 'https://t.me/' + encodeURIComponent(D.shop.tg) : D.shop.wa ? 'https://wa.me/' + D.shop.wa.replace(/\D/g, '') + '?text=' + encodeURIComponent(p.name + ' (' + p.sku + ') haqida') : '';
     sheet('<div class="vt-hero' + (imgs.length ? ' has' : '') + '"><div class="vt-big" id="vt-bigimg">' + pic(p) + '</div>'
       + (imgs.length > 1 ? '<div class="vt-thumbs">' + imgs.map(function (u, i) { return '<button data-img="' + i + '" class="' + (i ? '' : 'on') + '" aria-label="Rasm ' + (i + 1) + '"><img src="' + esc(u) + '" alt=""></button>'; }).join('') + '</div>' : '') + '</div>'

@@ -153,7 +153,7 @@ async function testPortalsAndLogout() {
   try {
     const h = await r.page.evaluate(() => ({ tab: ACTIVE_TAB, acts: document.querySelectorAll('#sv-content .pt-acts .ox-act').length, hero: !!document.querySelector('#sv-content .ox-hero'),
       brand: document.querySelector('.pt-brand small').textContent }));
-    assert.deepEqual(h, { tab: 'home', acts: 8, hero: true, brand: 'Sotuvchi oynasi' }, 'admin kabi: Bosh sahifa, natija, 8 ta tezkor amal');
+    assert.deepEqual(h, { tab: 'home', acts: 7, hero: true, brand: 'Sotuvchi oynasi' }, 'admin kabi: Bosh sahifa, natija, 7 ta tezkor amal (v25.6.10: «Buyurtmalar» — faqat diller ruxsati bilan)');
     const t = await r.page.evaluate(() => { svOpenSettings(); return document.getElementById('pts-ov').innerText; });
     assert.match(t, /BUGUN/i); assert.match(t, /SHU OY/i);
     assert.deepEqual(r.errors, []);

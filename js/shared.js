@@ -2686,7 +2686,7 @@ if (typeof window !== 'undefined' && typeof MutationObserver !== 'undefined') {
 // Ilova 5 daqiqadan ko'p fonda tursa — qaytganda PIN so'raladi.
 // ════════════════════════════════════════════════════════════
 const FWQK = 'fw_quick_v1', FW_QUICK_MAX_FAILS = 5, FW_QUICK_IDLE_MS = 5 * 60 * 1000;
-function fwQuickGet() { try { const r = JSON.parse(localStorage.getItem(FWQK) || 'null'); return r && r.hash && r.salt ? r : null; } catch (_) { return null; } }
+function fwQuickGet() { try { const r = JSON.parse(localStorage.getItem(FWQK) || 'null'); return r && ((r.hash && r.salt) || (r.bioOnly && r.bio)) ? r : null; } catch (_) { return null; } }   // v25.6.10: faqat barmoq izi (PINsiz) ham
 function fwQuickClear() { try { localStorage.removeItem(FWQK); } catch (_) {} }
 async function fwQuickSet(pin, info, bio) {
   const salt = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16))));
@@ -2694,7 +2694,7 @@ async function fwQuickSet(pin, info, bio) {
 }
 // PIN to'g'ri bo'lsa — info; noto'g'ri — null; 5-xatoda tez kirish o'chiriladi ({ locked: true })
 async function fwQuickCheck(pin) {
-  const r = fwQuickGet(); if (!r) return { locked: true };
+  const r = fwQuickGet(); if (!r || !r.hash) return { locked: true };
   if ((await _fwPbkdf2(String(pin), r.salt)) === r.hash) { r.fails = 0; r.t = Date.now(); localStorage.setItem(FWQK, JSON.stringify(r)); try { localStorage.setItem(FW_LAST_KEY, String(Date.now())); } catch (_) {} return r.info || {}; }
   r.fails = (r.fails || 0) + 1;
   if (r.fails >= FW_QUICK_MAX_FAILS) { fwQuickClear(); return { locked: true }; }
@@ -2764,6 +2764,8 @@ function fwQuickSectionHtml(o) {
   const rowH = (t, sub, btn) => `<div class="fw-qk-row"><span><b>${t}</b><small>${sub}</small></span>${btn}</div>`;
   const b = (label, act, cls) => `<button type="button" class="${cls || 'pos-btn ghost'}" onclick="fwQuickAction('${act}')">${label}</button>`;
   if (!q) return `<div class="fw-qk">${rowH('PIN oʻrnatilmagan', 'Login va parol oʻrniga 4 xonali PIN (va barmoq izi) bilan kirish', o.canSetPin === false ? '' : b('PIN oʻrnatish', 'pin-set', 'pos-btn pri'))}</div>`;
+  if (q.bioOnly) return `<div class="fw-qk">${rowH('Barmoq izi yoqilgan', 'Ilova ochilganda avval barmoq izi soʻraladi; oʻtmasa — parol', b('Oʻchirish', 'pin-off', 'pos-btn ghost red-t'))}
+    ${o.canSetPin === false ? '' : rowH('PIN', 'Barmoq izi ishlamasa — 4 xonali PIN bilan', b('PIN oʻrnatish', 'pin-set'))}</div>`;
   return `<div class="fw-qk">${rowH('PIN yoqilgan', 'Keyingi safar login va parol oʻrniga PIN bilan kirasiz', b('PINni oʻchirish', 'pin-off', 'pos-btn ghost red-t'))}
     ${bio ? rowH(q.bio ? 'Barmoq izi yoqilgan' : 'Barmoq izi oʻchiq', q.bio ? 'Ilova ochilganda barmoq izi soʻraladi' : 'PIN oʻrniga barmoq izi bilan kirish', q.bio ? b('Barmoq izini oʻchirish', 'bio-off') : b('Barmoq izini yoqish', 'bio-on', 'pos-btn pri'))
       : rowH('Barmoq izi', 'Bu qurilma yoki brauzerda barmoq izi qoʻllab-quvvatlanmaydi', '')}</div>`;
@@ -2823,18 +2825,71 @@ function fwPinPad(o) {
     if (o.bio && o.autoBio) fwBioAuth().then(ok => { if (ok && document.body.contains(ov)) finish('bio'); });
   });
 }
+// v25.6.10: BARMOQ IZI EKRANI — ilova ochilganda darhol tizim barmoq izi oynasi; bekor qilinsa: «☝ Qayta urinish» va «Parol bilan kirish».
+// Natija: true (tasdiqlandi) | false (parol / PIN bilan)
+function fwBioGate(name, o) {
+  o = o || {};
+  return new Promise(resolve => {
+    document.getElementById('fw-pin-ov')?.remove();
+    const ov = document.createElement('div'); ov.id = 'fw-pin-ov'; ov.className = 'fw-pin-ov fw-brand-bg'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true');
+    const finish = (v) => { ov.remove(); resolve(v); };
+    const paint = (msg) => { ov.innerHTML = `<div class="fw-pin-card fw-bio-card">
+      <b class="fw-pin-t">Xush kelibsiz${name ? ', ' + esc(name) : ''}</b>
+      <small class="fw-pin-s">Barmoq izingiz bilan kiring</small>
+      <button type="button" class="fw-bio-btn" data-k="bio" aria-label="Barmoq izi bilan kirish">☝</button>
+      <div class="fw-pin-err" role="alert">${esc(msg || '')}</div>
+      <button type="button" class="fw-pin-alt" data-k="alt">${esc(o.alt || 'Parol bilan kirish')}</button></div>`; };
+    let busy = false;
+    const ask = async () => { if (busy) return; busy = true; paint(''); const ok = await fwBioAuth().catch(() => false); busy = false;
+      if (ok && document.body.contains(ov)) return finish(true); if (o.fallback && document.body.contains(ov)) return finish(false);   // PIN bor — darhol PIN oynasi
+      if (document.body.contains(ov)) paint('Barmoq izi tasdiqlanmadi — ☝ ni bosib qayta urining'); };
+    ov.addEventListener('click', (e) => { const b = e.target.closest('button[data-k]'); if (!b) return; if (b.dataset.k === 'alt') return finish(false); ask(); });
+    paint(''); document.body.appendChild(ov); ov.tabIndex = -1; ov.focus();
+    ask();   // darhol — oddiy ilovalardagidek
+  });
+}
+// Parol bilan birinchi kirishdan keyin: «Barmoq izi bilan kirishni yoqasizmi?» Natija: 'bio' | 'pin' (PIN istaydi) | 'never'
+function fwBioOffer(info) {
+  return new Promise(resolve => {
+    document.getElementById('fw-pin-ov')?.remove();
+    const ov = document.createElement('div'); ov.id = 'fw-pin-ov'; ov.className = 'fw-pin-ov fw-brand-bg'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true');
+    const finish = (v) => { ov.remove(); resolve(v); };
+    const paint = (msg) => { ov.innerHTML = `<div class="fw-pin-card fw-bio-card">
+      <b class="fw-pin-t">Barmoq izi bilan kirish</b>
+      <small class="fw-pin-s">Keyingi safar parol yozmasdan — barmoq izingiz bilan kirasiz</small>
+      <button type="button" class="fw-bio-btn" data-k="bio" aria-label="Barmoq izini yoqish">☝</button>
+      <div class="fw-pin-err" role="alert">${esc(msg || '')}</div>
+      <button type="button" class="fw-pin-alt" data-k="pin">Barmoq izi oʻrniga PIN</button>
+      <button type="button" class="fw-pin-alt" data-k="never">Keyinroq</button></div>`; };
+    ov.addEventListener('click', async (e) => { const b = e.target.closest('button[data-k]'); if (!b) return; const k = b.dataset.k;
+      if (k === 'pin' || k === 'never') return finish(k);
+      if (await fwBioAuth().catch(() => false)) return finish('bio'); paint('Barmoq izi tasdiqlanmadi — qayta urining'); });
+    paint(''); document.body.appendChild(ov); ov.tabIndex = -1; ov.focus(); void info;
+  });
+}
 // To'liq login muvaffaqiyatli bo'lgach: PIN o'rnatishni taklif qilish (shu foydalanuvchi uchun allaqachon bo'lsa — so'ralmaydi)
 async function fwQuickSetupOffer(info) {
   try {
     const cur = fwQuickGet(); if (!_fwQkForce && cur && cur.uid && info && cur.uid === info.uid) return;
     if (!(window.crypto && crypto.subtle)) return;
+    // v25.6.10 (egasi talabi «haqiqiy ilova kabi»): avval BARMOQ IZI taklif qilinadi — PIN shart emas
+    if (fwBioAvail() && !_fwQkForce) {
+      const want = await fwBioOffer(info);
+      if (want === 'bio') {
+        localStorage.setItem(FWQK, JSON.stringify({ bioOnly: true, bio: true, info: info || {}, uid: info && info.uid || null, fails: 0, t: Date.now() }));
+        try { localStorage.setItem(FW_LAST_KEY, String(Date.now())); } catch (_) {}
+        if (typeof toast === 'function') toast('✅ Keyingi safar barmoq izi bilan kirasiz');
+        return;
+      }
+      if (want === 'never') return;
+    }
     let first = null;
     const pin = await fwPinPad({ title: 'Tez kirish uchun PIN', sub: 'Keyingi safar login va parol oʻrniga shu 4 xonali PIN bilan kirasiz', alt: 'Keyinroq',
       check: async (v) => { if (first == null) { first = v; return 'Shu PINni yana bir marta kiriting'; } if (v !== first) { first = null; return 'PIN mos kelmadi — qaytadan kiriting'; } return null; } });
     if (!pin) return;
     let bio = false;
     if (fwBioAvail()) bio = (await fwPinPad({ title: 'Barmoq izi', sub: 'Barmoq izi bilan kirishni yoqish uchun ☝ tugmasini bosing', bio: true, alt: 'Yoʻq, faqat PIN', check: async () => 'Bu yerda ☝ tugmasini bosing' })) === 'bio';
-    await fwQuickSet(pin, info, bio);
+    await fwQuickSet(pin, info, bio || !!(cur && cur.bio));
     if (typeof toast === 'function') toast(bio ? '✅ Tez kirish yoqildi — PIN yoki barmoq izi' : '✅ Tez kirish yoqildi — PIN');
   } catch (_) {}
 }
@@ -2845,7 +2900,13 @@ async function fwQuickUnlock(sessionUid) {
   let info = null;
   // v25: barmoq izi tugmasi — ilovada (APK) barmoq izi bo'lsa DOIM (PIN eski ilovada o'rnatilgan bo'lsa ham); avtomatik — yoqilgan bo'lsa
   const bioOn = fwBioAvail();
-  const v = await fwPinPad({ title: 'Xush kelibsiz', sub: (r.info && (r.info.name || (r.info.staff && r.info.staff.name))) || 'PIN kiriting', bio: bioOn, autoBio: bioOn && !!r.bio, alt: 'Login va parol bilan kirish',
+  // v25.6.10: barmoq izi yoqilgan bo'lsa — ilova ochilishi bilan AVVAL barmoq izi (PIN oynasisiz); o'tmasa — PIN, PIN yo'q bo'lsa — login va parol
+  if (bioOn && r.bio) {
+    const g = await fwBioGate((r.info && (r.info.name || (r.info.staff && r.info.staff.name))) || '', { alt: r.hash ? 'PIN bilan kirish' : 'Parol bilan kirish', fallback: !!r.hash });
+    if (g === true) { try { localStorage.setItem(FW_LAST_KEY, String(Date.now())); } catch (_) {} return r.info || {}; }
+    if (!r.hash) return null;   // faqat barmoq izi — parol bilan kirish
+  } else if (!r.hash) return null;
+  const v = await fwPinPad({ title: 'Xush kelibsiz', sub: (r.info && (r.info.name || (r.info.staff && r.info.staff.name))) || 'PIN kiriting', bio: bioOn, autoBio: false, alt: 'Login va parol bilan kirish',   // v25.6.10: barmoq izi oldinroq so'raldi (fwBioGate)
     check: async (p) => { const x = await fwQuickCheck(p); if (x && x.locked) { info = null; return null; } if (!x) { const left = FW_QUICK_MAX_FAILS - ((fwQuickGet() || {}).fails || 0); return `PIN notoʻgʻri — yana ${left} ta urinish`; } info = x; return null; } });
   if (v === 'bio') { fwQuickBioMark(true); return r.info || {}; }
   if (v && info) {

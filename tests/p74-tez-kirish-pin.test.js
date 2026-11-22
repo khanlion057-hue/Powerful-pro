@@ -78,5 +78,32 @@ module.exports = {
         assert.deepEqual(errors, []);
       } finally { await browser.close(); }
     } },
+    { name: 'v25.6.10: avval barmoq izi (PINsiz) — parol bilan kirgach taklif; ochilishda darhol barmoq izi; rad etilsa — qayta urinish yoki parol', async run() {
+      const { browser, page, errors } = await openPage('index.html', { width: 390, height: 844, mobile: true, admin: true });
+      try {
+        const r = await page.evaluate(async () => {
+          let answer = true; const wait = (ms) => new Promise(res => setTimeout(res, ms));
+          window.FwBio = { available: () => true, authenticate: (cb) => setTimeout(() => window[cb](answer), 20) };
+          fwQuickClear();
+          const off = fwQuickSetupOffer({ dest: 'admin', branch: 'baza', uid: 'u-9', name: 'Egasi' }); await wait(60);
+          const offerShown = /Barmoq izi bilan kirish/.test(document.getElementById('fw-pin-ov').textContent);
+          document.querySelector('#fw-pin-ov .fw-bio-btn').click(); await off;
+          const rec = JSON.parse(localStorage.getItem('fw_quick_v1'));
+          const ok = await fwQuickUnlock('u-9');                        // darhol barmoq izi — PIN oynasisiz
+          answer = false;
+          const p = fwQuickUnlock('u-9'); await wait(100);
+          const retryShown = /qayta urining/.test(document.getElementById('fw-pin-ov').textContent) && !document.querySelector('#fw-pin-ov .fw-pin-dots');
+          document.querySelector('#fw-pin-ov .fw-pin-alt').click();
+          const viaPassword = await p;
+          return { offerShown, bioOnly: rec.bioOnly === true && !rec.hash, ok: ok && ok.dest, retryShown, viaPassword };
+        });
+        assert.equal(r.offerShown, true, 'parol bilan kirgach — barmoq izi taklifi (PIN emas)');
+        assert.equal(r.bioOnly, true, 'PINsiz barmoq izi yozuvi');
+        assert.equal(r.ok, 'admin', 'ochilishda barmoq izi — kirdi');
+        assert.equal(r.retryShown, true, 'rad etilsa — qayta urinish (PIN klaviaturasi emas)');
+        assert.equal(r.viaPassword, null, '«Parol bilan kirish» — login oynasi');
+        assert.deepEqual(errors, []);
+      } finally { await browser.close(); }
+    } },
   ],
 };

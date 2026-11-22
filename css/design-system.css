@@ -3896,3 +3896,9 @@ html:not([data-theme="dark"]) .btn-primary{ color:#fff; }
 }
 /* 9) Telefon: 90% masshtabda 100vh ekranning 90% i — qisqa sahifalarda pastki menyu ekran o'rtasida «suzib» turardi */
 body .dl-wrap{ min-height:calc(100vh / var(--fw-z, 1)); }
+/* 10) Barmoq izi ekrani — katta ☝ tugma (oddiy ilovalardagidek) */
+.fw-bio-card{ align-items:center; text-align:center; gap:10px; }
+.fw-bio-btn{ width:96px; height:96px; border-radius:50%; border:2px solid rgba(224,162,58,.55); background:rgba(224,162,58,.12); color:#f5ead6; font-size:46px; line-height:1;
+  display:grid; place-items:center; margin:12px auto 4px; cursor:pointer; }
+.fw-bio-btn:active{ transform:scale(.96); }
+.fw-bio-card .fw-pin-alt + .fw-pin-alt{ margin-top:2px; opacity:.8; }

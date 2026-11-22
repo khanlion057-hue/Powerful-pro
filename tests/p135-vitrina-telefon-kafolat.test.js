@@ -144,10 +144,10 @@ async function noSecond() {
   } finally { await br.close(); S.close(); }
 }
 
-// egasi: arra disklari — materiallar (Yog'och, MDF / HDF, Laminat, Temir, Alyuminiy) ruscha nomlardan; yordamchi faqat disk bo'limida
+// egasi: arra disklari — materiallar (Yog'och | Laminat, MDF, HPL | Temir | Alyuminiy) ruscha nomlardan; yordamchi faqat disk bo'limida
 async function sawFinder() {
   const fx = fixture();
-  const names = ['Disk pilniy po derevu 190x30x1,66mm 24T DeWalt', 'Disk pilniy po MDF i HDF 250x30 80T', 'Disk po laminatu (LDSP) 300x30 96T', 'Disk po metallu 355x25,4 72T',
+  const names = ['Disk pilniy po derevu 190x30x1,66mm 24T DeWalt', 'Disk pilniy po MDF i HPL 250x30 80T', 'Disk po laminatu (LDSP) 300x30 96T', 'Disk po metallu 355x25,4 72T',
     'Disk po alyuminiyu 250x30 100T', 'Pilniy disk 216x30x40T, DeWalt CONSTRUCTION'];
   names.forEach((n, i) => { const p = fx.main.products[i]; p.name = n; p.cat = 'Arra disklari'; p.param1 = ''; p.param2 = ''; });
   fx.main.products.slice(6, 12).forEach((p) => { p.cat = 'Arralar'; p.name = 'Tsirkulyarnaya pila CS 1400-' + (180 + p.id) + ' mm'; p.param1 = ''; p.param2 = ''; });
@@ -162,9 +162,9 @@ async function sawFinder() {
     assert.equal(await page.isVisible('#vt-finder'), false, 'Arralar (stanoklar) — yordamchi yo\'q');
     await page.click('.vt-cat[data-catc="Arra disklari"]'); await page.waitForTimeout(150);
     assert.equal(await page.isVisible('#vt-finder'), true);
-    assert.deepEqual(await page.$$eval('#vt-fmat button', (a) => a.map((b) => b.textContent)), ['Hammasi', 'Yogʻoch', 'MDF / HDF', 'Laminat', 'Temir', 'Alyuminiy']);
+    assert.deepEqual(await page.$$eval('#vt-fmat button', (a) => a.map((b) => b.textContent)), ['Hammasi', 'Yogʻoch', 'Laminat, MDF, HPL', 'Temir', 'Alyuminiy']);
     const cnt = async (v) => { await page.click(`#vt-fmat button[data-v="${v}"]`); await page.waitForTimeout(120); return page.$$eval('#vt-grid .vt-pc', (a) => a.length); };
-    assert.deepEqual([await cnt('Yogʻoch'), await cnt('MDF / HDF'), await cnt('Laminat'), await cnt('Temir'), await cnt('Alyuminiy')], [2, 1, 1, 1, 1]);
+    assert.deepEqual([await cnt('Yogʻoch'), await cnt('Laminat, MDF, HPL'), await cnt('Temir'), await cnt('Alyuminiy')], [2, 2, 1, 1]);
     // diametrlar — faqat shu bo'limdagi disklardan (stanok o'lchamlari aralashmaydi)
     assert.deepEqual(await page.$$eval('#vt-fdia button', (a) => a.map((b) => b.textContent)), ['Hammasi', 'Ø190', 'Ø216', 'Ø250', 'Ø300', 'Ø355']);
   } finally { await br.close(); S.close(); }
@@ -175,5 +175,5 @@ module.exports = { name: "P135 — Onlayn do'kon: 2 ta telefon, kafolat, bir xil
   { name: 'telefon: kafolat belgisi, bir xil kartalar, Tez aloqa (2 raqam), Doʻkon, savat phone2, buyurtma', run: () => browser(390, 844, true, process.env.P135_SHOT_M) },
   { name: 'kompyuter: pastki menyu yoʻq, sarlavhada Tez aloqa, xuddi shu oqim', run: () => browser(1366, 900, false, process.env.P135_SHOT_D) },
   { name: "ikkinchi raqam bo'sh — ko'rinmaydi", run: noSecond },
-  { name: "arra disklari: materiallar (Yog'och, MDF / HDF, Laminat, Temir, Alyuminiy), yordamchi faqat disk bo'limida", run: sawFinder },
+  { name: "arra disklari: materiallar (Yog'och | Laminat, MDF, HPL | Temir | Alyuminiy), yordamchi faqat disk bo'limida", run: sawFinder },
 ] };

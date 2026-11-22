@@ -29,11 +29,10 @@
     var s = (p.name + ' ' + (p.specs || []).join(' ') + ' ' + p.cat).toLowerCase();
     var d = /ø\s?(\d{2,3})/.exec(s) || /(\d{3})\s?(?:mm|мм)\b/.exec(s) || /\b(\d{3})\s?[x×*]/.exec(s);
     var t = /\b(\d{2,3})\s?(?:t|т|z)\b/.exec(s);
-    // egasi: materiallar — Yog'och, MDF / HDF, Laminat, Temir, Alyuminiy (bitta tig' bir nechtasiga mos bo'lishi mumkin)
+    // egasi: materiallar — Yog'och | Laminat, MDF, HPL | Temir | Alyuminiy (bitta tig' bir nechtasiga mos bo'lishi mumkin)
     var mats = [];
     if (/yog.?och|wood|дерев|древ|derev|drev|construction/.test(s)) mats.push('Yogʻoch');
-    if (/\bmdf\b|\bhdf\b|мдф|хдф|dvp|двп/.test(s)) mats.push('MDF / HDF');
-    if (/laminat|ламинат|ldsp|лдсп|\bdsp\b|дсп/.test(s)) mats.push('Laminat');
+    if (/laminat|ламинат|ldsp|лдсп|\bdsp\b|дсп|\bmdf\b|\bhdf\b|мдф|хдф|dvp|двп|\bhpl\b|пластик|plastik/.test(s)) mats.push('Laminat, MDF, HPL');
     if (/temir|metal|металл|stal|сталь|steel|\biron\b|черн/.test(s)) mats.push('Temir');
     if (/alyumin|alumin|алюмин|цветн/.test(s)) mats.push('Alyuminiy');
     return { dia: d ? +d[1] : null, tooth: t ? +t[1] : null, mat: mats[0] || '', mats: mats };
@@ -154,7 +153,7 @@
     if (sw.length < 3) { $('vt-finder').hidden = true; return; }
     if (!FBUSY) finderVis();
     var uniq = function (f) { var m = {}; sw.forEach(function (x) { var v = f(x.s); if (v) m[v] = 1; }); return Object.keys(m); };
-    var MATS = ['Yogʻoch', 'MDF / HDF', 'Laminat', 'Temir', 'Alyuminiy'], has = {};
+    var MATS = ['Yogʻoch', 'Laminat, MDF, HPL', 'Temir', 'Alyuminiy'], has = {};
     sw.forEach(function (x) { x.s.mats.forEach(function (m) { has[m] = 1; }); });
     var mats = MATS.filter(function (m) { return has[m]; }), dias = uniq(function (s) { return s.dia; }).map(Number).sort(function (a, b) { return a - b; });
     var teeth = uniq(function (s) { return s.tooth; }).map(Number).sort(function (a, b) { return a - b; });
@@ -178,7 +177,7 @@
     var tip = '';
     if (ST.tooth) { var t = +ST.tooth; tip = t >= 80 ? 'Koʻp tish — toza, silliq kesim (laminat, DSP, ishlov berilgan yogʻoch).' : t >= 48 ? 'Universal — koʻndalang va boʻylama kesish uchun.' : 'Kam tish — tez boʻylama kesish (massiv yogʻoch).'; }
     else if (ST.mat === 'Temir') tip = 'Temir uchun koʻp tishli, metall kesishga moʻljallangan (Cermet) tigʻ tanlang.';
-    else if (ST.mat === 'MDF / HDF' || ST.mat === 'Laminat') tip = 'Laminat va MDF uchun koʻp tishli (60T+) tigʻ — chetlari uchmaydi.';
+    else if (ST.mat === 'Laminat, MDF, HPL') tip = 'Laminat, MDF va HPL uchun koʻp tishli (60T+) tigʻ — chetlari uchmaydi.';
     else if (ST.mat === 'Alyuminiy') tip = 'Alyuminiy uchun manfiy burchakli, koʻp tishli (TCG) tigʻ tanlang.';
     $('vt-fhint').textContent = tip;
   }

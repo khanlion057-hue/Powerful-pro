@@ -3890,3 +3890,9 @@ html:not([data-theme="dark"]) .btn-primary{ color:#fff; }
   #pg-kirim.k-mode-form .kf-side .grid-2{ grid-template-columns:1fr 1fr; max-width:none; margin:0; }
 }
 .k-supp-bal[hidden]{ display:none !important; }   /* bo'sh ramka ko'rinmasin */
+/* 8) Telefon: sotuvchi va diller ilovalarida savat paneli pastki menyu OSTIDA qolardi (jami va «Savat» ko'rinmasdi) — menyu ustiga ko'tariladi */
+@media (max-width:1024px){
+  .dl-wrap.has-bnav .pos-bar-wrap{ bottom:calc(var(--pt-bnav-h, 78px) + 8px + env(safe-area-inset-bottom)); z-index:31; }
+}
+/* 9) Telefon: 90% masshtabda 100vh ekranning 90% i — qisqa sahifalarda pastki menyu ekran o'rtasida «suzib» turardi */
+body .dl-wrap{ min-height:calc(100vh / var(--fw-z, 1)); }

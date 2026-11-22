@@ -3967,3 +3967,33 @@ body .dl-wrap{ min-height:calc(100vh / var(--fw-z, 1)); }
 @media (prefers-reduced-motion: reduce){ #fw-boot-busy .fw-bb-bar i{ animation:none; left:0; width:100%; opacity:.6; } }
 /* 16) v25.6.10: ta'minotchi mahsulotlar hisoboti — kompyuterda keng oyna (jadval ustunlari kesilmaydi) */
 @media (min-width:900px){ .bs-box:has(#spr-body){ max-width:min(1040px, 94vw); width:min(1040px, 94vw); } }
+
+/* ═══ 17. v25.6.10 — ONLAYN DO'KON (oldindan ko'rish): kafolat, 2 telefon, bir xil rasm, filial tugmalari kontrasti ═══ */
+.sf-img,.sf-pd-img{background:#fff!important;box-shadow:inset 0 0 0 1px #eef2f7}
+.sf-img img:not(.sf-catfb),.sf-pd-img img:not(.sf-catfb){object-fit:contain!important;padding:7%;background:#fff}
+.sf-card:hover .sf-img img{transform:none}
+.sf-noimg{background:#f8fafc}
+.sf-war{display:inline-flex;align-items:center;gap:4px;align-self:flex-start;border-radius:999px;padding:2px 8px 2px 6px;font-size:11.5px;font-weight:700;background:#ecfdf5;color:#047857;box-shadow:inset 0 0 0 1px #a7f3d0;white-space:nowrap;margin:2px 0}
+.sf-war svg,.sf-wb svg{width:13px;height:13px;flex:none}
+.sf-war.big{font-size:13px;padding:4px 10px 4px 8px}
+.sf-wb{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:4px 10px 4px 8px;font-size:12.5px;font-weight:800;background:#0f172a;color:#fcd34d}
+.sf-warbox{margin:10px 0;border-radius:14px;padding:12px;background:#f0fdf4;box-shadow:inset 0 0 0 1px #bbf7d0}
+.sf-warbox>div{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.sf-warbox p{margin:8px 0 0;font-size:13px;color:#166534;line-height:1.5}
+.sf-li .sf-war{display:inline-flex;margin-top:3px}
+.sf-perks i[role=button]{cursor:pointer}
+.sf-foot a{color:inherit;font-weight:700;text-decoration:none;display:block}
+.sf-call{display:flex!important;align-items:center;gap:10px}
+.sf-call span{flex:1;display:flex;flex-direction:column}.sf-call small{font-size:11.5px;color:#64748b;font-weight:600}
+.sf-call em{font-style:normal;background:#059669;color:#fff;border-radius:10px;padding:7px 12px;font-weight:800;font-size:13px}
+.sf-pt{margin-top:10px}.sf-pth{display:flex;justify-content:space-between;align-items:center}
+.sf-pth em{font-style:normal;font-size:12px;font-weight:800;background:#f1f5f9;color:#334155;border-radius:8px;padding:2px 8px}
+/* «Qayerdan olasiz» tugmalari — har qanday mavzuda o'qiladi */
+.sf-app .sf-br{background:#fff;color:#0f172a;border-bottom-color:#e2e8f0}
+.sf-app .sf-br>span{color:#475569}
+.sf-app .sf-br button{background:#fff;color:#0f172a;border-color:#cbd5e1}
+.sf-app .sf-br button.on{background:#ecfdf5;border-color:#059669;color:#065f46}
+/* v25.6.10 (egasi): mahsulotlar orasidagi fon — oq */
+.sf-app{--sf-bg:#fff;background:#fff}
+.sf-app .sf-main{background:#fff}
+.sf-app .sf-card{box-shadow:0 0 0 1px #e2e8f0}

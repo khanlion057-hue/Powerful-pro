@@ -796,10 +796,14 @@ function resizeImageDataUrl(dataUrl, maxDim = 1000, quality = 0.85) {
   });
 }
 
+const FW_IMG_LOW = [];   // standartdan kichik yuklangan rasmlar (import oxirida xabar)
+function fwImgLowReport() { if (!FW_IMG_LOW.length) return; const n = FW_IMG_LOW.length, ex = FW_IMG_LOW.slice(0, 3).join(', '); FW_IMG_LOW.length = 0;
+  toast(`⚠ ${n} ta rasm standartdan kichik (${ex}${n > 3 ? '…' : ''}) — sifatli 1000×1000 rasm bilan almashtiring`, 'warning'); }
 async function uploadImageToStorage(dataUrl, pid) {
   if (!_cloudEnabled || !_db) return dataUrl; // oflayn — eski usul bilan davom etamiz
   try {
-    dataUrl = await resizeImageDataUrl(dataUrl); // katta rasmlarni standart hajmga moslaymiz
+    // v25.6.10: standart — 1000×1000, oq fon, WebP ≤150 KB (kichik rasm — hisoblagichga, import oxirida bitta ogohlantirish)
+    { const std = await fwImgStd(dataUrl, 'product'); if (std) { dataUrl = std.dataUrl; if (std.warn.length) FW_IMG_LOW.push(std.src.w + '×' + std.src.h); } else dataUrl = await resizeImageDataUrl(dataUrl); }
     const m = /^data:image\/(png|jpe?g|gif|webp);base64,(.+)$/.exec(dataUrl);
     if (!m) return dataUrl;
     let ext = m[1]==='jpg' ? 'jpg' : m[1];
@@ -878,8 +882,9 @@ async function uploadGalleryImage(dataUrl, pid) {
     const bin = atob(m[2]); const bytes = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
     const safePid = String(pid).replace(/[^0-9a-zA-Z]/g, '');
-    const path = `p${safePid}-g${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}.jpg`;
-    const { error } = await _db.storage.from('product-images').upload(path, bytes, { contentType:'image/jpeg', upsert:false, cacheControl:'31536000' });   // v25.2: noyob nom — 1 yil kesh
+    const mime = 'image/' + (m[1] === 'jpg' ? 'jpeg' : m[1]);
+    const path = `p${safePid}-g${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}.${fwImgExt(mime)}`;
+    const { error } = await _db.storage.from('product-images').upload(path, bytes, { contentType: mime, upsert:false, cacheControl:'31536000' });   // v25.2: noyob nom — 1 yil kesh
     if (error) { console.warn('Galereya rasmi yuklanmadi:', error); return null; }
     const { data: pub } = _db.storage.from('product-images').getPublicUrl(path);
     return pub?.publicUrl || null;
@@ -919,8 +924,8 @@ async function pgAddFiles(input) {
   for (const f of files.slice(0, room)) {
     if (f.size > 20 * 1024 * 1024) { toast(`"${f.name}" juda katta (20 MB dan ortiq)`, 'error'); continue; }
     const raw = await _pgReadFile(f); if (!raw) continue;
-    const small = await compressImageDataUrl(raw);
-    if (small) PG.items.push({ src: small, isNew: true }); else toast(`"${f.name}" rasmini o'qib bo'lmadi`, 'error');
+    const std = await fwImgStd(raw, 'product');   // v25.6.10: 1000×1000, oq fon, WebP ≤150 KB
+    if (std) { fwImgWarn(std, f.name); PG.items.push({ src: std.dataUrl, isNew: true }); } else toast(`"${f.name}" rasmini o'qib bo'lmadi`, 'error');
     pgRender();
   }
   input.value = '';
@@ -978,7 +983,8 @@ function _pgOpenCropper(img, i) {
       const OUT = 900, out = document.createElement('canvas'); out.width = out.height = OUT;
       const o = out.getContext('2d'); o.fillStyle = '#fff'; o.fillRect(0, 0, OUT, OUT);
       const k = OUT / S0, sc = base * z * k; o.drawImage(img, ox * k, oy * k, img.width * sc, img.height * sc);
-      const durl = await compressImageDataUrl(out.toDataURL('image/jpeg', 0.92));
+      const std = await fwImgStd(out.toDataURL('image/png'), 'product');   // v25.6.10: standart
+      const durl = std && std.dataUrl;
       if (!durl) throw new Error('siqilmadi');
       const it = PG.items[i]; if (it && !it.isNew) PG.removed.push(it.src);
       PG.items[i] = { src: durl, isNew: true };
@@ -4599,6 +4605,11 @@ function pmForm(p, prefillName) {
 
       <div class="pmf-card">${pgSectionHtml()}</div>
 
+      <div class="pmf-card"><div class="pmf-h">Kafolat</div>
+        <div class="pmf-seg" id="pmf-war">${[0, ...FW_WARRANTY].map(m => `<button type="button" data-m="${m}" class="${fwWarranty(p) === m ? 'on' : ''}" onclick="document.querySelectorAll('#pmf-war button').forEach(b=>b.classList.toggle('on',b===this))">${m ? m + ' oy' : 'Yoʻq'}</button>`).join('')}</div>
+        <div class="me-hint">${FW_WARRANTY_TEXT} Onlayn doʻkonda «Kafolat: N oy» boʻlib koʻrinadi.</div>
+      </div>
+
       <div class="pmf-card"><div class="pmf-h">Tavsif va shtrix-kodlar</div>
         <label class="form-label" for="ep-desc" style="display:flex;justify-content:space-between">Tavsif <span id="pmf-dc">${String(p.desc || '').length} / 2000</span></label>
         <textarea class="form-control" id="ep-desc" maxlength="2000" rows="3" placeholder="Masalan: tarkibi, oʻlchami, kafolati, nimasi bilan yaxshi" oninput="document.getElementById('pmf-dc').textContent=this.value.length+' / 2000'">${esc(p.desc || '')}</textarea>
@@ -4713,7 +4724,8 @@ async function pmfSave(btn) {
     markupPct: parseAmt(g('pm-markup-pct')?.value || 25), optMarkupPct: parseAmt(g('pm-opt-pct')?.value || 15), pointPct: parseAmt(g('ep-point-pct')?.value || 0), branchPct: (g('ep-branch-pct') && String(g('ep-branch-pct').value).trim() !== '') ? Math.min(100, Math.max(0, parseAmt(g('ep-branch-pct').value))) : null,
     directSale: !!g('ep-direct-sale')?.checked,
     dsSuppId: (g('ep-ds-supp')?.value ? (/^\d{1,16}$/.test(g('ep-ds-supp').value) ? Number(g('ep-ds-supp').value) : g('ep-ds-supp').value) : null),
-    dsCostUsd: Math.max(0, parseAmt(g('ep-ds-cost')?.value || 0)) || null, desc: String(g('ep-desc')?.value || '').slice(0, 2000), barcode: bc || '', barcodes: PMF.bcs.slice(0, 20), updatedAt: Date.now() });
+    dsCostUsd: Math.max(0, parseAmt(g('ep-ds-cost')?.value || 0)) || null, desc: String(g('ep-desc')?.value || '').slice(0, 2000), barcode: bc || '', barcodes: PMF.bcs.slice(0, 20),
+    warrantyM: (m => FW_WARRANTY.includes(m) ? m : 0)(+(document.querySelector('#pmf-war button.on')?.dataset.m || 0)), updatedAt: Date.now() });
   if (isNew) { S.products.push(p); auditLog(`Yangi mahsulot qoʻshildi: ${name} (${sku})${p.directSale ? ' — taʼminotchidan sotiladi' : ''}`); }
   else { auditLog(`Mahsulot oʻzgartirildi: ${name} (${sku})`); if (wasDirect !== p.directSale) auditLog(`Mahsulot "${name}" — Direct Sale belgisi ${p.directSale ? 'YOQILDI' : 'OʻCHIRILDI'}`); }
   PMF = null; closeModal(); if (S.page === 'mahsulotlar') pgMahsulotlar();
@@ -4756,7 +4768,8 @@ function uploadImg(pid, input) {
     const p = S.products.find(x=>x.id===pid); if(!p) return;
     const el = document.getElementById('pimg');
     if (el) el.outerHTML = `<div id="pimg" style="font-size:20px;display:flex;align-items:center;justify-content:center;height:100%">⏳</div>`;
-    const small = await compressImageDataUrl(e.target.result);
+    const std = await fwImgStd(e.target.result, 'product'); fwImgWarn(std, 'Mahsulot rasmi');   // v25.6.10: standart
+    const small = std && std.dataUrl;
     const uploaded = small ? await uploadGalleryImage(small, pid) : null;
     if (uploaded) {
       // Asosiy rasm almashtiriladi; galereyaning qolgan rasmlari saqlanadi
@@ -13449,7 +13462,9 @@ async function stBrandLogoPick(inp) {
   const raw = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.onerror = () => r(null); fr.readAsDataURL(f); });
   // v24.8.1: fon olib tashlanadi — shaffof PNG (ramka/oq to'rtburchak bo'lmaydi); bo'lmasa avvalgidek JPG
   const clean = raw && await stBrandLogoClean(raw);
-  const small = (clean && clean.light.length < 245000) ? clean.light : (raw && await compressImageDataUrl(raw, 80, 512));
+  // v25.6.10: logo standarti — 512×512, shaffof fon, ≤50 KB (WebP)
+  const lstd = await fwImgStd(clean ? clean.light : raw, 'logo'); fwImgWarn(lstd, 'Logo');
+  const small = lstd ? lstd.dataUrl : ((clean && clean.light.length < 245000) ? clean.light : (raw && await compressImageDataUrl(raw, 80, 512)));
   if (!small) { toast("Rasmni o'qib bo'lmadi", 'error'); return; }
   const prev = clean ? clean.light : small;
   if (!_cloudEnabled || !_db || !_db.storage) {
@@ -13460,9 +13475,9 @@ async function stBrandLogoPick(inp) {
     toast('Logotip tanlandi — «Saqlash»ni bosing (bulutsiz rejim: faqat shu qurilmada)'); return;
   }
   try {
-    const m = /^data:(image\/(?:jpeg|png));base64,(.+)$/.exec(small); if (!m) throw new Error('format');
+    const m = /^data:(image\/(?:jpeg|png|webp));base64,(.+)$/.exec(small); if (!m) throw new Error('format');
     const bin = atob(m[2]); const bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    const path = `brand/logo-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}.${m[1] === 'image/png' ? 'png' : 'jpg'}`;
+    const path = `brand/logo-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}.${fwImgExt(m[1])}`;
     const { error } = await _db.storage.from('product-images').upload(path, bytes, { contentType: m[1], upsert: false, cacheControl: '31536000' });   // v25.2: noyob nom — 1 yil kesh
     if (error) throw error;
     const { data: pub } = _db.storage.from('product-images').getPublicUrl(path);
@@ -14930,7 +14945,7 @@ async function importProducts(input) {
     });
     save();pgMahsulotlar();
     toast(`✅ ${added} ta yangi qo'shildi${updated?`, ${updated} ta yangilandi`:''}${withImg?`, ${withImg} ta rasm bilan`:''}! (Miqdor/narx ustunlari mahsulotlar bo'limida e'tiborga olinmaydi — buning uchun Kirim → Excel import'dan foydalaning)`);
-    for (const p of pendingImgUploads) { const up = await uploadImageToStorage(p.image, p.id); if (up) p.image = up; }
+    for (const p of pendingImgUploads) { const up = await uploadImageToStorage(p.image, p.id); if (up) p.image = up; } fwImgLowReport();
     if (pendingImgUploads.length) { save(); pgMahsulotlar(); }
   } catch(e) {
     toast('Xato! Fayl noto\'g\'ri formatda: '+e.message,'error');
@@ -15261,6 +15276,7 @@ async function importBatchXlsx() {
     if (allDone) { fwStableIdsDone('import'); xlImportProgSet(null); }
     restoreProducts = null;   // kirim (to'liq yoki qisman) qabul qilindi — endi orqaga qaytarilmaydi
     try { await uploadImgs(); } catch (e) { console.warn('Rasm yuklanmadi:', e && e.message); }   // rasmlar — faqat kirim serverda qabul qilingandan keyin
+    fwImgLowReport();
     S.batchCounter = Math.max(S.batchCounter||0, parseInt(bno, 10) || 0);
     let doneRows = 0, doneGoods = 0;
     chunks.forEach(([a, z], c) => {

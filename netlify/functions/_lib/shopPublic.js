@@ -90,9 +90,27 @@ function publicProduct(p, ctx) {
     id: p.id, name: clip(p.name, 140), sku: clip(p.sku, 40), brand: clip(p.brand, 40), cat: clip(p.cat, 60),
     price: shopMoney(pr.usd, ctx), old: pr.oldUsd ? shopMoney(pr.oldUsd, ctx) : null,
     stock: Math.min(99, Math.floor(q)), img: publicImages(p), specs, desc: clip(p.desc || p.note, 400),
+    warranty: warrantyOf(p),   // v25.6.10: 3 / 6 / 12 oy (to'liq texnik kafolat) yoki null
   };
 }
 
+// v25.6.10: kategoriya rasmlari (faqat https) — katalog kartochkalari bir xil (rasm yoki bir xil ikonka)
+function publicCatImgs(ss) {
+  const m = ss && ss.catImg && typeof ss.catImg === 'object' ? ss.catImg : {}, out = {};
+  Object.keys(m).slice(0, 100).forEach((k) => { if (isHttps(m[k])) out[clip(k, 80)] = m[k]; });
+  return out;
+}
+// v25.6.10: olib ketish joylari (do'kon + «Filial» turidagi filiallar) — nomi, manzili, 2 ta telefon
+function pickupPoints(data, found) {
+  const st = (data && data.settings) || {}, names = st.branchNames || {}, cfg = st.branchCfg || {}, bs = (data && data.branchStore) || {};
+  const pt = (key, ss, main) => ({ key, main: !!main, name: clip((ss && ss.name) || names[key] || (key === 'baza' ? 'Asosiy ombor' : key), 60),
+    address: clip(ss && ss.address, 160), phone: fmtPhone(ss && ss.phone), phone2: fmtPhone(ss && ss.phone2),
+    lat: ss && Number.isFinite(+ss.lat) && ss.lat !== null && ss.lat !== '' ? +ss.lat : null, lng: ss && Number.isFinite(+ss.lng) && ss.lng !== null && ss.lng !== '' ? +ss.lng : null });
+  const out = [pt(found.key, found.shop.settings || {}, true)];
+  if (found.key === 'baza') Object.keys(cfg).filter((k) => k !== 'baza' && cfg[k] && cfg[k].type === 'filial').slice(0, 20)
+    .forEach((k) => { const ss = ((bs[k] || {}).shop || {}).settings || {}; out.push(pt(k, { ...ss, name: ss.name || names[k] }, false)); });
+  return out;
+}
 // Ommaviy katalog javobi (keshlanadi): do'kon ma'lumoti + mahsulotlar
 function buildCatalog(data, found, branch) {
   const ctx = catalogCtx(data, found.key, branch);
@@ -103,16 +121,25 @@ function buildCatalog(data, found, branch) {
   return {
     shop: {
       slug: found.slug, name: clip(ss.name || (data.settings && data.settings.company) || 'Onlayn doʻkon', 60), about: clip(ss.about, 300),
-      phone: clip(ss.phone || (data.settings && data.settings.shopPhone), 24), address: clip(ss.address || (data.settings && data.settings.shopAddress), 160),
+      phone: fmtPhone(ss.phone || (data.settings && data.settings.shopPhone)) || clip(ss.phone || (data.settings && data.settings.shopPhone), 24),
+      phone2: fmtPhone(ss.phone2),   // v25.6.10: ikkinchi raqam (bo'sh bo'lsa — ko'rinmaydi)
+      address: clip(ss.address || (data.settings && data.settings.shopAddress), 160),
       wa: ss.waOn !== false ? clip(ss.wa, 24) : '', tg: ss.tgOn !== false ? clip(ss.tg, 40).replace(/^@/, '') : '',
       cur: ctx.cur, delivery: !!ss.delivery, fee: ctx.cur === 'USD' && ctx.rate > 0 ? r2(fee / ctx.rate) : fee,
       freeMin: ctx.cur === 'USD' && ctx.rate > 0 ? r2(freeMin / ctx.rate) : freeMin,
       lat: Number.isFinite(+ss.lat) && ss.lat !== null && ss.lat !== '' ? +ss.lat : null, lng: Number.isFinite(+ss.lng) && ss.lng !== null && ss.lng !== '' ? +ss.lng : null,
     },
-    banners, products, at: new Date().toISOString(),
+    banners, products, cats: publicCatImgs(ss), points: pickupPoints(data, found), at: new Date().toISOString(),
   };
 }
 
+// v25.6.10: ko'rsatish uchun yagona ko'rinish — «+998 XX XXX XX XX» (noto'g'ri bo'lsa — '')
+function fmtPhone(s) {
+  const n = normPhone(s); if (!n) return '';
+  return `+998 ${n.slice(4, 6)} ${n.slice(6, 9)} ${n.slice(9, 11)} ${n.slice(11, 13)}`;
+}
+const WARRANTY = [3, 6, 12];
+function warrantyOf(p) { const m = Math.round(num(p && p.warrantyM)); return WARRANTY.includes(m) ? m : null; }
 // +998 90 123 45 67 / 901234567 → '+998901234567' yoki null
 function normPhone(s) {
   let d = String(s || '').replace(/\D/g, '');
@@ -127,6 +154,10 @@ function buildOrder(data, found, branch, body, now = new Date()) {
   const delivery = b.delivery === 'courier' ? 'courier' : 'pickup';
   if (name.length < 2) return { ok: false, error: 'Ismingizni yozing' };
   if (!phone) return { ok: false, error: 'Telefon raqam notoʻgʻri (+998 XX XXX XX XX)' };
+  // v25.6.10: qo'shimcha raqam — ixtiyoriy; yozilgan bo'lsa to'g'ri bo'lishi shart
+  const phone2raw = String(b.phone2 || '').replace(/\D/g, '');
+  const phone2 = phone2raw.length > 3 ? normPhone(b.phone2) : null;
+  if (phone2raw.length > 3 && !phone2) return { ok: false, error: 'Qoʻshimcha raqam notoʻgʻri (+998 XX XXX XX XX)' };
   const ss = found.shop.settings || {};
   if (delivery === 'courier' && !ss.delivery) return { ok: false, error: 'Bu doʻkonda yetkazib berish yoʻq — olib ketishni tanlang' };
   if (delivery === 'courier' && address.length < 5) return { ok: false, error: 'Yetkazib berish manzilini yozing' };
@@ -144,7 +175,7 @@ function buildOrder(data, found, branch, body, now = new Date()) {
     const p = byId.get(pid), pub = p && publicProduct(p, ctx);
     if (!pub) return { ok: false, error: 'Mahsulot sotuvda yoʻq (tugagan boʻlishi mumkin)', pid };
     if (qty > (ctx.stock.get(pid) || 0)) return { ok: false, error: `«${pub.name}» omborda ${pub.stock} ta qoldi`, pid };
-    items.push({ pid: p.id, sku: clip(p.sku, 40), name: clip(p.name, 120), qty, priceUsd: shopPriceUsd(p, ctx).usd });
+    items.push({ pid: p.id, sku: clip(p.sku, 40), name: clip(p.name, 120), qty, priceUsd: shopPriceUsd(p, ctx).usd, ...(warrantyOf(p) ? { warrantyM: warrantyOf(p) } : {}) });
   }
   const subtotalUsd = r2(items.reduce((a, i) => a + i.qty * i.priceUsd, 0));
   let deliveryUsd = 0;
@@ -155,7 +186,7 @@ function buildOrder(data, found, branch, body, now = new Date()) {
   const seq = (+found.shop.seq || 0) + 1;
   const order = {
     id: 'so' + crypto.randomBytes(6).toString('hex'), no: seq, createdAt: iso, updatedAt: iso, source: 'site', delivery,
-    cust: { name, phone, address: delivery === 'courier' ? address : '' }, items, subtotalUsd, deliveryUsd, totalUsd: r2(subtotalUsd + deliveryUsd),
+    cust: { name, phone, ...(phone2 && phone2 !== phone ? { phone2 } : {}), address: delivery === 'courier' ? address : '' }, items, subtotalUsd, deliveryUsd, totalUsd: r2(subtotalUsd + deliveryUsd),
     note, status: 'new', history: [{ st: 'new', at: iso, by: 'Vitrina' }], tk,
   };
   return { ok: true, order, tk, seq, total: orderTotal(order, ctx, fee), cur: ctx.cur };
@@ -181,4 +212,4 @@ function orderStatuses(shop, list, ctx) {
   return out;
 }
 
-module.exports = { orderTotal, STATUS, LIMITS, slugify, enabledShops, findShop, stockMap, shopPriceUsd, catalogCtx, publicProduct, buildCatalog, normPhone, buildOrder, orderStatuses };
+module.exports = { orderTotal, STATUS, LIMITS, slugify, enabledShops, findShop, stockMap, shopPriceUsd, catalogCtx, publicProduct, buildCatalog, normPhone, fmtPhone, warrantyOf, buildOrder, orderStatuses };

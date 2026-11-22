@@ -146,9 +146,12 @@ async function testImages() {
     assert.equal(await multi.count(), 1, 'nuqtalar — faqat bir nechta rasmli mahsulotda');
     assert.equal(await multi.locator('.vt-dots i').count(), 3);
     assert.equal(await page.locator('.vt-pic.has').count(), 2);
-    assert.ok(await page.locator('.vt-pic:not(.has) svg').count() > 0, 'rasmsiz — arra chizmasi');
+    assert.ok(await page.locator('.vt-pic:not(.has) svg').count() > 0, 'rasmsiz — bir xil o\'rinbosar');
+    assert.equal(await page.locator('.vt-pic:not(.has) svg.vt-noimg').count(), await page.locator('.vt-pic:not(.has)').count(), 'rasmsiz — hammasida bir xil o\'rinbosar');
     const fill = await multi.evaluate((el) => { const a = el.getBoundingClientRect(), b = el.querySelector('img').getBoundingClientRect(); return Math.abs(a.width - b.width) < 1 && Math.abs(a.height - b.height) < 1 && getComputedStyle(el.querySelector('img')).objectFit; });
-    assert.equal(fill, 'cover', "rasm kartochka tepasini to'ldiradi");
+    // v25.6.10 (egasi): rasm — bir xil kvadrat, oq fonda, markazda, chetlarida bo'shliq (kesilmaydi)
+    assert.equal(fill, 'contain', "rasm kvadrat ichida to'liq ko'rinadi (kesilmaydi)");
+    assert.equal(await multi.evaluate((el) => { const r = el.getBoundingClientRect(); return Math.round(r.width) === Math.round(r.height); }), true, 'kvadrat');
     await multi.locator('.vt-dots i').nth(2).click();
     assert.match(await multi.locator('img').getAttribute('src'), /c\.png$/);
     assert.equal(await multi.locator('.vt-dots i.on').count(), 1);

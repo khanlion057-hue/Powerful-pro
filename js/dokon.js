@@ -91,7 +91,7 @@ function shopCfg() {
     enabled: !!st.enabled,
     name: st.name || fwBrand().name,
     slug: st.slug || shopSlugify(st.name || fwBrand().name),
-    about: st.about || '', phone: st.phone || (S.settings && S.settings.shopPhone) || '',
+    about: st.about || '', phone: st.phone || (S.settings && S.settings.shopPhone) || '', phone2: st.phone2 || '',
     address: st.address || (S.settings && S.settings.shopAddress) || '',
     waOn: st.waOn !== false, wa: st.wa || '', tgOn: st.tgOn !== false, tg: st.tg || '',
     currency: st.currency === 'USD' ? 'USD' : 'UZS',
@@ -265,7 +265,7 @@ function dkRenderOrders() {
     const names = items.slice(0, 2).map(i => `${esc(i.name)} × ${+i.qty}`).join(', ') + (items.length > 2 ? ` +${items.length - 2}` : '');
     return `<button class="dk-order" style="--c:var(--${st.c})" onclick="dkOrderSheet('${escJsAttr(o.id)}')">
       <div class="dk-order-h"><b>#${+o.no}</b><span class="dk-st">${st.l}</span>${o.test ? '<span class="dk-src">Sinov</span>' : ''}<span class="dk-src">${esc(SHOP_SRC[o.source] || o.source || '')}</span><time>${esc(shopFmtTime(o.createdAt))}</time></div>
-      <div class="dk-order-c">${esc(o.cust?.name || 'Xaridor')}${o.cust?.phone ? ` · ${esc(o.cust.phone)}` : ''}</div>
+      <div class="dk-order-c">${esc(o.cust?.name || 'Xaridor')}${o.cust?.phone ? ` · ${esc(fwPhoneFmt(o.cust.phone))}` : ''}${o.cust?.phone2 ? ` · ${esc(fwPhoneFmt(o.cust.phone2))}` : ''}</div>
       <div class="dk-order-i">${names || '—'}</div>
       <div class="dk-order-f"><span>${o.delivery === 'courier' ? ICONF.car + 'Yetkazib berish' : ICONF.store + 'Olib ketish'}</span><b>${esc(shopMoney(o.totalUsd))}</b></div>
     </button>`; }).join('')}</div>`;
@@ -287,16 +287,18 @@ function dkOrderSheet(id) {
     body:`
       <div class="bs-card">
         <div class="dk-kv"><span>Xaridor</span><b>${esc(o.cust?.name || '—')}</b></div>
-        ${o.cust?.phone ? `<div class="dk-kv"><span>Telefon</span><b>${esc(o.cust.phone)}</b></div>` : ''}
+        ${o.cust?.phone ? `<div class="dk-kv"><span>Asosiy telefon</span><b><a href="${esc(fwTelLink(o.cust.phone))}">${esc(fwPhoneFmt(o.cust.phone))}</a></b></div>` : ''}
+        ${o.cust?.phone2 ? `<div class="dk-kv"><span>Qoʻshimcha telefon</span><b><a href="${esc(fwTelLink(o.cust.phone2))}">${esc(fwPhoneFmt(o.cust.phone2))}</a></b></div>` : ''}
         <div class="dk-kv"><span>Olish usuli</span><b>${o.delivery === 'courier' ? 'Yetkazib berish' : 'Doʻkondan olib ketish'}</b></div>
         ${o.cust?.address ? `<div class="dk-kv"><span>Manzil</span><b>${esc(o.cust.address)}</b></div>` : ''}
         ${o.note ? `<div class="dk-kv"><span>Izoh</span><b>${esc(o.note)}</b></div>` : ''}
         ${o.cust?.phone ? `<div class="dk-contact">
           <a class="dk-ghost" href="tel:+${esc(wa)}">${ICONF.phone}<span>Qoʻngʻiroq</span></a>
+          ${o.cust?.phone2 && fwPhoneDigits(o.cust.phone2) ? `<a class="dk-ghost" href="${esc(fwTelLink(o.cust.phone2))}">${ICONF.phone}<span>2-raqamga</span></a>` : ''}
           <a class="dk-ghost" href="https://wa.me/${esc(wa)}" target="_blank" rel="noopener">${ICONF.chat}<span>WhatsApp</span></a></div>` : ''}
       </div>
       <div class="bs-card">
-        ${(o.items || []).map(it => `<div class="dk-line"><span>${esc(it.name)}<small>${it.color ? esc(it.color) + ' · ' : ''}${esc(it.sku || '')} · ${+it.qty} × ${esc(shopMoney(it.priceUsd))}</small></span><b>${esc(shopMoney(it.qty * it.priceUsd))}</b></div>`).join('')}
+        ${(o.items || []).map(it => `<div class="dk-line"><span>${esc(it.name)}<small>${it.color ? esc(it.color) + ' · ' : ''}${esc(it.sku || '')} · ${+it.qty} × ${esc(shopMoney(it.priceUsd))}${it.warrantyM ? ` · Kafolat: ${+it.warrantyM} oy` : ''}</small></span><b>${esc(shopMoney(it.qty * it.priceUsd))}</b></div>`).join('')}
         <div class="dk-kv"><span>Mahsulotlar</span><b>${esc(shopMoney(o.subtotalUsd))}</b></div>
         <div class="dk-kv"><span>Yetkazib berish</span><b>${o.deliveryUsd ? esc(shopMoney(o.deliveryUsd)) : 'Bepul'}</b></div>
         <div class="dk-kv dk-total"><span>Jami</span><b>${esc(shopMoney(o.totalUsd))}</b></div>
@@ -385,7 +387,8 @@ function dkDraftRender() {
         <label class="bs-lbl">Qayerdan</label>
         ${segCtl([["'phone'", 'Telefon'], ["'whatsapp'", 'WhatsApp'], ["'telegram'", 'Telegram'], ["'manual'", 'Doʻkonda']], `'${d.source}'`, 'dkDraftSrc')}
         <label class="bs-lbl" for="dk-dn">Xaridor ismi</label><input class="bs-in" id="dk-dn" maxlength="80" value="${esc(d.name || '')}" oninput="DK_DRAFT.name=this.value">
-        <label class="bs-lbl" for="dk-dp">Telefon</label><input class="bs-in" id="dk-dp" type="tel" inputmode="tel" maxlength="24" placeholder="+998 90 123 45 67" value="${esc(d.phone || '')}" oninput="DK_DRAFT.phone=this.value">
+        <label class="bs-lbl" for="dk-dp">Asosiy telefon</label><input class="bs-in" id="dk-dp" type="tel" inputmode="tel" data-phone maxlength="17" placeholder="+998 90 123 45 67" value="${esc(d.phone || '')}" oninput="DK_DRAFT.phone=this.value">
+        <label class="bs-lbl" for="dk-dp2">Qoʻshimcha telefon <small>(ixtiyoriy)</small></label><input class="bs-in" id="dk-dp2" type="tel" inputmode="tel" data-phone maxlength="17" placeholder="+998 __ ___ __ __" value="${esc(d.phone2 || '')}" oninput="DK_DRAFT.phone2=this.value">
         <label class="bs-lbl">Olish usuli</label>
         ${segCtl([["'pickup'", 'Olib ketadi'], ["'courier'", 'Yetkazib berish']], `'${d.delivery}'`, 'dkDraftDel')}
         ${d.delivery === 'courier' ? `<label class="bs-lbl" for="dk-da">Manzil</label><input class="bs-in" id="dk-da" maxlength="160" value="${esc(d.address || '')}" oninput="DK_DRAFT.address=this.value">
@@ -413,7 +416,8 @@ function dkDraftSave() {
   if (!d.items.length) { toast('Kamida bitta mahsulot tanlang', 'error'); return; }
   if (!name && !phone) { toast('Xaridor ismi yoki telefonini yozing', 'error'); return; }
   if (d.delivery === 'courier' && !String(d.address || '').trim()) { toast('Yetkazib berish manzilini yozing', 'error'); return; }
-  const o = shopCreateOrder({ source: d.source, delivery: d.delivery, cust: { name, phone, address: String(d.address || '').trim() }, items: d.items, note: d.note });
+  if (String(d.phone2 || '').replace(/\D/g, '').length > 3 && !fwPhoneDigits(d.phone2)) { toast("Qoʻshimcha raqam notoʻgʻri — +998 XX XXX XX XX", 'error'); return; }
+  const o = shopCreateOrder({ source: d.source, delivery: d.delivery, cust: { name, phone: fwPhoneFmt(phone), phone2: fwPhoneDigits(d.phone2) ? fwPhoneFmt(d.phone2) : '', address: String(d.address || '').trim() }, items: d.items, note: d.note });
   DK_DRAFT = null; closeSheet(); S.dkSt = 'new'; pgDokon();
   toast(`✅ Buyurtma #${o.no} qoʻshildi`);
 }
@@ -421,11 +425,12 @@ function dkDraftSave() {
 function shopCreateOrder({ source, delivery, cust, items, note, test, branch }) {
   const sh = shopDataOf(branch);
   const clean = items.filter(it => (+it.qty || 0) > 0).map(it => ({ pid: it.pid, sku: it.sku || '', name: String(it.name || '').slice(0, 120), qty: Math.round(+it.qty), priceUsd: Math.round((+it.priceUsd || 0) * 100) / 100, ...(it.color ? { color: String(it.color).slice(0, 40) } : {}) }));
+  clean.forEach(it => { const w = fwWarranty((S.products || []).find(p => String(p.id) === String(it.pid))); if (w) it.warrantyM = w; });   // v25.6.10: kafolat buyurtmada ham
   const t = shopOrderTotals(clean, delivery);
   sh.seq = (+sh.seq || 0) + 1;
   const now = shopNowIso();
   const o = { id: 'so' + uid(), no: sh.seq, createdAt: now, updatedAt: now, source: SHOP_SRC[source] ? source : 'manual', delivery: delivery === 'courier' ? 'courier' : 'pickup',
-    cust: { name: String(cust.name || '').slice(0, 80), phone: String(cust.phone || '').slice(0, 24), address: String(cust.address || '').slice(0, 160) },
+    cust: { name: String(cust.name || '').slice(0, 80), phone: String(cust.phone || '').slice(0, 24), ...(cust.phone2 ? { phone2: String(cust.phone2).slice(0, 24) } : {}), address: String(cust.address || '').slice(0, 160) },
     items: clean, ...t, note: String(note || '').slice(0, 200), status: 'new', history: [], ...(test ? { test: true } : {}),
     ...(branch && branch !== S.branch ? { viaBaza: true } : {}) };
   dkPushHist(o, 'new');
@@ -494,7 +499,8 @@ function dkSettingsSheet() {
         <div class="dk-slug"><span>${esc(host)}/</span><input class="bs-in" id="dks-slug" maxlength="40" value="${esc(c.slug)}" oninput="this.dataset.touched=1;this.value=shopSlugify(this.value)||''"></div>
         <label class="bs-lbl" for="dks-about">Xaridorlar uchun tavsif</label><textarea class="bs-in dk-ta" id="dks-about" maxlength="400" placeholder="Doʻkon haqida ikki ogʻiz soʻz">${esc(c.about)}</textarea>
         <p class="bs-note">Xaridorlar buni vitrinaning «Doʻkon haqida» boʻlimida manzil, telefon va sharhlar bilan birga koʻradi.</p>
-        <label class="bs-lbl" for="dks-phone">Doʻkon telefoni</label><input class="bs-in" id="dks-phone" type="tel" maxlength="24" value="${esc(c.phone)}" placeholder="+998 90 123 45 67">
+        <label class="bs-lbl" for="dks-phone">Asosiy telefon <small>(majburiy)</small></label><input class="bs-in" id="dks-phone" type="tel" inputmode="tel" data-phone maxlength="17" value="${esc(fwPhoneFmt(c.phone))}" placeholder="+998 90 123 45 67">
+        <label class="bs-lbl" for="dks-phone2">Qoʻshimcha telefon <small>(ixtiyoriy — boʻsh boʻlsa koʻrinmaydi)</small></label><input class="bs-in" id="dks-phone2" type="tel" inputmode="tel" data-phone maxlength="17" value="${esc(fwPhoneFmt(c.phone2))}" placeholder="+998 __ ___ __ __">
       </div>
 
       <div class="bs-card"><div class="dk-sec"><span class="dk-rowic" style="--c:var(--emerald)">${ICONF.chat}</span><b>Xaridorlar bilan aloqa</b></div>
@@ -547,7 +553,8 @@ function dkSettingsSave() {
   const st = shopData().settings;
   Object.assign(st, {
     enabled: !!v('dks-en')?.checked, name: name.slice(0, 60), slug, about: String(v('dks-about')?.value || '').trim().slice(0, 400),
-    phone: String(v('dks-phone')?.value || '').trim().slice(0, 24),
+    phone: fwPhoneFmt(String(v('dks-phone')?.value || '').trim()).slice(0, 24),
+    phone2: fwPhoneDigits(v('dks-phone2')?.value) ? fwPhoneFmt(v('dks-phone2').value) : '',
     waOn: !!v('dks-waon')?.checked, wa: String(v('dks-wa')?.value || '').trim().slice(0, 24),
     tgOn: !!v('dks-tgon')?.checked, tg: String(v('dks-tg')?.value || '').trim().slice(0, 40),
     currency: S._dkCur === 'USD' ? 'USD' : 'UZS', colorsSeparate: !!v('dks-colsep')?.checked,
@@ -651,7 +658,7 @@ function dkBannersSheet() {
       <div class="bs-card dk-meter" style="--c:var(--emerald)">
         <div class="dk-meter-h"><span class="dk-rowic" style="--c:var(--emerald)">${ICONF.image}</span><b>Onlayn doʻkon tepasidagi rasmlar — maksimum ${SHOP_MAX.banners} ta</b><em>${b.length}/${SHOP_MAX.banners}</em></div>
         <div class="dk-segbar">${Array.from({ length: SHOP_MAX.banners }, (_, i) => `<i class="${i < b.length ? 'on' : ''}"></i>`).join('')}</div>
-        <p class="bs-note">Istalgan rasmni yuklang — tizim uni 2:1 koʻrinishga keltirib, ~70 KB gacha oʻzi siqadi.</p>
+        <p class="bs-note">Standart: 1200×600 (2:1). Muhim narsa (yozuv, mahsulot) oʻrtada boʻlsin — chetlari kesilishi mumkin. Tizim rasmni oʻzi kesib, WebP ga oʻtkazadi va 200 KB gacha siqadi.</p>
       </div>
       ${b.map((x, i) => `<div class="dk-banner ${x.active === false ? 'off' : ''}">
         <img src="${esc(x.url)}" alt="Banner ${i + 1}" loading="lazy">
@@ -662,7 +669,7 @@ function dkBannersSheet() {
       </div>`).join('')}
       ${can && b.length < SHOP_MAX.banners ? `<label class="dk-drop">
         <input type="file" accept="image/jpeg,image/png,image/webp" onchange="dkBannerFile(this)" hidden>
-        <span class="dk-drop-ic">${ICONF.add}</span><b>Banner qoʻshish</b><small>2:1 · JPG / PNG</small></label>` : ''}` });
+        <span class="dk-drop-ic">${ICONF.add}</span><b>Banner qoʻshish</b><small>1200×600 · JPG / PNG / WebP</small></label>` : ''}` });
 }
 function dkCropTo2x1(dataUrl) {
   return new Promise(res => {
@@ -685,9 +692,10 @@ async function dkBannerFile(inp) {
   if (!/^image\//.test(f.type)) { toast('Faqat rasm yuklang', 'error'); return; }
   if (f.size > 15 * 1024 * 1024) { toast('Rasm juda katta (15 MB dan oshmasin)', 'error'); return; }
   const raw = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.onerror = () => r(null); fr.readAsDataURL(f); });
-  const cropped = raw && await dkCropTo2x1(raw);
-  const small = cropped && await compressImageDataUrl(cropped, 70, 1400);
+  const std = raw && await fwImgStd(raw, 'banner');   // v25.6.10: 1200×600 (2:1), WebP ≤200 KB
+  const small = std && std.dataUrl;
   if (!small) { toast("Rasmni oʻqib boʻlmadi", 'error'); return; }
+  fwImgWarn(std, 'Banner');
   toast('Yuklanmoqda…');
   const url = await dkUploadBanner(small);
   if (!url) { toast("Banner saqlanmadi — internetni tekshiring", 'error'); return; }
@@ -709,7 +717,7 @@ function dkCatImgSheet() {
   DK_CATS = Object.keys(by).sort();
   const n = DK_CATS.filter(k => shopCatImg(k)).length;
   openSheet({ ic: 'listNum', c: 'indigo', title: 'Kategoriya rasmlari', sub: `Vitrinadagi kategoriyalar uchun · ${n} / ${DK_CATS.length} ta rasmli`,
-    body: DK_CATS.length ? `<p class="bs-info">${ICONF.info}<span>Kvadrat rasm tavsiya etiladi (masalan 600×600). Rasm markazdan kvadratga kesiladi va siqiladi. Rasm qoʻyilmagan kategoriyada ikonka koʻrinadi.</span></p>
+    body: DK_CATS.length ? `<p class="bs-info">${ICONF.info}<span>Standart: 800×600 (4:3), oq fon, bitta mahsulot, yozuv/logotipsiz. Rasm avtomatik shu oʻlchamga keltiriladi, WebP ga oʻtadi va 100 KB gacha siqiladi. Rasm qoʻyilmagan kategoriyada ikonka koʻrinadi.</span></p>
       <div class="dk-cats">${DK_CATS.map((k, i) => { const u = shopCatImg(k); return `<div class="dk-cat">
         <span class="dk-cat-img">${u ? `<img src="${esc(u)}" alt="">` : (typeof sfCatIc === 'function' ? sfCatIc(k) : ICONF.image)}</span>
         <span class="dk-cat-t"><b>${esc(k)}</b><small>${by[k]} ta mahsulot · ${u ? 'rasm bor' : 'rasm yoʻq'}</small></span>
@@ -729,9 +737,10 @@ async function dkCatImgFile(inp, i) {
   if (!/^image\//.test(f.type)) { toast('Faqat rasm yuklang', 'error'); return; }
   if (f.size > 15 * 1024 * 1024) { toast('Rasm juda katta (15 MB dan oshmasin)', 'error'); return; }
   const raw = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.onerror = () => r(null); fr.readAsDataURL(f); });
-  const sq = raw && await dkCropSquare(raw, 700);
-  const small = sq && await compressImageDataUrl(sq, 60, 700);
+  const std = raw && await fwImgStd(raw, 'category');   // v25.6.10: 800×600 (4:3), oq fon, WebP ≤100 KB
+  const small = std && std.dataUrl;
   if (!small) { toast("Rasmni oʻqib boʻlmadi", 'error'); return; }
+  fwImgWarn(std, 'Kategoriya rasmi');
   toast('Yuklanmoqda…');
   const url = await dkUploadBanner(small);
   if (!url) { toast("Rasm saqlanmadi — internetni tekshiring", 'error'); return; }
@@ -753,11 +762,11 @@ function dkCatImgDel(i) {
 async function dkUploadBanner(dataUrl) {
   if (!_cloudEnabled || !_db) return null;   // oflayn: server faqat https havolani qabul qiladi
   try {
-    const m = /^data:image\/jpeg;base64,(.+)$/.exec(dataUrl); if (!m) return null;
-    const bin = atob(m[1]); const bytes = new Uint8Array(bin.length);
+    const m = /^data:(image\/(?:jpeg|webp|png));base64,(.+)$/.exec(dataUrl); if (!m) return null;
+    const bin = atob(m[2]); const bytes = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    const path = `shop/${String(S.branch).replace(/[^a-z0-9]/gi, '')}-b${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}.jpg`;
-    const { error } = await _db.storage.from('product-images').upload(path, bytes, { contentType: 'image/jpeg', upsert: false, cacheControl: '31536000' });   // v25.2: noyob nom — 1 yil kesh
+    const path = `shop/${String(S.branch).replace(/[^a-z0-9]/gi, '')}-b${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}.${fwImgExt(m[1])}`;
+    const { error } = await _db.storage.from('product-images').upload(path, bytes, { contentType: m[1], upsert: false, cacheControl: '31536000' });   // v25.2: noyob nom — 1 yil kesh
     if (error) { console.warn('Banner yuklanmadi:', error); return null; }
     const { data: pub } = _db.storage.from('product-images').getPublicUrl(path);
     return pub?.publicUrl || null;
@@ -1050,9 +1059,15 @@ const SF_CAT_IC = [
   [/asbob|instrument|tool/i, _ci('<path d="M14.7 6.3a4 4 0 0 0 5 5l-9.4 9.4a2.1 2.1 0 0 1-3-3z"/><path d="M14.7 6.3 17 4l3 3-2.3 2.3"/>')],
 ];
 const SF_CAT_DEF = _ci('<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/>');
-function sfCatIc(name) { for (const [re, ic] of SF_CAT_IC) if (re.test(String(name || ''))) return ic; return SF_CAT_DEF; }
-function sfNoImg(p, big) { const ci = p.cat && shopCatImg(p.cat); if (ci) return `<img src="${esc(ci)}" alt="" loading="lazy" class="sf-catfb">`; const t = sfTone(p.cat || 'Boshqa'); return `<i class="sf-noimg${big ? ' big' : ''}" style="--t:${t}">${sfCatIc(p.cat)}</i>`; }
-function sfTone(s) { let h = 0; for (const ch of String(s)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return SF_TONES[h % SF_TONES.length]; }
+// v25.6.10 (egasi): rasmsiz kategoriya va mahsulot — HAMMA JOYDA BIR XIL belgi va rang (har xil rangli ikonkalar emas)
+function sfCatIc(name) { return SF_CAT_DEF; }
+const SF_NOIMG_IC = _ci('<rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="9" cy="10" r="2"/><path d="m4 18 5-5 4 4 3-3 4 4"/>');
+function sfNoImg(p, big) { const ci = p.cat && shopCatImg(p.cat); if (ci) return `<img src="${esc(ci)}" alt="" loading="lazy" class="sf-catfb">`; return `<i class="sf-noimg${big ? ' big' : ''}" style="--t:#94a3b8">${SF_NOIMG_IC}</i>`; }
+function sfTone(s) { return '#64748b'; }
+// v25.6.10: kafolat belgisi (3 / 6 / 12 oy) — kartochka, mahsulot sahifasi, savat; hamma joyda bir xil
+const SF_SHIELD = _ci('<path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="m8.5 12 2.5 2.5 4.5-5"/>');
+function sfWar(p, big) { const m = fwWarranty(p); return m ? `<span class="sf-war${big ? ' big' : ''}">${SF_SHIELD}Kafolat: ${m} oy</span>` : ''; }
+function sfTel(ph) { const d = fwPhoneDigits(ph) || shopPhoneDigits(ph); return 'tel:+' + d; }
 // ── v25.6: RANGLAR (variantlar) — docs/SPEC-RANGLAR.md ──
 // Omborda har rang — alohida mahsulot yozuvi (o'z SKU, narx, qoldiq); `vgroup` bir xil bo'lsa — bitta kartaning ranglari.
 const SF_HEX = /^#[0-9a-f]{6}$/i;
@@ -1162,7 +1177,7 @@ function sfRender() {
       <button class="sf-btn" onclick="sfReviewForm()">${ICONF.starO} Baho qoldirish</button><button class="sf-btn ghost" onclick="sfGo('shop')">Xaridni davom ettirish</button></div>`;
   else if (SF.view === 'review') body += SF.reviewHtml || '';
   const tab = (v, ic, l, n) => `<button class="${SF.view === v ? 'on' : ''}" onclick="sfGo('${v}')"><span>${ICONF[ic]}${n ? `<em>${n}</em>` : ''}</span><small>${l}</small></button>`;
-  ov.innerHTML = `<div class="sf-app">${head}<main class="sf-main">${body}<footer class="sf-foot"><b>${esc(c.name)}</b>${c.phone ? `<span>${esc(c.phone)}</span>` : ''}${c.address ? `<span>${esc(c.address)}</span>` : ''}</footer></main>
+  ov.innerHTML = `<div class="sf-app">${head}<main class="sf-main">${body}<footer class="sf-foot"><b>${esc(c.name)}</b>${[c.phone, c.phone2].filter(Boolean).map(x => `<a href="${esc(sfTel(x))}">${esc(fwPhoneFmt(x))}</a>`).join('')}${c.address ? `<span>${esc(c.address)}</span>` : ''}</footer></main>
     ${['shop', 'fav', 'product', 'cats'].includes(SF.view) && nCart ? `<button class="sf-float" onclick="sfGo('cart')">${ICONF.cart}<span>Savat · ${nCart} ta</span><b>${esc(shopMoney(cartSum))}</b></button>` : ''}
     <nav class="sf-tabs" aria-label="Vitrina menyusi">${tab('shop', 'store', 'Bosh sahifa')}${tab('cats', 'listNum', 'Katalog')}${tab('cart', 'cart', 'Savat', nCart)}${tab('fav', 'starO', 'Sevimlilar', SF.fav.length)}${tab('about', 'info', 'Doʻkon')}</nav></div>`;
   clearInterval(_sfTimer);
@@ -1183,7 +1198,7 @@ function sfShopHtml(c, sh) {
     ${home ? (ban.length ? `<div class="sf-ban"><div class="sf-ban-track" style="transform:translateX(-${(SF.bi % ban.length) * 100}%)">${ban.map(b => `<img src="${esc(b.url)}" alt="">`).join('')}</div>
         ${ban.length > 1 ? `<div class="sf-dots">${ban.map((_, i) => `<i class="${i === SF.bi % ban.length ? 'on' : ''}"></i>`).join('')}</div>` : ''}</div>`
       : `<div class="sf-hello"><div><small>Onlayn-doʻkon</small><b>${esc(c.name)}</b><span>${esc(c.about || 'Sifatli mahsulotlar — buyurtma bering, biz tez yetkazamiz yoki tayyorlab qoʻyamiz.')}</span>
-          <div class="sf-perks"><i>${ICONF.check}Rasmiy kafolat</i><i>${c.delivery ? ICONF.car + 'Yetkazib berish' : ICONF.store + 'Doʻkondan olib ketish'}</i><i>${ICONF.phone}Tez aloqa</i></div></div></div>`) : ''}
+          <div class="sf-perks"><i>${SF_SHIELD}Rasmiy kafolat</i><i>${c.delivery ? ICONF.car + 'Yetkazib berish' : ICONF.store + 'Doʻkondan olib ketish'}</i><i role="button" tabindex="0" onclick="sfGo('about')">${ICONF.phone}Tez aloqa</i></div></div></div>`) : ''}
     ${cats.length > 1 ? `<div class="sf-cats">${['', ...cats].map(k => `<button class="${SF.cat === k ? 'on' : ''}" onclick="SF.cat=${JSON.stringify(k).replace(/"/g, '&quot;')};sfRender()">${k ? (shopCatImg(k) ? `<i class="img" style="--t:${sfTone(k)}"><img src="${esc(shopCatImg(k))}" alt="" loading="lazy"></i>` : `<i style="--t:${sfTone(k)}">${sfCatIc(k)}</i>`) : `<i style="--t:#0f172a">${_ci('<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>')}</i>`}<span>${k ? esc(k) : 'Hammasi'}</span></button>`).join('')}</div>` : ''}
     ${home ? row('tag', 'Chegirmalar', disc, 'hot') + row('chart', 'Ommabop', popular) + row('add', 'Yangi kelganlar', newest) : ''}
     <section class="sf-sec">
@@ -1222,6 +1237,7 @@ function sfProductHtml() {
         return `<button type="button" role="radio" class="${on ? 'on' : ''}" data-pid="${esc(v.id)}" aria-checked="${on}" tabindex="${on ? 0 : -1}" ${out ? 'disabled' : ''} onclick="sfPdPick(${esc(JSON.stringify(v.id))})"><i style="--sw:${c.hex}"></i><span>${esc(c.nom)}</span>${out ? '<small>Tugagan</small>' : ''}</button>`; }).join('')}</div>` : ''}
       <div class="sf-pd-meta"><span class="${st <= (p.minStock || 0) ? 'low' : ''}">${ICONF.inventory}${st <= (p.minStock || 0) ? `Oz qoldi: ${st} ${esc(p.unit || 'dona')}` : `Mavjud: ${st} ${esc(p.unit || 'dona')}`}</span>${p.sku ? `<span>${ICONF.tag}Kod: ${esc(p.sku)}</span>` : ''}</div>
       ${Object.keys(attrs).length ? `<dl class="sf-pd-attrs">${Object.keys(attrs).map(k => `<div><dt>${esc(k)}</dt><dd>${esc(attrs[k])}</dd></div>`).join('')}</dl>` : ''}
+      ${fwWarranty(p) ? `<div class="sf-warbox"><div><span class="sf-wb">${SF_SHIELD}Rasmiy kafolat</span>${sfWar(p, true)}</div><p>${esc(FW_WARRANTY_TEXT)}</p></div>` : ''}
       ${p.desc ? `<p class="sf-pd-desc">${esc(p.desc)}</p>` : ''}
       <div class="sf-pd-buy">${q ? `<div class="sf-qty big"><button onclick="sfAdd(${pidJs},-1)" aria-label="Kamaytirish">${ICONF.minus}</button><b>${q}</b><button onclick="sfAdd(${pidJs},1)" aria-label="Koʻpaytirish">${ICONF.add}</button></div><button class="sf-btn" onclick="sfGo('cart')">${ICONF.cart} Savatga oʻtish</button>`
         : `<button class="sf-btn" onclick="sfAdd(${pidJs},1)">${ICONF.cart} Savatga qoʻshish</button>`}</div>
@@ -1238,6 +1254,7 @@ function sfCard(p) {
     ${sw}
     <div class="sf-price">${esc(shopMoney(price))}${d && reg > price ? `<s>${esc(shopMoney(reg))}</s>` : ''}</div>
     <b class="sf-name" onclick="sfOpen(${pidJs})">${esc(p.name)}</b>
+    ${sfWar(p)}
     ${p.desc ? `<small class="sf-desc">${esc(p.desc)}</small>` : ''}
     ${al ? `<small class="sf-attrs">${al}</small>` : ''}
     <small class="sf-stock ${st <= (p.minStock || 0) ? 'low' : ''}">${st <= (p.minStock || 0) ? `Oz qoldi: ${st}` : 'Mavjud'}</small>
@@ -1268,14 +1285,15 @@ function sfCartHtml() {
   return `<h2 class="sf-h2">Savat</h2>
     <div class="sf-list">${list.map(({ p, qty }) => { const pidJs = JSON.stringify(p.id).replace(/"/g, '&quot;'); return `<div class="sf-li">
       <div class="sf-img sm">${p.image ? `<img src="${esc(p.image)}" alt="">` : sfNoImg(p)}</div>
-      <span><b>${esc(p.name)}</b><small>${sfColor(p) ? esc(sfColor(p).nom) + ' · ' : ''}${esc(shopMoney(shopPrice(p)))}</small></span>
+      <span><b>${esc(p.name)}</b><small>${sfColor(p) ? esc(sfColor(p).nom) + ' · ' : ''}${esc(shopMoney(shopPrice(p)))}</small>${sfWar(p)}</span>
       <div class="sf-qty"><button onclick="sfAdd(${pidJs},-1)" aria-label="Kamaytirish">${ICONF.minus}</button><b>${qty}</b><button onclick="sfAdd(${pidJs},1)" aria-label="Koʻpaytirish">${ICONF.add}</button></div></div>`; }).join('')}</div>
     <h3 class="sf-h">Qanday olasiz?</h3>
     <div class="sf-seg"><button class="${SF.del === 'pickup' ? 'on' : ''}" onclick="SF.del='pickup';sfRender()">${ICONF.store}<span>Doʻkondan olib ketaman</span></button>
       ${c.delivery ? `<button class="${SF.del === 'courier' ? 'on' : ''}" onclick="SF.del='courier';sfRender()">${ICONF.car}<span>Yetkazib bering</span></button>` : ''}</div>
     <div class="sf-form">
       <input id="sf-n" placeholder="Ismingiz" maxlength="80" value="${esc(SF.name || '')}" oninput="SF.name=this.value">
-      <input id="sf-p" type="tel" inputmode="tel" placeholder="Telefon: +998 90 123 45 67" maxlength="24" value="${esc(SF.phone || '')}" oninput="SF.phone=this.value">
+      <input id="sf-p" type="tel" inputmode="tel" data-phone placeholder="Telefon: +998 90 123 45 67" maxlength="24" value="${esc(SF.phone || '')}" oninput="SF.phone=this.value">
+      <input id="sf-p2" type="tel" inputmode="tel" data-phone placeholder="Qoʻshimcha telefon (ixtiyoriy)" maxlength="24" value="${esc(SF.phone2 || '')}" oninput="SF.phone2=this.value">
       ${SF.del === 'courier' ? `<input id="sf-a" placeholder="Yetkazib berish manzili" maxlength="160" value="${esc(SF.addr || '')}" oninput="SF.addr=this.value">` : ''}
       <input id="sf-c" placeholder="Izoh (ixtiyoriy)" maxlength="200" value="${esc(SF.note || '')}" oninput="SF.note=this.value">
     </div>
@@ -1290,10 +1308,12 @@ function sfOrder() {
   const name = String(SF.name || '').trim(), phone = String(SF.phone || '').trim();
   if (!name) { toast('Ismingizni yozing', 'error'); return; }
   if (shopPhoneDigits(phone).length < 9) { toast("Telefon raqamini toʻliq yozing", 'error'); return; }
+  const p2d = shopPhoneDigits(SF.phone2 || '').replace(/^998/, ''), phone2 = p2d ? fwPhoneFmt(p2d) : '';
+  if (p2d && p2d.length !== 9) { toast('Qoʻshimcha raqamni toʻliq yozing yoki boʻsh qoldiring', 'error'); return; }
   if (SF.del === 'courier' && !String(SF.addr || '').trim()) { toast('Manzilni yozing', 'error'); return; }
   const items = sfCartList().map(({ p, qty }) => ({ pid: p.id, sku: p.sku, name: p.name, qty, priceUsd: shopPrice(p), color: sfColor(p) ? sfColor(p).nom : '' }));
   if (!items.length) return;
-  SF.order = shopCreateOrder({ source: 'site', delivery: SF.del, cust: { name, phone, address: String(SF.addr || '').trim() }, items, note: SF.note, test: true, branch: SF.br || S.branch });
+  SF.order = shopCreateOrder({ source: 'site', delivery: SF.del, cust: { name, phone, ...(phone2 ? { phone2 } : {}), address: String(SF.addr || '').trim() }, items, note: SF.note, test: true, branch: SF.br || S.branch });
   SF.cart = {}; SF.view = 'done'; sfRender();
 }
 function sfReviewForm() {
@@ -1320,10 +1340,13 @@ function sfAboutHtml() {
     ${c.about ? `<p>${esc(c.about)}</p>` : ''}
     <div class="sf-info">
       ${c.address ? `<div>${ICONF.place}<span>${esc(c.address)}</span></div>` : ''}
-      ${c.phone ? `<a href="tel:+${esc(shopPhoneDigits(c.phone))}">${ICONF.phone}<span>${esc(c.phone)}</span></a>` : ''}
+      ${[c.phone, c.phone2].filter(Boolean).map((x, i) => `<a class="sf-call" href="${esc(sfTel(x))}">${ICONF.phone}<span><small>${i ? 'Qoʻshimcha raqam' : 'Asosiy raqam'}</small>${esc(fwPhoneFmt(x))}</span><em>Qoʻngʻiroq</em></a>`).join('')}
       ${c.delivery ? `<div>${ICONF.car}<span>Yetkazib berish: ${c.feeUzs ? esc(c.feeUzs.toLocaleString('en-US').replace(/,/g, ' ')) + ' UZS' : 'bepul'}${c.freeMinUzs ? ` · ${esc(c.freeMinUzs.toLocaleString('en-US').replace(/,/g, ' '))} UZS dan bepul` : ''}</span></div>` : `<div>${ICONF.store}<span>Faqat doʻkondan olib ketish</span></div>`}
       ${c.lat != null ? `<a href="https://www.openstreetmap.org/?mlat=${c.lat}&mlon=${c.lng}#map=16/${c.lat}/${c.lng}" target="_blank" rel="noopener">${ICONF.gps}<span>Xaritada koʻrish</span></a>` : ''}
     </div>
+    ${sfBranches().filter(k => k !== 'baza').map(k => { const ss = (((S._store || {})[k] || {}).shop || {}).settings || {}, ph = [ss.phone, ss.phone2].filter(Boolean);
+      return `<div class="sf-info sf-pt"><div class="sf-pth"><b>${esc(ss.name || branchName(k))}</b><em>Filial</em></div>${ss.address ? `<div>${ICONF.place}<span>${esc(ss.address)}</span></div>` : ''}
+        ${ph.map((x, i) => `<a class="sf-call" href="${esc(sfTel(x))}">${ICONF.phone}<span><small>${i ? 'Qoʻshimcha raqam' : 'Telefon'}</small>${esc(fwPhoneFmt(x))}</span><em>Qoʻngʻiroq</em></a>`).join('')}</div>`; }).join('')}
     <div class="sf-contact">
       ${c.waOn && wa ? `<a class="sf-btn wa" href="https://wa.me/${esc(wa)}" target="_blank" rel="noopener">${ICONF.chat}<span>WhatsApp’da yozish</span></a>` : ''}
       ${c.tgOn && (tg || c.bot?.username) ? `<a class="sf-btn tg" href="https://t.me/${esc(tg || c.bot.username)}" target="_blank" rel="noopener">${ICONF.send}<span>Telegram’da yozish</span></a>` : ''}

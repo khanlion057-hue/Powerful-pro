@@ -3021,3 +3021,84 @@ function fwGallery(urls, title, start, sub) {
 }
 // Mahsulot rasmlari (≤ 4): p.images, bo'lmasa p.image
 function fwProdImages(p) { if (!p) return []; const a = Array.isArray(p.images) ? p.images.filter(Boolean) : []; return (a.length ? a : (p.image ? [p.image] : [])).map(String).filter(u => /^(https:|data:image\/)/.test(u)); }
+
+// ════════════════════════════════════════════════════════════
+// v25.6.10 (egasi): RASM STANDARTI — hamma rasm bir xil: kerakli o'lcham, WebP, hajm chegarasi.
+//   product  1000×1000 (1:1)  ≤150 KB — oq fon, mahsulot o'rtada, chetidan ~6% bo'sh joy
+//   category  800×600  (4:3)  ≤100 KB — oq fon, bitta mahsulot (o'rtada)
+//   banner   1200×600  (2:1)  ≤200 KB — to'liq qoplaydi, chetlari kesiladi (muhim narsa o'rtada)
+//   logo      512×512  (1:1)  ≤50 KB  — shaffof fon
+// fwImgStd(dataUrl, kind) → { dataUrl, mime, w, h, kb, warn:[...] } yoki null (rasm o'qilmadi)
+// ════════════════════════════════════════════════════════════
+const FW_IMG_STD = {
+  product: { w: 1000, h: 1000, fit: 'contain', pad: 0.06, bg: '#ffffff', kb: 150, label: 'Mahsulot rasmi' },
+  category: { w: 800, h: 600, fit: 'contain', pad: 0.08, bg: '#ffffff', kb: 100, label: 'Kategoriya rasmi' },
+  banner: { w: 1200, h: 600, fit: 'cover', pad: 0, bg: '#ffffff', kb: 200, label: 'Banner' },
+  logo: { w: 512, h: 512, fit: 'contain', pad: 0.04, bg: null, kb: 50, label: 'Logo' },
+};
+function fwImgStd(dataUrl, kind) {
+  const S0 = FW_IMG_STD[kind] || FW_IMG_STD.product;
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+        if (!iw || !ih) return resolve(null);
+        const warn = [];
+        const cv = document.createElement('canvas'); cv.width = S0.w; cv.height = S0.h;
+        const cx = cv.getContext('2d'); cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high';
+        if (S0.bg) { cx.fillStyle = S0.bg; cx.fillRect(0, 0, S0.w, S0.h); }
+        if (S0.fit === 'cover') {
+          const sc = Math.max(S0.w / iw, S0.h / ih), dw = iw * sc, dh = ih * sc;
+          cx.drawImage(img, (S0.w - dw) / 2, (S0.h - dh) / 2, dw, dh);
+          const ra = iw / ih, rt = S0.w / S0.h;
+          if (Math.abs(ra - rt) / rt > 0.15) warn.push(`Nisbat ${iw}×${ih} — ${S0.w}:${S0.h} emas, chetlari kesildi (muhim narsa o'rtada bo'lsin)`);
+        } else {
+          const aw = S0.w * (1 - 2 * S0.pad), ah = S0.h * (1 - 2 * S0.pad), sc = Math.min(aw / iw, ah / ih), dw = iw * sc, dh = ih * sc;
+          cx.drawImage(img, (S0.w - dw) / 2, (S0.h - dh) / 2, dw, dh);
+        }
+        const need = S0.fit === 'cover' ? Math.max(S0.w / iw, S0.h / ih) : Math.min(S0.w * (1 - 2 * S0.pad) / iw, S0.h * (1 - 2 * S0.pad) / ih);
+        if (need > 1.25) warn.push(`Rasm kichik: ${iw}×${ih} px (standart ${S0.w}×${S0.h}) — xira koʻrinishi mumkin, kattaroq rasm yuklang`);
+        // WebP (qo'llanmasa — fon bilan JPEG / shaffof — PNG); sifat pasaytirilib, hajm chegarasigacha
+        let out = null, mime = 'image/webp';
+        for (const q of [0.86, 0.8, 0.72, 0.64, 0.56, 0.48, 0.4]) {
+          out = cv.toDataURL('image/webp', q);
+          if (!/^data:image\/webp/.test(out)) { mime = S0.bg ? 'image/jpeg' : 'image/png'; out = cv.toDataURL(mime, q); }
+          if ((out.length - out.indexOf(',') - 1) * 0.75 <= S0.kb * 1024 || mime === 'image/png') break;
+        }
+        const kb = Math.round((out.length - out.indexOf(',') - 1) * 0.75 / 1024);
+        if (kb > S0.kb) warn.push(`Hajm ${kb} KB — chegara ${S0.kb} KB`);
+        resolve({ dataUrl: out, mime, w: S0.w, h: S0.h, kb, warn, src: { w: iw, h: ih } });
+      } catch (e) { resolve(null); }
+    };
+    img.onerror = () => resolve(null);
+    img.src = dataUrl;
+  });
+}
+function fwImgWarn(r, label) { if (r && r.warn && r.warn.length && typeof toast === 'function') toast('⚠ ' + (label || 'Rasm') + ': ' + r.warn.join('; '), 'warning'); }
+function fwImgExt(mime) { return mime === 'image/webp' ? 'webp' : mime === 'image/png' ? 'png' : 'jpg'; }
+function fwDataUrlBytes(dataUrl) { const b = atob(dataUrl.slice(dataUrl.indexOf(',') + 1)); const u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
+
+// v25.6.10 (egasi): TELEFON — hamma joyda bir xil «+998 XX XXX XX XX». fwPhoneFmt — ko'rsatish (noto'g'ri bo'lsa — matnning o'zi);
+// fwPhoneDigits — «998XXXXXXXXX» yoki ''; [data-phone] maydonlar yozish paytida avtomatik formatlanadi.
+function fwPhoneDigits(v) { let d = String(v || '').replace(/\D/g, ''); if (d.length === 9) d = '998' + d; return /^998\d{9}$/.test(d) ? d : ''; }
+function fwPhoneFmt(v) { const d = fwPhoneDigits(v); return d ? `+998 ${d.slice(3, 5)} ${d.slice(5, 8)} ${d.slice(8, 10)} ${d.slice(10, 12)}` : String(v || '').trim(); }
+function fwPhoneTyping(v) {
+  let d = String(v || '').replace(/\D/g, '');
+  if (!d) return '';
+  if (d.indexOf('998') !== 0) d = '998' + d.replace(/^998/, '');
+  d = d.slice(0, 12);
+  const p = [d.slice(0, 3), d.slice(3, 5), d.slice(5, 8), d.slice(8, 10), d.slice(10, 12)].filter(Boolean);
+  return '+' + p.join(' ');
+}
+function fwTelLink(v) { const d = fwPhoneDigits(v); return d ? 'tel:+' + d : ''; }
+if (typeof document !== 'undefined') document.addEventListener('input', (e) => {
+  const el = e.target; if (!el || !el.matches || !el.matches('input[data-phone]')) return;
+  const before = el.value; const out = fwPhoneTyping(before);
+  if (out !== before) el.value = out;
+});
+
+// v25.6.10 (egasi): KAFOLAT — har mahsulotga 3 / 6 / 12 oy (to'liq texnik kafolat: ta'mirlash va ehtiyot qismlar ham kiradi)
+const FW_WARRANTY = [3, 6, 12];
+function fwWarranty(p) { const m = Math.round(+(p && p.warrantyM) || 0); return FW_WARRANTY.includes(m) ? m : 0; }
+const FW_WARRANTY_TEXT = 'Toʻliq texnik kafolat: nosozlik boʻlsa bepul taʼmirlanadi, kerakli ehtiyot qismlar (zapchastlar) ham kafolat ichida.';

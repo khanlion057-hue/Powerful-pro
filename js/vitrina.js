@@ -41,7 +41,19 @@
       + '<circle cx="50" cy="50" r="9" fill="#2a2c31"/><path d="M50 14a36 36 0 0 1 30 16" fill="none" stroke="#e8961e" stroke-width="3" stroke-linecap="round"/>'
       + '<text x="50" y="72" text-anchor="middle" font-family="Arial" font-size="9" font-weight="800" fill="#3b3e45">' + (si.dia ? 'Ø' + si.dia : 'POWERFUL') + (si.tooth ? ' · ' + si.tooth + 'T' : '') + '</text></svg>';
   }
-  function pic(p, cls) { return p.img && p.img.length ? '<img src="' + esc(p.img[0]) + '" alt="' + esc(p.name) + '" loading="lazy"' + (cls ? ' class="' + cls + '"' : '') + '>' : sawSvg(p); }
+  // v25.6.10: rasmsiz mahsulot — HAMMA JOYDA BIR XIL o'rinbosar (kulrang quti belgisi); rasm — oq fonda, markazda, kvadrat
+  var NOIMG = '<svg class="vt-noimg" viewBox="0 0 64 64" aria-hidden="true"><rect x="10" y="16" width="44" height="34" rx="6" fill="none" stroke="#cbd5e1" stroke-width="3"/><circle cx="24" cy="29" r="5" fill="#cbd5e1"/><path d="M14 46l12-11 9 8 7-6 10 9" fill="none" stroke="#cbd5e1" stroke-width="3" stroke-linejoin="round"/></svg>';
+  function pic(p, cls) { return p.img && p.img.length ? '<img src="' + esc(p.img[0]) + '" alt="' + esc(p.name) + '" loading="lazy" decoding="async"' + (cls ? ' class="' + cls + '"' : '') + '>' : NOIMG; }
+  // rasm yuklanguncha — skelet (miltillovchi fon); yuklanmasa — o'sha bir xil o'rinbosar
+  document.addEventListener('load', function (e) { var t = e.target; if (t && t.tagName === 'IMG') t.classList.add('ld'); }, true);
+  document.addEventListener('error', function (e) { var t = e.target; if (t && t.tagName === 'IMG' && t.closest && t.closest('.vt-pic,.vt-big,.vt-ci .t,.vt-cat i')) { var w = t.parentNode; if (w) { w.classList.remove('has'); t.outerHTML = NOIMG; } } }, true);
+  // v25.6.10: KAFOLAT — 3 / 6 / 12 oy; hamma joyda bir xil belgi
+  var SHIELD = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>';
+  function war(p, big) { return p && p.warranty ? '<span class="vt-war' + (big ? ' big' : '') + '">' + SHIELD + 'Kafolat: ' + p.warranty + ' oy</span>' : ''; }
+  var WAR_TEXT = 'Toʻliq texnik kafolat: nosozlik boʻlsa bepul taʼmirlanadi, kerakli ehtiyot qismlar ham kafolat ichida. Kafolat chek / buyurtma raqami boʻyicha amal qiladi.';
+  // v25.6.10: telefon — +998 XX XXX XX XX; bo'sh ikkinchi raqam ko'rinmaydi
+  function tel(ph) { return 'tel:' + String(ph || '').replace(/[^\d+]/g, ''); }
+  function phones() { var sh = D.shop; return [sh.phone, sh.phone2].filter(function (x, i, a) { return x && a.indexOf(x) === i; }); }
 
   // ── yuklash ──
   function skeleton() { var h = ''; for (var i = 0; i < 8; i++) h += '<div class="vt-sk"></div>'; $('vt-grid').innerHTML = h; }
@@ -57,7 +69,7 @@
         lsSet(key('cart'), CART);
         document.title = D.shop.name + ' — onlayn doʻkon';
         $('vt-name').textContent = D.shop.name;
-        hero(); perks(); filters(); finder(); footer(); render(); cartUi(); recent();
+        hero(); perks(); catCards(); filters(); finder(); footer(); render(); cartUi(); recent(); navUi();
         var m = /#p=([\w-]+)/.exec(location.hash); if (m && BYID[m[1]]) openProduct(m[1]);
       })
       .catch(function () { closed(navigator.onLine === false ? 'Internet yoʻq — ulanishni tekshiring' : 'Doʻkon vaqtincha ochilmadi'); });
@@ -93,8 +105,20 @@
     var sh = D.shop, P = [];
     P.push(['🚚', sh.delivery ? 'Yetkazib berish' : 'Olib ketish', sh.delivery ? (sh.freeMin > 0 ? money(sh.freeMin) + ' dan bepul' + (sh.fee > 0 ? ', aks holda ' + money(sh.fee) : '') : (sh.fee > 0 ? money(sh.fee) : 'Bepul')) : (sh.address || 'Doʻkondan')]);
     P.push(['✅', 'Original mahsulot', PR.length + ' ta mahsulot sotuvda']);
-    if (sh.tg || sh.wa || sh.phone) P.push(['💬', 'Tezkor maslahat', sh.tg ? 'Telegram @' + sh.tg : (sh.phone || 'WhatsApp')]);
-    $('vt-perks').innerHTML = P.map(function (x) { return '<div class="vt-perk"><i>' + x[0] + '</i><div><b>' + esc(x[1]) + '</b><span>' + esc(x[2]) + '</span></div></div>'; }).join('');
+    var ws = PR.map(function (p) { return p.warranty; }).filter(Boolean);
+    if (ws.length) P.push([SHIELD, 'Rasmiy kafolat', (Math.min.apply(null, ws) === Math.max.apply(null, ws) ? ws[0] : Math.min.apply(null, ws) + '–' + Math.max.apply(null, ws)) + ' oy · taʼmirlash va ehtiyot qismlar', 'warranty']);
+    if (sh.tg || sh.wa || sh.phone) P.push(['📞', 'Tez aloqa', phones()[0] || (sh.tg ? 'Telegram @' + sh.tg : 'WhatsApp'), 'contact']);
+    $('vt-perks').innerHTML = P.map(function (x) { return (x[3] ? '<button type="button" class="vt-perk" data-perk="' + x[3] + '">' : '<div class="vt-perk">') + '<i>' + x[0] + '</i><div><b>' + esc(x[1]) + '</b><span>' + esc(x[2]) + '</span></div>' + (x[3] ? '</button>' : '</div>'); }).join('');
+  }
+
+  // v25.6.10: KATEGORIYA KARTALARI — hammasi bir xil o'lcham (4:3), rasmsiz kategoriyada bir xil belgi
+  var CATIC = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg>';
+  function catCards() {
+    var cats = catList(), im = D.cats || {}, n = {}; PR.forEach(function (p) { if (p.cat) n[p.cat] = (n[p.cat] || 0) + 1; });
+    $('vt-catsw').hidden = cats.length < 2;
+    $('vt-cats').innerHTML = cats.map(function (c) {
+      return '<button type="button" class="vt-cat' + (ST.cat === c ? ' on' : '') + '" data-catc="' + esc(c) + '"><i class="' + (im[c] ? 'has' : '') + '">' + (im[c] ? '<img src="' + esc(im[c]) + '" alt="" loading="lazy" decoding="async">' : CATIC) + '</i>'
+        + '<b>' + esc(c) + '</b><small>' + n[c] + ' ta mahsulot</small></button>'; }).join('');
   }
 
   // ── filtrlar ──
@@ -109,7 +133,8 @@
     $('vt-brand').hidden = bl.length < 2;
     chips();
   }
-  function chips() { var c = $('vt-chips').children; for (var i = 0; i < c.length; i++) c[i].classList.toggle('on', ST.fav ? c[i].dataset.fav === '1' : (c[i].dataset.cat === ST.cat && !c[i].dataset.fav)); }
+  function chips() { var c = $('vt-chips').children; for (var i = 0; i < c.length; i++) c[i].classList.toggle('on', ST.fav ? c[i].dataset.fav === '1' : (c[i].dataset.cat === ST.cat && !c[i].dataset.fav));
+    [].forEach.call(document.querySelectorAll('.vt-cat'), function (b) { b.classList.toggle('on', !ST.fav && b.dataset.catc === ST.cat); }); }
 
   // ── arra tanlash yordamchisi ──
   function finder() {
@@ -155,6 +180,7 @@
       + (pct > 0 ? '<span class="vt-tag">−' + pct + '%</span>' : '') + (p.stock <= 3 ? '<span class="vt-low">' + p.stock + ' ta qoldi</span>' : '') + '</button>'
       + '<button class="vt-fav' + (fav ? ' on' : '') + '" data-fav="' + esc(p.id) + '" aria-label="Sevimlilarga" aria-pressed="' + fav + '"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 6C19 16.5 12 21 12 21z"/></svg></button>'
       + '<div class="vt-pb">' + (p.brand ? '<span class="vt-br">' + esc(p.brand) + '</span>' : '') + '<button class="vt-nm" data-open="' + esc(p.id) + '">' + esc(p.name) + '</button>'
+      + war(p)
       + '<div class="vt-pr"><b>' + money(p.price) + '</b>' + (p.old ? '<s>' + money(p.old) + '</s>' : '') + '</div>'
       + (inCart ? '<div class="vt-stp"><button data-dec="' + esc(p.id) + '" aria-label="Kamaytirish">−</button><span>' + inCart + ' ta</span><button data-inc="' + esc(p.id) + '" aria-label="Koʻpaytirish">+</button></div>'
         : '<button class="vt-add" data-inc="' + esc(p.id) + '">Savatga</button>') + '</div></article>';
@@ -181,7 +207,7 @@
   function cartUi() {
     var n = cartCount(); $('vt-cartc').textContent = n;
     $('vt-cartbar').hidden = !n || !$('vt-ov').hidden;
-    $('vt-cbt').innerHTML = n ? '<b>' + n + ' ta</b> · ' + money(cartSum()) : '';
+    $('vt-cbt').innerHTML = n ? '<b>' + n + ' ta</b> · ' + money(cartSum()) : ''; navUi();
   }
   function favUi() { $('vt-favc').textContent = FAV.length; $('vt-favc').hidden = !FAV.length; }
   function toggleFav(id) {
@@ -240,6 +266,7 @@
       + '<h2>' + esc(p.name) + '</h2><p class="vt-sub">' + esc([p.brand, p.cat, p.sku].filter(Boolean).join(' · ')) + '</p>'
       + '<div class="vt-pr"><b style="font-size:22px">' + money(p.price) + '</b>' + (p.old ? '<s>' + money(p.old) + '</s>' : '') + '</div>'
       + '<div class="vt-meta">' + meta.map(function (m) { return '<span>' + esc(m) + '</span>'; }).join('') + '<span style="color:' + (p.stock <= 3 ? '#8a5a00' : '#13805b') + '">' + (p.stock <= 3 ? 'Kam qoldi: ' + p.stock + ' ta' : 'Omborda bor') + '</span></div>'
+      + (p.warranty ? '<div class="vt-warbox"><div class="vt-warh"><span class="vt-wb">' + SHIELD + 'Rasmiy kafolat</span>' + war(p, true) + '</div><p>' + esc(WAR_TEXT) + '</p></div>' : '')
       + (p.desc ? '<p style="color:#555;font-size:14px">' + esc(p.desc) + '</p>' : '')
       + '<div class="vt-line" style="margin:12px 0"><div class="vt-qty"><button data-pq="-1" aria-label="Kamaytirish">−</button><span id="vt-pq">' + q + '</span><button data-pq="1" aria-label="Koʻpaytirish">+</button></div>'
       + '<button class="vt-prim" data-addp="' + esc(p.id) + '">' + (CART[id] ? 'Savatni yangilash' : 'Savatga qoʻshish') + '</button></div>'
@@ -249,7 +276,7 @@
   // v25.6.10: savat qayta chizilganda (yetkazish turi, +/−) yozilgan ism, telefon, manzil va izoh o'chib ketmasin
   function keepForm() {
     var f = document.getElementById('vt-form'); if (!f) return;
-    if (f.name) CHK.name = f.name.value; if (f.phone) CHK.phone = f.phone.value; if (f.address) CHK.address = f.address.value; if (f.note) CHK.note = f.note.value;
+    if (f.name) CHK.name = f.name.value; if (f.phone) CHK.phone = f.phone.value; if (f.phone2) CHK.phone2 = f.phone2.value; if (f.address) CHK.address = f.address.value; if (f.note) CHK.note = f.note.value;
   }
   function openCart() {
     var ids = Object.keys(CART).filter(function (k) { return BYID[k]; });
@@ -260,7 +287,7 @@
     var free = sh.delivery && sh.freeMin > 0 ? (sum >= sh.freeMin ? '<div class="vt-free">🎉 Yetkazib berish <b>bepul</b><i style="--w:100%"></i></div>'
       : '<div class="vt-free">Yana <b>' + money(sh.freeMin - sum) + '</b> lik mahsulot qoʻshsangiz — yetkazish bepul<i style="--w:' + Math.round(sum / sh.freeMin * 100) + '%"></i></div>') : '';
     sheet('<h2>Savat</h2>' + ids.map(function (id) { var p = BYID[id];
-      return '<div class="vt-ci"><div class="t">' + pic(p) + '</div><div class="i">' + esc(p.name) + '<small>' + money(p.price) + ' × ' + CART[id] + ' = <b>' + money(p.price * CART[id]) + '</b></small></div>'
+      return '<div class="vt-ci"><div class="t">' + pic(p) + '</div><div class="i">' + esc(p.name) + '<small>' + money(p.price) + ' × ' + CART[id] + ' = <b>' + money(p.price * CART[id]) + '</b></small>' + war(p) + '</div>'
         + '<div class="vt-qty"><button data-cdec="' + esc(id) + '" aria-label="Kamaytirish">−</button><span>' + CART[id] + '</span><button data-cinc="' + esc(id) + '" aria-label="Koʻpaytirish">+</button></div></div>'; }).join('')
       + free
       + '<div class="vt-seg2"><button data-dlv="pickup" class="' + (dlv === 'pickup' ? 'on' : '') + '">🏬 Olib ketaman</button><button data-dlv="courier" class="' + (dlv === 'courier' ? 'on' : '') + '"' + (sh.delivery ? '' : ' disabled title="Bu doʻkonda yetkazib berish yoʻq"') + '>🚚 Yetkazib bering</button></div>'
@@ -269,6 +296,7 @@
       + '<div class="vt-tot f"><span>Jami</span><span>' + money(sum + fee) + '</span></div>'
       + '<form id="vt-form" novalidate><label class="vt-fld"><span>Ismingiz</span><input name="name" autocomplete="name" maxlength="80" required value="' + esc(CHK.name || '') + '"></label>'
       + '<label class="vt-fld"><span>Telefon</span><input name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+998 90 123 45 67" required value="' + esc(CHK.phone || '+998 ') + '"></label>'
+      + '<label class="vt-fld"><span>Qoʻshimcha telefon (ixtiyoriy)</span><input name="phone2" type="tel" inputmode="tel" autocomplete="tel" placeholder="+998 __ ___ __ __" value="' + esc(CHK.phone2 || '') + '"></label>'
       + (dlv === 'courier' ? '<label class="vt-fld"><span>Manzil (shahar, koʻcha, uy)</span><input name="address" autocomplete="street-address" maxlength="160" required value="' + esc(CHK.address || '') + '"></label>' : '')
       + '<label class="vt-fld"><span>Izoh (ixtiyoriy)</span><textarea name="note" rows="2" maxlength="200">' + esc(CHK.note || '') + '</textarea></label>'
       + '<label class="vt-hp" aria-hidden="true">Bu maydonni boʻsh qoldiring<input name="hp" tabindex="-1" autocomplete="off"></label>'
@@ -284,7 +312,7 @@
   var PENDK = null;   // v25.6.10: yuborilayotgan buyurtma kaliti
   function submit(f) {
     var err = $('vt-err'), btn = $('vt-send');
-    var body = { a: 'order', s: D.shop.slug, name: f.name.value.trim(), phone: f.phone.value, address: f.address ? f.address.value.trim() : '', note: f.note.value.trim(),
+    var body = { a: 'order', s: D.shop.slug, name: f.name.value.trim(), phone: f.phone.value, phone2: f.phone2 && f.phone2.value.replace(/\D/g, '').length > 3 ? f.phone2.value : '', address: f.address ? f.address.value.trim() : '', note: f.note.value.trim(),
       delivery: CHK.delivery === 'courier' && D.shop.delivery ? 'courier' : 'pickup', hp: f.hp.value,
       items: Object.keys(CART).filter(function (k) { return BYID[k]; }).map(function (k) { return { pid: BYID[k].id, qty: CART[k] }; }) };
     // v25.6.10: bir xil buyurtma qayta yuborilsa — o'sha kalit (server ikkinchi buyurtma yaratmaydi)
@@ -293,8 +321,10 @@
     body.k = PENDK.k;
     if (body.name.length < 2) { err.textContent = 'Ismingizni yozing'; f.name.focus(); return; }
     if (String(body.phone).replace(/\D/g, '').length !== 12) { err.textContent = 'Telefon raqamni toʻliq yozing'; f.phone.focus(); return; }
+    if (body.phone2 && String(body.phone2).replace(/\D/g, '').length !== 12) { err.textContent = 'Qoʻshimcha raqamni toʻliq yozing yoki boʻsh qoldiring'; f.phone2.focus(); return; }
     if (body.delivery === 'courier' && body.address.length < 5) { err.textContent = 'Manzilni yozing'; f.address.focus(); return; }
-    CHK = { delivery: CHK.delivery, name: body.name, phone: f.phone.value, address: body.address }; lsSet(key('chk'), CHK);
+    CHK = { delivery: CHK.delivery, name: body.name, phone: f.phone.value, phone2: body.phone2, address: body.address }; lsSet(key('chk'), CHK);
+    var WL = body.items.map(function (it) { var p = BYID[String(it.pid)]; return p && p.warranty ? '<div class="vt-tot"><span>' + esc(p.name) + '</span>' + war(p) + '</div>' : ''; }).join('');
     err.textContent = ''; btn.disabled = true; btn.textContent = 'Yuborilmoqda…';
     fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
@@ -304,6 +334,7 @@
         if (!ORD.some(function (o) { return o.id === x.j.id; })) ORD.unshift({ id: x.j.id, tk: x.j.tk, no: x.j.no, at: new Date().toISOString(), total: x.j.total }); lsSet(key('orders'), ORD.slice(0, 30));
         CART = {}; lsSet(key('cart'), CART); cartUi(); render();
         sheet('<div class="vt-ok"><i>✅</i><h2 style="padding:0">Buyurtma #' + x.j.no + ' qabul qilindi</h2><p>Jami: <b>' + money(x.j.total) + '</b></p><p style="color:#666">Doʻkon tez orada <b>' + esc(body.phone) + '</b> raqamiga qoʻngʻiroq qilib tasdiqlaydi.</p>'
+          + (WL ? '<div class="vt-warbox" style="text-align:left"><div class="vt-warh"><span class="vt-wb">' + SHIELD + 'Rasmiy kafolat</span></div>' + WL + '<p>' + esc(WAR_TEXT) + '</p></div>' : '')
           + '<button class="vt-prim" data-orders="1">Buyurtmalarim</button><br><br><button class="vt-sec" data-close="1">Xaridni davom ettirish</button></div>');
       })
       .catch(function () { err.textContent = navigator.onLine === false ? 'Internet yoʻq — ulanib, qayta yuboring' : 'Server javob bermadi — qayta urinib koʻring'; btn.disabled = false; btn.textContent = 'Qayta yuborish'; });
@@ -324,6 +355,27 @@
       }).catch(function () {});
   }
 
+  // v25.6.10: TEZ ALOQA — ikkala raqam, har biriga alohida qo'ng'iroq tugmasi
+  function callRow(ph, lbl) { return '<div class="vt-call"><div><small>' + esc(lbl) + '</small><b>' + esc(ph) + '</b></div><a class="vt-callb" href="' + esc(tel(ph)) + '">📞 Qoʻngʻiroq</a></div>'; }
+  function openContact() {
+    var sh = D.shop, ph = phones();
+    sheet('<h2>Tez aloqa</h2><p class="vt-sub">Savol, buyurtma yoki kafolat boʻyicha — bizga qoʻngʻiroq qiling</p>'
+      + (ph.length ? ph.map(function (x, i) { return callRow(x, i ? 'Qoʻshimcha raqam' : 'Asosiy raqam'); }).join('') : '<div class="vt-empty"><b>Raqam hali kiritilmagan</b></div>')
+      + '<div class="vt-line" style="margin-top:10px">' + (sh.tg ? '<a class="vt-sec" href="https://t.me/' + esc(sh.tg) + '" target="_blank" rel="noopener">✈️ Telegram</a>' : '')
+      + (sh.wa ? '<a class="vt-sec" href="https://wa.me/' + esc(sh.wa.replace(/\D/g, '')) + '" target="_blank" rel="noopener">💬 WhatsApp</a>' : '') + '</div>');
+  }
+  // v25.6.10: DO'KON — olib ketish joylari (do'kon va filiallar): manzil, xarita, 2 ta raqam
+  function mapUrl(x) { return x.lat != null && x.lng != null ? 'https://maps.google.com/?q=' + x.lat + ',' + x.lng : (x.address ? 'https://maps.google.com/?q=' + encodeURIComponent(x.address) : ''); }
+  function openStore() {
+    var sh = D.shop, pts = (D.points && D.points.length ? D.points : [{ main: true, name: sh.name, address: sh.address, phone: sh.phone, phone2: sh.phone2, lat: sh.lat, lng: sh.lng }]);
+    sheet('<h2>' + esc(sh.name) + '</h2><p class="vt-sub">' + esc(sh.about || 'Arra tigʻlari, frezalar va asboblar.') + '</p>'
+      + pts.map(function (x) { var m = mapUrl(x), ph = [x.phone, x.phone2].filter(function (v, i, a) { return v && a.indexOf(v) === i; });
+        return '<div class="vt-pt"><div class="vt-pth"><b>' + esc(x.name) + '</b>' + (x.main ? '<span class="vt-badge">Asosiy</span>' : '<span class="vt-badge g">Filial</span>') + '</div>'
+          + (x.address ? '<p>📍 ' + esc(x.address) + (m ? ' · <a href="' + esc(m) + '" target="_blank" rel="noopener">Xaritada</a>' : '') + '</p>' : '')
+          + ph.map(function (v, i) { return callRow(v, i ? 'Qoʻshimcha raqam' : 'Telefon'); }).join('') + '</div>'; }).join(''));
+  }
+  function navUi() { var n = cartCount(), b = $('vt-navc'); if (b) { b.textContent = n; b.hidden = !n; } }
+
   function recent() {
     var r = RECENT.map(function (id) { return BYID[id]; }).filter(Boolean).slice(0, 8);
     $('vt-recentw').hidden = r.length < 2;
@@ -333,7 +385,7 @@
     var sh = D.shop, map = sh.lat != null && sh.lng != null ? 'https://maps.google.com/?q=' + sh.lat + ',' + sh.lng : (sh.address ? 'https://maps.google.com/?q=' + encodeURIComponent(sh.address) : '');
     $('vt-ft').innerHTML = '<div><b>' + esc(sh.name) + '</b>' + esc(sh.about || 'Arra tigʻlari, frezalar va asboblar.') + '</div>'
       + (sh.address ? '<div><b>Manzil</b>' + esc(sh.address) + (map ? '<br><a href="' + esc(map) + '" target="_blank" rel="noopener">Xaritada ochish</a>' : '') + '</div>' : '')
-      + '<div><b>Aloqa</b>' + (sh.phone ? '<a href="tel:' + esc(sh.phone.replace(/[^\d+]/g, '')) + '">' + esc(sh.phone) + '</a><br>' : '')
+      + '<div><b>Aloqa</b>' + phones().map(function (x) { return '<a href="' + esc(tel(x)) + '">' + esc(x) + '</a><br>'; }).join('')
       + [sh.wa ? '<a href="https://wa.me/' + esc(sh.wa.replace(/\D/g, '')) + '" target="_blank" rel="noopener">WhatsApp</a>' : '', sh.tg ? '<a href="https://t.me/' + esc(sh.tg) + '" target="_blank" rel="noopener">@' + esc(sh.tg) + '</a>' : ''].filter(Boolean).join(' · ') + '</div>';
   }
 
@@ -359,6 +411,12 @@
     if (d.share) { var u = location.origin + location.pathname + location.search + '#p=' + d.share, nm = BYID[d.share] ? BYID[d.share].name : '';
       if (navigator.share) navigator.share({ title: nm, url: u }).catch(function () {}); else if (navigator.clipboard) navigator.clipboard.writeText(u).then(function () { toast('Havola nusxalandi'); }); return; }
     if (d.orders) return openOrders();
+    if (d.perk === 'contact' || d.nav === 'contact') return openContact();
+    if (d.nav === 'store') return openStore();
+    if (d.nav === 'cart') return openCart();
+    if (d.nav === 'home') { if (!$('vt-ov').hidden) closeSheet(); return window.vtHome(); }
+    if (d.nav === 'cats' || d.perk === 'warranty') { if (!$('vt-ov').hidden) closeSheet(); var cw = $(d.nav === 'cats' && !$('vt-catsw').hidden ? 'vt-catsw' : 'vt-grid'); cw.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+    if (d.catc != null) { ST.fav = false; ST.cat = ST.cat === d.catc ? '' : d.catc; chips(); render(); $('vt-grid').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
     if (d.reset) return window.vtHome();
     if (d.go) { if (d.go === 'cart') return openCart(); var el2 = $(d.go === 'finder' ? 'vt-finder' : 'vt-grid'); if (el2 && !el2.hidden) el2.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
     if (t.parentNode && t.parentNode.classList && t.parentNode.classList.contains('vt-dots')) { show([].indexOf.call(t.parentNode.children, t)); clearInterval(SLT); return; }
@@ -366,7 +424,11 @@
     if (t.classList.contains('vt-chip')) { ST.fav = d.fav === '1'; ST.cat = ST.fav ? '' : (d.cat || ''); chips(); render(); return; }
   });
   document.addEventListener('submit', function (e) { if (e.target.id === 'vt-form') { e.preventDefault(); submit(e.target); } });
-  document.addEventListener('input', function (e) { if (e.target.name === 'phone' && e.target.closest('#vt-form')) { var c = e.target.value.length; e.target.value = fmtPhone(e.target.value); if (c < 5 && e.target.value === '+998') e.target.value = '+998 '; } });
+  document.addEventListener('input', function (e) {
+    if (e.target.name === 'phone' && e.target.closest('#vt-form')) { var c = e.target.value.length; e.target.value = fmtPhone(e.target.value); if (c < 5 && e.target.value === '+998') e.target.value = '+998 '; }
+    // ikkinchi raqam — ixtiyoriy: hammasi o'chirilsa bo'sh qoladi
+    if (e.target.name === 'phone2' && e.target.closest('#vt-form')) { var dg = e.target.value.replace(/\D/g, '').replace(/^998/, ''); e.target.value = dg ? fmtPhone(dg) : ''; }
+  });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('vt-ov').hidden) closeSheet(); });
   var QT = null;
   $('vt-q').addEventListener('input', function () { clearTimeout(QT); var v = this.value; QT = setTimeout(function () { ST.q = v; render(); }, 160); });
@@ -376,6 +438,7 @@
   $('vt-cbgo').addEventListener('click', openCart);
   $('vt-favb').addEventListener('click', function () { ST.fav = !ST.fav; ST.cat = ''; chips(); render(); $('vt-grid').scrollIntoView({ behavior: 'smooth' }); });
   $('vt-ordb').addEventListener('click', openOrders);
+  $('vt-callb').addEventListener('click', function () { if (D) openContact(); });
   window.addEventListener('online', function () { if (!D) load(); });
   document.addEventListener('visibilitychange', function () { if (document.hidden) clearInterval(SLT); else if (D && $('vt-hero').querySelectorAll('.vt-slide').length > 1) { clearInterval(SLT); SLT = setInterval(function () { show(SLIDE + 1); }, 5500); } });
   load();

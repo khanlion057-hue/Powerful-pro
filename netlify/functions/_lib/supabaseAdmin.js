@@ -100,6 +100,12 @@ function parseBody(event) {
 //
 // Natija: { ok:true, staff, isAdmin, permKeys, filial } yoki { ok:false, response }
 // (response — to'g'ridan-to'g'ri qaytariladigan xato javobi, 401/403)
+const STAFF_WITH_PERMS = '*, staff_roles(role_id, roles(role_permissions(permissions(key))))';
+// Token ichidagi foydalanuvchi ID (faqat so'rovni OLDINDAN boshlash uchun; ishonch — auth.getUser natijasiga)
+function _jwtSub(token) {
+  try { const p = String(token).split('.')[1]; if (!p) return null; const o = JSON.parse(Buffer.from(p.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'));
+    return typeof o.sub === 'string' && /^[0-9a-f-]{36}$/i.test(o.sub) ? o.sub : null; } catch (_) { return null; }
+}
 async function requireStaffAuth(event, admin, opts = {}) {
   const { permission, requireAdmin, filialField, body, loadPermissions } = opts;
 
@@ -109,6 +115,12 @@ async function requireStaffAuth(event, admin, opts = {}) {
     return { ok: false, response: json({ error: 'Avtorizatsiya talab qilinadi (tizimga kirilmagan)' }, 401) };
   }
 
+  // v25.6.10 (tezlik): baza boshqa qit'ada — har ketma-ket so'rov ~0,3 s. Token tekshiruvi (auth) va xodim + rollar + ruxsatlar
+  // (bitta ichma-ich so'rov) BIR VAQTDA yuboriladi. Xavfsizlik o'zgarmaydi: xodim ma'lumoti FAQAT auth.getUser tokenni
+  // tasdiqlagandan va undagi foydalanuvchi ID tokendagi (oldindan o'qilgan) ID bilan mos kelgandan keyin ishlatiladi.
+  const sub = _jwtSub(token);
+  const staffQ = (uid) => admin.from('staff').select(STAFF_WITH_PERMS).eq('auth_user_id', uid).maybeSingle();
+  const early = sub ? Promise.resolve().then(() => staffQ(sub)).catch((e) => ({ error: e })) : null;
   let userData;
   try {
     const res = await admin.auth.getUser(token);
@@ -120,7 +132,19 @@ async function requireStaffAuth(event, admin, opts = {}) {
     return { ok: false, response: json({ error: 'Sessiyani tekshirib bo\'lmadi' }, 401) };
   }
 
-  const { data: staff, error: staffErr } = await admin.from('staff').select('*').eq('auth_user_id', userData.id).maybeSingle();
+  let sres = early && sub === userData.id ? await early : null;
+  if (!sres || sres.error) sres = await staffQ(userData.id).catch((e) => ({ error: e }));   // ichma-ich so'rov ishlamasa — oddiy
+  if (sres && sres.error) sres = await admin.from('staff').select('*').eq('auth_user_id', userData.id).maybeSingle();
+  const staffErr = sres && sres.error;
+  let staff = sres && sres.data ? { ...sres.data } : null;
+  let embeddedPerms = null;
+  if (staff && Object.prototype.hasOwnProperty.call(staff, 'staff_roles')) {
+    if (Array.isArray(staff.staff_roles)) {
+      embeddedPerms = new Set();
+      staff.staff_roles.forEach((sr) => ((sr && sr.roles && sr.roles.role_permissions) || []).forEach((rp) => { const k = rp && rp.permissions && rp.permissions.key; if (k) embeddedPerms.add(k); }));
+    }
+    delete staff.staff_roles;   // javobga (masalan whoami) ichki tuzilma chiqmasin
+  }
   if (staffErr || !staff) {
     return { ok: false, response: json({ error: 'Xodim topilmadi yoki hisobingiz faol emas' }, 403) };
   }
@@ -147,7 +171,8 @@ async function requireStaffAuth(event, admin, opts = {}) {
   // yuklab beradi (chaqiruvchi o'zi, so'rov ichidagi bir nechta turli kalitga
   // qarab, o'z holida tekshiradi — masalan app-data-save.js'dagi kabi).
   if (!isAdmin && (permission || loadPermissions)) {
-    try {
+    if (embeddedPerms) permKeys = embeddedPerms;
+    else try {
       const { data: roleLinks } = await admin.from('staff_roles').select('role_id').eq('staff_id', staff.id);
       const roleIds = (roleLinks || []).map(r => r.role_id);
       if (roleIds.length) {

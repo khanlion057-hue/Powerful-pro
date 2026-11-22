@@ -10,6 +10,8 @@ async function withApp(fn) {
     await page.evaluate(() => {
       document.body.insertAdjacentHTML('beforeend', '<div id="pg-sozlamalar"></div><div id="bs-ov" hidden></div><div id="modal-ov"></div>');
       localStorage.clear(); delete window.FwBio; confirm = () => true;
+      // v25.6.10 (egasi): barmoq izi — faqat telefonda; bu testlar telefon brauzeri nomidan (kompyuter — pastda alohida)
+      Object.defineProperty(navigator, 'userAgent', { configurable: true, get: () => window.__ua || 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/130.0 Mobile Safari/537.36' });
       window.__wa = { create: 0, get: 0, lastCreate: null, lastGet: null, mode: 'ok' };
       const bytes = (n) => new Uint8Array(n).map((_, i) => i + 1).buffer;
       window.PublicKeyCredential = { isUserVerifyingPlatformAuthenticatorAvailable: async () => true };
@@ -28,11 +30,14 @@ async function testAvail() {
       const before = fwBioAvail();                    // zond hali ishlamagan
       await fwBioProbe(); const probed = fwBioAvail();
       window.__wa.mode = 'ok'; window.PublicKeyCredential = undefined; await fwBioProbe(); const none = fwBioAvail();
+      window.__ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/130.0 Safari/537.36';
+      window.PublicKeyCredential = { isUserVerifyingPlatformAuthenticatorAvailable: async () => true }; await fwBioProbe(); const desk = fwBioAvail(); window.__ua = null;
       window.FwBio = { available: () => true, authenticate: (cb) => window[cb](true) }; const native = fwBioAvail(); const nativeOk = await fwBioAuth();
-      return { before, probed, none, native, nativeOk, wa: { c: __wa.create, g: __wa.get } };
+      return { before, probed, none, desk, native, nativeOk, wa: { c: __wa.create, g: __wa.get } };
     });
     assert.equal(r.probed, true, 'WebAuthn platforma autentifikatori bor → barmoq izi mavjud');
     assert.equal(r.none, false, "WebAuthn ham, ko'prik ham yo'q → mavjud emas");
+    assert.equal(r.desk, false, 'kompyuterda (Windows Hello bor bo\'lsa ham) — barmoq izi yo\'q, faqat PIN');
     assert.equal(r.native, true); assert.equal(r.nativeOk, true, "Android ko'prigi bo'lsa — u ishlatiladi (avvalgidek)"); assert.deepEqual(r.wa, { c: 0, g: 0 });
   });
 }

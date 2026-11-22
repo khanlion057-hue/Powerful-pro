@@ -2719,14 +2719,24 @@ function fwBranchOwn(k) {
 // PIN bilan bir xil ishonch darajasi: server sessiyasi o'zgarmaydi (server har so'rovni avvalgidek tekshiradi). Ko'prik (FwBio) bo'lsa — u ustun.
 const FW_BIO_CRED = 'fw_bio_cred';
 let _fwWebAuthnOk = false;
-function fwBioProbe() {
+let _fwBioProbeP = null;
+function fwBioProbe() { _fwBioProbeP = _fwBioProbe0(); return _fwBioProbeP; }
+// v25.6.10: kompyuterda qurilma qulfi (Windows Hello / Touch ID) borligi brauzerdan ASINXRON so'raladi — kirish oynasi javobni kutadi
+function fwBioReady(ms) { if (fwBioNative()) return Promise.resolve(true); if (!fwBioMobile()) return Promise.resolve(false); const p = _fwBioProbeP || fwBioProbe(); return Promise.race([p, new Promise(r => setTimeout(() => r(_fwWebAuthnOk), ms || 1500))]).then(() => fwBioAvail(), () => fwBioAvail()); }
+// v25.6.10 (egasi): barmoq izi — faqat TELEFONDA (APK yoki telefon brauzeri); kompyuterda — faqat PIN kod (Windows Hello / Touch ID so'ralmaydi)
+function fwBioMobile() {
+  if (fwBioNative()) return true;
+  const ua = (typeof navigator !== 'undefined' && navigator.userAgent) || '';
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
+}
+function _fwBioProbe0() {
   try {
     if (!(window.isSecureContext !== false && window.PublicKeyCredential && typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function' && navigator.credentials)) { _fwWebAuthnOk = false; return Promise.resolve(false); }
     return PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().then(v => (_fwWebAuthnOk = !!v), () => (_fwWebAuthnOk = false));
   } catch (_) { _fwWebAuthnOk = false; return Promise.resolve(false); }
 }
 function fwBioNative() { try { return !!(window.FwBio && typeof FwBio.available === 'function' && FwBio.available()); } catch (_) { return false; } }
-function fwBioAvail() { return fwBioNative() || _fwWebAuthnOk; }
+function fwBioAvail() { return fwBioNative() || (_fwWebAuthnOk && fwBioMobile()); }
 const _b64u = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const _unb64u = (s) => Uint8Array.from(atob(String(s).replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
 async function _fwWebAuthnAuth() {
@@ -2760,15 +2770,16 @@ if (typeof window !== 'undefined') fwBioProbe();
 // o.canSetPin — PIN o'rnatish tugmasi ko'rsatiladimi (uni o'rnatish uchun joriy foydalanuvchi ma'lumoti kerak: o.info() yoki fwQuickInfoProvider()).
 function fwQuickSectionHtml(o) {
   o = o || {};
-  const q = fwQuickGet(), bio = fwBioAvail();
+  const q = fwQuickGet(), bio = fwBioAvail(), mob = fwBioMobile();
   const rowH = (t, sub, btn) => `<div class="fw-qk-row"><span><b>${t}</b><small>${sub}</small></span>${btn}</div>`;
   const b = (label, act, cls) => `<button type="button" class="${cls || 'pos-btn ghost'}" onclick="fwQuickAction('${act}')">${label}</button>`;
-  if (!q) return `<div class="fw-qk">${rowH('PIN oʻrnatilmagan', 'Login va parol oʻrniga 4 xonali PIN (va barmoq izi) bilan kirish', o.canSetPin === false ? '' : b('PIN oʻrnatish', 'pin-set', 'pos-btn pri'))}</div>`;
+  if (!q) return `<div class="fw-qk">${rowH('PIN oʻrnatilmagan', mob ? 'Login va parol oʻrniga 4 xonali PIN (va barmoq izi) bilan kirish' : 'Login va parol oʻrniga 4 xonali PIN kod bilan kirish', o.canSetPin === false ? '' : b('PIN oʻrnatish', 'pin-set', 'pos-btn pri'))}</div>`;
+  if (q.bioOnly && !mob) return `<div class="fw-qk">${rowH('PIN oʻrnatilmagan', 'Kompyuterda 4 xonali PIN kod bilan kirasiz', o.canSetPin === false ? '' : b('PIN oʻrnatish', 'pin-set', 'pos-btn pri'))}</div>`;
   if (q.bioOnly) return `<div class="fw-qk">${rowH('Barmoq izi yoqilgan', 'Ilova ochilganda avval barmoq izi soʻraladi; oʻtmasa — parol', b('Oʻchirish', 'pin-off', 'pos-btn ghost red-t'))}
     ${o.canSetPin === false ? '' : rowH('PIN', 'Barmoq izi ishlamasa — 4 xonali PIN bilan', b('PIN oʻrnatish', 'pin-set'))}</div>`;
   return `<div class="fw-qk">${rowH('PIN yoqilgan', 'Keyingi safar login va parol oʻrniga PIN bilan kirasiz', b('PINni oʻchirish', 'pin-off', 'pos-btn ghost red-t'))}
     ${bio ? rowH(q.bio ? 'Barmoq izi yoqilgan' : 'Barmoq izi oʻchiq', q.bio ? 'Ilova ochilganda barmoq izi soʻraladi' : 'PIN oʻrniga barmoq izi bilan kirish', q.bio ? b('Barmoq izini oʻchirish', 'bio-off') : b('Barmoq izini yoqish', 'bio-on', 'pos-btn pri'))
-      : rowH('Barmoq izi', 'Bu qurilma yoki brauzerda barmoq izi qoʻllab-quvvatlanmaydi', '')}</div>`;
+      : mob ? rowH('Barmoq izi', 'Bu qurilma yoki brauzerda barmoq izi qoʻllab-quvvatlanmaydi', '') : ''}</div>`;
 }
 async function fwQuickAction(act, o) {
   try {
@@ -2872,6 +2883,7 @@ async function fwQuickSetupOffer(info) {
   try {
     const cur = fwQuickGet(); if (!_fwQkForce && cur && cur.uid && info && cur.uid === info.uid) return;
     if (!(window.crypto && crypto.subtle)) return;
+    await fwBioReady();
     // v25.6.10 (egasi talabi «haqiqiy ilova kabi»): avval BARMOQ IZI taklif qilinadi — PIN shart emas
     if (fwBioAvail() && !_fwQkForce) {
       const want = await fwBioOffer(info);
@@ -2898,6 +2910,7 @@ async function fwQuickUnlock(sessionUid) {
   const r = fwQuickGet(); if (!r) return null;
   if (sessionUid && r.uid && sessionUid !== r.uid) { fwQuickClear(); return null; }
   let info = null;
+  await fwBioReady();   // v25.6.10: telefon brauzerida barmoq izi borligi asinxron aniqlanadi — javobni kutamiz
   // v25: barmoq izi tugmasi — ilovada (APK) barmoq izi bo'lsa DOIM (PIN eski ilovada o'rnatilgan bo'lsa ham); avtomatik — yoqilgan bo'lsa
   const bioOn = fwBioAvail();
   // v25.6.10: barmoq izi yoqilgan bo'lsa — ilova ochilishi bilan AVVAL barmoq izi (PIN oynasisiz); o'tmasa — PIN, PIN yo'q bo'lsa — login va parol

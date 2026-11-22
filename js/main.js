@@ -13012,7 +13012,7 @@ function pgSozlamalar() {
     ])}
 
     ${group('Xavfsizlik · shu qurilma', [
-      row({ic:'lock', c:'purple', t:'Tez kirish: PIN va barmoq izi', sub:'Login va parol oʻrniga', val: (()=>{ const q = fwQuickGet(); return !q ? 'Oʻchiq' : (q.bio && fwBioAvail()) ? 'PIN + barmoq izi' : 'PIN'; })(), on:"stQuickSheet()"}),
+      row({ic:'lock', c:'purple', t: fwBioMobile() ? 'Tez kirish: PIN va barmoq izi' : 'Tez kirish: PIN kod', sub:'Login va parol oʻrniga', val: (()=>{ const q = fwQuickGet(); return !q ? 'Oʻchiq' : (q.bio && fwBioAvail()) ? 'PIN + barmoq izi' : 'PIN'; })(), on:"stQuickSheet()"}),
     ])}
 
     ${group('Telegram · soʻrov boti', [

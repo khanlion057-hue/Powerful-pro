@@ -24,6 +24,7 @@ const LIMITS = {
   'shop-public': { scope: 'shop', n: 600, s: 300 },   // ommaviy vitrina — katalog keshlanadi; buyurtmaga alohida soatlik chegara
 };
 const SLOW_MS = 8000;
+const _blocked = new Map();   // ip -> qachongacha (shu funksiya nusxasida)
 
 function errText(res) {
   try { const b = JSON.parse(res.body || '{}'); return String(b.error || b.message || '').slice(0, 300); } catch (_) { return ''; }
@@ -39,7 +40,19 @@ function wrap(name, handler) {
     const scheduled = isScheduledEvent(event);
 
     // 1) So'rovlar cheklovi
-    if (!scheduled && event && event.httpMethod !== 'OPTIONS') {
+    // v25.6.10 (tezlik): umumiy chegara («all», 5 daqiqada 1200) — bazaga hisob asosiy ish bilan PARALLEL ketadi (+0,3 s yo'q);
+    // oshgani aniqlansa, shu IP shu nusxada oyna oxirigacha darhol 429 oladi. Sezgir chegaralar (login, whoami, parol,
+    // health, vitrina, xato jurnali) — avvalgidek ish BOSHLANISHIDAN OLDIN tekshiriladi.
+    let lateRate = null, lateIp = null;
+    if (!scheduled && event && event.httpMethod !== 'OPTIONS' && lim.scope === 'all') {
+      const ip = ops.clientIp(event);
+      if (ip) {
+        const until = _blocked.get(ip) || 0;
+        if (until > Date.now()) { const res = json({ error: "⏳ Juda ko'p so'rov — biroz kutib, qayta urining", code: 'RATE_LIMIT' }, 429); res.headers['Retry-After'] = String(Math.ceil((until - Date.now()) / 1000)); return res; }
+        lateIp = ip; lateRate = Promise.resolve().then(() => ops.rateHit(A(), `${lim.scope}:${ip}`, lim.n, lim.s)).catch(() => null);
+      }
+    }
+    if (!scheduled && event && event.httpMethod !== 'OPTIONS' && lim.scope !== 'all') {
       const ip = ops.clientIp(event);
       if (ip) {
         try {
@@ -60,6 +73,13 @@ function wrap(name, handler) {
     let res, thrown = null;
     try { res = await handler(event, context); } catch (e) { thrown = e; }
     const ms = Date.now() - t0;
+    if (lateRate) {
+      try { const r = await lateRate;
+        if (r && !r.ok) { _blocked.set(lateIp, Date.now() + lim.s * 1000); if (_blocked.size > 5000) _blocked.clear();
+          if (r.first) await ops.report(A(), { kind: 'rate', fn: name, key: `rate:${lim.scope}`, windowSec: 3600,
+            title: "Juda ko'p so'rov — vaqtincha cheklandi", detail: `IP ${lateIp}: ${lim.s / 60} daqiqada ${lim.n} tadan ortiq (${lim.scope})` }); }
+      } catch (_) { /* fail-open */ }
+    }
     try {
       if (thrown) {
         await ops.report(A(), { kind: 'error', fn: name, key: `err:${name}:throw`, title: 'Server xatosi (kutilmagan)',

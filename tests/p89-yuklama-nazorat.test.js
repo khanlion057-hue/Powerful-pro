@@ -86,6 +86,19 @@ async function testMonitor() {
     assert.equal((await cron(ev('9.9.9.9', { body: JSON.stringify({ next_run: '2026-01-01T00:00:00Z' }) }))).body, 'cron', 'jadval chaqiruvi cheklanmaydi');
   }));
 
+  // v25.6.10: umumiy chegara («all») — bazaga hisob ish bilan PARALLEL; oshgani aniqlangach shu IP darhol 429 (ish bajarilmaydi)
+  const fa = fakeAdmin();
+  await withOps(fa, () => withFetch(async () => {
+    let runs = 0; const h = wrap('x-general', async () => { runs++; return { statusCode: 200, headers: {}, body: 'ok' }; });
+    const codes = []; for (let i = 0; i < LIMITS.default.n + 4; i++) codes.push((await h(ev('7.7.7.7'))).statusCode);
+    assert.equal(codes.filter((c) => c === 200).length, LIMITS.default.n + 1, 'chegara + oshgani aniqlangan bitta so\'rov');
+    assert.equal(codes.filter((c) => c === 429).length, 3);
+    assert.equal(runs, LIMITS.default.n + 1, '429 da ish bajarilmaydi');
+    const r = await h(ev('7.7.7.7')); assert.equal(r.statusCode, 429); assert.ok(+r.headers['Retry-After'] > 0);
+    assert.equal((await h(ev('6.6.6.6'))).statusCode, 200, 'boshqa IP — mustaqil');
+    assert.equal(fa.st.events.filter((e) => e.startsWith('rate:')).length, 1, 'jurnalga bir marta');
+  }));
+
   // 500 → jurnal + Telegram bir marta; takror — Telegram yo'q; kutilmagan xato → toza 500 JSON
   const f2 = fakeAdmin();
   await withOps(f2, () => withFetch(async (sent) => {

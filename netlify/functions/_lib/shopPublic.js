@@ -53,12 +53,18 @@ function stockMap(batches) {
 }
 
 // Mahsulot vitrina narxi (USD; so'mli do'konda 1 000 so'mga yaxlit bo'ladigan qilib) va eski narx (chegirma bo'lsa)
-function shopPriceUsd(p, ctx) {
+// v25.6.10 (egasi): KO'P OLGANDA NARX — mahsulotda bulkMin (necha donadan) va bulkPriceUsd; faqat dona narxidan arzon bo'lsa amal qiladi.
+// qty berilsa va qty >= bulkMin bo'lsa — dona narxi o'rniga shu narx (chegirmadan ham arzon bo'lsa).
+function bulkOf(p) { const m = Math.round(num(p && p.bulkMin)), u = num(p && p.bulkPriceUsd); return m >= 2 && m <= 9999 && u > 0 ? { min: m, usd: u } : null; }
+function shopPriceUsd(p, ctx, qty) {
   const regular = basePrice(p, unitCost(p, ctx.costMap), 'retail', ctx.own);
   const d = (ctx.discounts || []).find((x) => x && String(x.pid) === String(p.id) && num(x.priceUsd) > 0);
   const usd = d ? num(d.priceUsd) : regular;
   const toShop = (u) => (ctx.cur === 'USD' || !(u > 0) || !(ctx.rate > 0) ? r2(u) : FWRound.roundPrice(u * ctx.rate, 1000) / ctx.rate);
-  return { usd: toShop(usd), oldUsd: d && regular > usd ? toShop(regular) : null };
+  const one = toShop(usd), bk = bulkOf(p), bUsd = bk ? toShop(bk.usd) : 0;
+  const bulk = bk && bUsd > 0 && bUsd < one ? { min: bk.min, usd: bUsd } : null;
+  const unit = bulk && num(qty) >= bulk.min ? bulk.usd : one;
+  return { usd: unit, oneUsd: one, bulk, oldUsd: d && regular > usd ? toShop(regular) : null };
 }
 const shopMoney = (usd, ctx) => (ctx.cur === 'USD' ? r2(usd) : Math.round(num(usd) * ctx.rate));
 
@@ -91,6 +97,7 @@ function publicProduct(p, ctx) {
     price: shopMoney(pr.usd, ctx), old: pr.oldUsd ? shopMoney(pr.oldUsd, ctx) : null,
     stock: Math.min(99, Math.floor(q)), img: publicImages(p), specs, desc: clip(p.desc || p.note, 400),
     warranty: warrantyOf(p),   // v25.6.10: 3 / 6 / 12 oy (to'liq texnik kafolat) yoki null
+    bulk: pr.bulk ? { min: pr.bulk.min, price: shopMoney(pr.bulk.usd, ctx) } : null,   // v25.6.10: ko'p olganda dona narxi
   };
 }
 
@@ -175,7 +182,8 @@ function buildOrder(data, found, branch, body, now = new Date()) {
     const p = byId.get(pid), pub = p && publicProduct(p, ctx);
     if (!pub) return { ok: false, error: 'Mahsulot sotuvda yoʻq (tugagan boʻlishi mumkin)', pid };
     if (qty > (ctx.stock.get(pid) || 0)) return { ok: false, error: `«${pub.name}» omborda ${pub.stock} ta qoldi`, pid };
-    items.push({ pid: p.id, sku: clip(p.sku, 40), name: clip(p.name, 120), qty, priceUsd: shopPriceUsd(p, ctx).usd, ...(warrantyOf(p) ? { warrantyM: warrantyOf(p) } : {}) });
+    const pq = shopPriceUsd(p, ctx, qty);
+    items.push({ pid: p.id, sku: clip(p.sku, 40), name: clip(p.name, 120), qty, priceUsd: pq.usd, ...(pq.bulk && qty >= pq.bulk.min ? { bulk: true } : {}), ...(warrantyOf(p) ? { warrantyM: warrantyOf(p) } : {}) });
   }
   const subtotalUsd = r2(items.reduce((a, i) => a + i.qty * i.priceUsd, 0));
   let deliveryUsd = 0;

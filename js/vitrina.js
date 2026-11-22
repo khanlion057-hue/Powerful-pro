@@ -217,7 +217,7 @@
       + '<button class="vt-fav' + (fav ? ' on' : '') + '" data-fav="' + esc(p.id) + '" aria-label="Sevimlilarga" aria-pressed="' + fav + '"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 6C19 16.5 12 21 12 21z"/></svg></button>'
       + '<div class="vt-pb">' + (p.brand ? '<span class="vt-br">' + esc(p.brand) + '</span>' : '') + '<button class="vt-nm" data-open="' + esc(p.id) + '">' + esc(p.name) + '</button>'
       + war(p)
-      + '<div class="vt-pr"><b>' + money(p.price) + '</b>' + (p.old ? '<s>' + money(p.old) + '</s>' : '') + '</div>'
+      + '<div class="vt-pr"><b>' + money(p.price) + '</b>' + (p.old ? '<s>' + money(p.old) + '</s>' : '') + '</div>' + bulkLine(p)
       + (inCart ? '<div class="vt-stp"><button data-dec="' + esc(p.id) + '" aria-label="Kamaytirish">−</button><span>' + inCart + ' ta</span><button data-inc="' + esc(p.id) + '" aria-label="Koʻpaytirish">+</button></div>'
         : '<button class="vt-add" data-inc="' + esc(p.id) + '">Savatga</button>') + '</div></article>';
   }
@@ -231,7 +231,10 @@
 
   // ── savat ──
   function cartCount() { var n = 0; Object.keys(CART).forEach(function (k) { n += CART[k]; }); return n; }
-  function cartSum() { var s = 0; Object.keys(CART).forEach(function (k) { var p = BYID[k]; if (p) s += p.price * CART[k]; }); return s; }
+  // v25.6.10: ko'p olganda narx — miqdor chegaradan oshsa har dona arzonroq (server ham xuddi shunday hisoblaydi)
+  function unit(p, q) { return p.bulk && q >= p.bulk.min ? p.bulk.price : p.price; }
+  function bulkLine(p) { return p.bulk ? '<span class="vt-bulk">' + p.bulk.min + ' donadan: <b>' + money(p.bulk.price) + '</b></span>' : ''; }
+  function cartSum() { var s = 0; Object.keys(CART).forEach(function (k) { var p = BYID[k]; if (p) s += unit(p, CART[k]) * CART[k]; }); return s; }
   function setQty(id, q, src) {
     var p = BYID[id]; if (!p) return;
     q = Math.max(0, Math.min(p.stock, q));
@@ -301,6 +304,7 @@
       + (imgs.length > 1 ? '<div class="vt-thumbs">' + imgs.map(function (u, i) { return '<button data-img="' + i + '" class="' + (i ? '' : 'on') + '" aria-label="Rasm ' + (i + 1) + '"><img src="' + esc(u) + '" alt=""></button>'; }).join('') + '</div>' : '') + '</div>'
       + '<h2>' + esc(p.name) + '</h2><p class="vt-sub">' + esc([p.brand, p.cat, p.sku].filter(Boolean).join(' · ')) + '</p>'
       + '<div class="vt-pr"><b style="font-size:22px">' + money(p.price) + '</b>' + (p.old ? '<s>' + money(p.old) + '</s>' : '') + '</div>'
+      + (p.bulk ? '<div class="vt-tiers"><div><span>1 dona</span><b>' + money(p.price) + '</b></div><div class="on"><span>' + p.bulk.min + ' donadan</span><b>' + money(p.bulk.price) + '</b><em>−' + Math.round((1 - p.bulk.price / p.price) * 100) + '%</em></div></div>' : '')
       + '<div class="vt-meta">' + meta.map(function (m) { return '<span>' + esc(m) + '</span>'; }).join('') + '<span style="color:' + (p.stock <= 3 ? '#8a5a00' : '#13805b') + '">' + (p.stock <= 3 ? 'Kam qoldi: ' + p.stock + ' ta' : 'Omborda bor') + '</span></div>'
       + (p.warranty ? '<div class="vt-warbox"><div class="vt-warh"><span class="vt-wb">' + SHIELD + 'Rasmiy kafolat</span>' + war(p, true) + '</div><p>' + esc(WAR_TEXT) + '</p></div>' : '')
       + (p.desc ? '<p style="color:#555;font-size:14px">' + esc(p.desc) + '</p>' : '')
@@ -323,7 +327,8 @@
     var free = sh.delivery && sh.freeMin > 0 ? (sum >= sh.freeMin ? '<div class="vt-free">🎉 Yetkazib berish <b>bepul</b><i style="--w:100%"></i></div>'
       : '<div class="vt-free">Yana <b>' + money(sh.freeMin - sum) + '</b> lik mahsulot qoʻshsangiz — yetkazish bepul<i style="--w:' + Math.round(sum / sh.freeMin * 100) + '%"></i></div>') : '';
     sheet('<h2>Savat</h2>' + ids.map(function (id) { var p = BYID[id];
-      return '<div class="vt-ci"><div class="t">' + pic(p) + '</div><div class="i">' + esc(p.name) + '<small>' + money(p.price) + ' × ' + CART[id] + ' = <b>' + money(p.price * CART[id]) + '</b></small>' + war(p) + '</div>'
+      return '<div class="vt-ci"><div class="t">' + pic(p) + '</div><div class="i">' + esc(p.name) + '<small>' + money(unit(p, CART[id])) + ' × ' + CART[id] + ' = <b>' + money(unit(p, CART[id]) * CART[id]) + '</b></small>'
+        + (p.bulk ? (CART[id] >= p.bulk.min ? '<span class="vt-bulk on">Koʻp olganda narx qoʻllandi</span>' : '<span class="vt-bulk">Yana ' + (p.bulk.min - CART[id]) + ' ta olsangiz — donasi ' + money(p.bulk.price) + '</span>') : '') + war(p) + '</div>'
         + '<div class="vt-qty"><button data-cdec="' + esc(id) + '" aria-label="Kamaytirish">−</button><span>' + CART[id] + '</span><button data-cinc="' + esc(id) + '" aria-label="Koʻpaytirish">+</button></div></div>'; }).join('')
       + free
       + '<div class="vt-seg2"><button data-dlv="pickup" class="' + (dlv === 'pickup' ? 'on' : '') + '">🏬 Olib ketaman</button><button data-dlv="courier" class="' + (dlv === 'courier' ? 'on' : '') + '"' + (sh.delivery ? '' : ' disabled title="Bu doʻkonda yetkazib berish yoʻq"') + '>🚚 Yetkazib bering</button></div>'

@@ -4599,6 +4599,12 @@ function pmForm(p, prefillName) {
           ${meField('Opt / diller ustama, %', `<input class="form-control" id="pm-opt-pct" type="number" step="0.1" value="${o}" oninput="optSync('pct',${cost})">`)}
           ${meField('Opt / diller narx, $', `<input class="form-control" id="pm-opt-price" type="number" step="0.01" value="${cost > 0 ? optPrice({ optMarkupPct: o }, cost).toFixed(2) : 0}" oninput="optSync('price',${cost})" ${cost <= 0 ? 'disabled' : ''}>`)}
         </div>
+        <div class="pmf-h" style="margin-top:6px">Koʻp olganda narx <span class="me-hint" style="margin:0;font-weight:500">— onlayn doʻkonda</span></div>
+        <div class="me-2">
+          ${meField('Necha donadan', `<input class="form-control" id="pm-bulk-min" type="number" min="2" step="1" placeholder="masalan 5" value="${+p.bulkMin >= 2 ? +p.bulkMin : ''}">`)}
+          ${meField('Dona narxi, $', `<input class="form-control" id="pm-bulk-price" type="number" min="0" step="0.01" placeholder="chakanadan arzon" value="${+p.bulkPriceUsd > 0 ? (+p.bulkPriceUsd).toFixed(2) : ''}">`)}
+        </div>
+        <div class="me-hint" style="margin-top:-4px">Xaridor shu sondan koʻp olsa — har donasi shu narxda. Boʻsh — faqat oddiy dona narxi.</div>
         ${cost <= 0 ? `<div class="me-hint" style="margin-top:-4px">Tannarx hali yoʻq — foiz saqlanadi, narx kirim qilingach hisoblanadi.</div>` : ''}
         <button type="button" class="pmf-in" onclick="closeModal();go('kirim')">${ICONF.inbox}<span>Kirimni ochish</span></button>
       </div>
@@ -4713,6 +4719,10 @@ async function pmfSave(btn) {
   if (bc) { bc = pmfBcOk(bc, true); if (!bc) return; }
   const minS = parseInt(g('ep-min')?.value || 0), maxS = parseInt(g('ep-max')?.value || 0);
   if (!(minS >= 0) || !(maxS >= 0)) { toast('Min/max qoldiq notoʻgʻri', 'error'); return; }
+  const bMin = parseInt(g('pm-bulk-min')?.value || 0) || 0, bPr = parseAmt(g('pm-bulk-price')?.value || 0) || 0;
+  if ((bMin || bPr) && !(bMin >= 2 && bPr > 0)) { toast('Koʻp olganda narx: necha donadan (2 dan koʻp) va narxni ikkalasini yozing', 'error'); return; }
+  const retailNow = parseAmt(g('pm-markup-price')?.value || 0) || 0;
+  if (bPr > 0 && retailNow > 0 && bPr >= retailNow) { toast('Koʻp olganda narx chakana narxdan arzon boʻlishi kerak', 'error'); return; }
   const isNew = !PMF.pid;
   const p = isNew ? { id: uid(), image: null } : S.products.find(x => x.id === PMF.pid); if (!p) return;
   if (PG && PG.items.some(it => it.isNew) && btn) { btn.disabled = true; btn.textContent = '⏳ Rasmlar yuklanmoqda...'; }
@@ -4725,7 +4735,8 @@ async function pmfSave(btn) {
     directSale: !!g('ep-direct-sale')?.checked,
     dsSuppId: (g('ep-ds-supp')?.value ? (/^\d{1,16}$/.test(g('ep-ds-supp').value) ? Number(g('ep-ds-supp').value) : g('ep-ds-supp').value) : null),
     dsCostUsd: Math.max(0, parseAmt(g('ep-ds-cost')?.value || 0)) || null, desc: String(g('ep-desc')?.value || '').slice(0, 2000), barcode: bc || '', barcodes: PMF.bcs.slice(0, 20),
-    warrantyM: (m => FW_WARRANTY.includes(m) ? m : 0)(+(document.querySelector('#pmf-war button.on')?.dataset.m || 0)), updatedAt: Date.now() });
+    warrantyM: (m => FW_WARRANTY.includes(m) ? m : 0)(+(document.querySelector('#pmf-war button.on')?.dataset.m || 0)),
+    bulkMin: bMin >= 2 && bPr > 0 ? bMin : null, bulkPriceUsd: bMin >= 2 && bPr > 0 ? Math.round(bPr * 100) / 100 : null, updatedAt: Date.now() });
   if (isNew) { S.products.push(p); auditLog(`Yangi mahsulot qoʻshildi: ${name} (${sku})${p.directSale ? ' — taʼminotchidan sotiladi' : ''}`); }
   else { auditLog(`Mahsulot oʻzgartirildi: ${name} (${sku})`); if (wasDirect !== p.directSale) auditLog(`Mahsulot "${name}" — Direct Sale belgisi ${p.directSale ? 'YOQILDI' : 'OʻCHIRILDI'}`); }
   PMF = null; closeModal(); if (S.page === 'mahsulotlar') pgMahsulotlar();

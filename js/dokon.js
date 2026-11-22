@@ -130,6 +130,13 @@ function shopPrice(p) {
   const usd = d && +d.priceUsd > 0 ? +d.priceUsd : shopRegularPrice(p);
   return shopCfg().currency === 'USD' || !(usd > 0) ? usd : fwRound1000(CUR.toUzs(usd)) / CUR.usdUzs;
 }
+// v25.6.10: ko'p olganda narx (serverdagi bilan bir xil): bulkMin dan ko'p — har dona shu narxda (dona narxidan arzon bo'lsa)
+function shopBulk(p) {
+  const m = Math.round(+p.bulkMin || 0), u = +p.bulkPriceUsd || 0; if (!(m >= 2 && u > 0)) return null;
+  const usd = shopCfg().currency === 'USD' ? Math.round(u * 100) / 100 : fwRound1000(CUR.toUzs(u)) / CUR.usdUzs;
+  return usd < shopPrice(p) ? { min: m, usd } : null;
+}
+function shopUnit(p, qty) { const b = shopBulk(p); return b && qty >= b.min ? b.usd : shopPrice(p); }
 function shopOrderTotals(items, delivery) {
   const sub = Math.round(items.reduce((s, it) => s + (+it.qty || 0) * (+it.priceUsd || 0), 0) * 100) / 100;
   const c = shopCfg();
@@ -1066,6 +1073,7 @@ function sfNoImg(p, big) { const ci = p.cat && shopCatImg(p.cat); if (ci) return
 function sfTone(s) { return '#64748b'; }
 // v25.6.10: kafolat belgisi (3 / 6 / 12 oy) — kartochka, mahsulot sahifasi, savat; hamma joyda bir xil
 const SF_SHIELD = _ci('<path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="m8.5 12 2.5 2.5 4.5-5"/>');
+function sfBulkHint(p, qty) { const b = shopBulk(p); return b && qty < b.min ? `<small class="sf-bulk">Yana ${b.min - qty} ta olsangiz — donasi ${esc(shopMoney(b.usd))}</small>` : ''; }
 function sfWar(p, big) { const m = fwWarranty(p); return m ? `<span class="sf-war${big ? ' big' : ''}">${SF_SHIELD}Kafolat: ${m} oy</span>` : ''; }
 function sfTel(ph) { const d = fwPhoneDigits(ph) || shopPhoneDigits(ph); return 'tel:+' + d; }
 // ── v25.6: RANGLAR (variantlar) — docs/SPEC-RANGLAR.md ──
@@ -1154,7 +1162,7 @@ const SF_PLAY_IC = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="tr
 function sfRender() {
   const ov = document.getElementById('sf-ov'); if (!ov || !SF) return;
   const c = shopCfg(), sh = shopData();
-  const nCart = Object.values(SF.cart).reduce((s, n) => s + n, 0), cartSum = sfCartList().reduce((s, x) => s + x.qty * shopPrice(x.p), 0);
+  const nCart = Object.values(SF.cart).reduce((s, n) => s + n, 0), cartSum = sfCartList().reduce((s, x) => s + x.qty * shopUnit(x.p, x.qty), 0);
   const back = !['shop', 'cats', 'fav'].includes(SF.view);
   const head = `<header class="sf-head">
       <button class="sf-ib ${back ? 'back' : ''}" onclick="${back ? "sfGo('shop')" : 'sfClose()'}" aria-label="${back ? 'Orqaga' : 'Yopish'}">${back ? ICONF.chevron : ICONF.close}</button>
@@ -1231,6 +1239,7 @@ function sfProductHtml() {
     <div class="sf-pd-info">
       ${p.brand || p.cat ? `<small class="sf-pd-cat">${esc([p.brand, p.cat].filter(Boolean).join(' · '))}</small>` : ''}
       <h2>${esc(p.name)}</h2>
+      ${shopBulk(p) ? `<div class="sf-bulkbox"><div><span>1 dona</span><b>${esc(shopMoney(price))}</b></div><div class="on"><span>${shopBulk(p).min} donadan</span><b>${esc(shopMoney(shopBulk(p).usd))}</b></div></div>` : ''}
       <div class="sf-pd-price"><b>${esc(shopMoney(price))}</b>${d && reg > price ? `<s>${esc(shopMoney(reg))}</s><em>Tejaysiz ${esc(shopMoney(reg - price))}</em>` : ''}</div>
       ${vs.length > 1 ? `<div class="sf-pd-swl">Rang: <b>${esc(col ? col.nom : '')}</b></div><div class="sf-pd-sw" role="radiogroup" aria-label="Rang" onkeydown="sfSwKey(event)">${vs.map(v => { const c = sfColor(v) || { nom: v.sku || 'Rang', hex: '#cbd5e1' }, out = sfStock(v.id) <= 0, on = v.id === p.id;
         return `<button type="button" role="radio" class="${on ? 'on' : ''}" data-pid="${esc(v.id)}" aria-checked="${on}" tabindex="${on ? 0 : -1}" ${out ? 'disabled' : ''} onclick="sfPdPick(${esc(JSON.stringify(v.id))})"><i style="--sw:${c.hex}"></i><span>${esc(c.nom)}</span>${out ? '<small>Tugagan</small>' : ''}</button>`; }).join('')}</div>` : ''}
@@ -1252,6 +1261,7 @@ function sfCard(p) {
     <button class="sf-fav ${isFav ? 'on' : ''}" onclick="sfFavToggle(${pidJs})" aria-label="Sevimlilarga">${ICONF.starO}</button>
     ${sw}
     <div class="sf-price">${esc(shopMoney(price))}${d && reg > price ? `<s>${esc(shopMoney(reg))}</s>` : ''}</div>
+    ${shopBulk(p) ? `<small class="sf-bulk">${shopBulk(p).min} donadan: <b>${esc(shopMoney(shopBulk(p).usd))}</b></small>` : ''}
     <b class="sf-name" onclick="sfOpen(${pidJs})">${esc(p.name)}</b>
     ${sfWar(p)}
     ${p.desc ? `<small class="sf-desc">${esc(p.desc)}</small>` : ''}
@@ -1279,12 +1289,12 @@ function sfAdd(pid, d) {
 function sfCartHtml() {
   const c = shopCfg(), list = sfCartList();
   if (!list.length) return `<div class="sf-done"><span>${ICONF.cart}</span><b>Savat boʻsh</b><button class="sf-btn" onclick="SF.view='shop';sfRender()">Mahsulot tanlash</button></div>`;
-  const items = list.map(x => ({ pid: x.p.id, qty: x.qty, priceUsd: shopPrice(x.p) }));
+  const items = list.map(x => ({ pid: x.p.id, qty: x.qty, priceUsd: shopUnit(x.p, x.qty) }));
   const t = shopOrderTotals(items, SF.del);
   return `<h2 class="sf-h2">Savat</h2>
     <div class="sf-list">${list.map(({ p, qty }) => { const pidJs = JSON.stringify(p.id).replace(/"/g, '&quot;'); return `<div class="sf-li">
       <div class="sf-img sm">${p.image ? `<img src="${esc(p.image)}" alt="">` : sfNoImg(p)}</div>
-      <span><b>${esc(p.name)}</b><small>${sfColor(p) ? esc(sfColor(p).nom) + ' · ' : ''}${esc(shopMoney(shopPrice(p)))}</small>${sfWar(p)}</span>
+      <span><b>${esc(p.name)}</b><small>${sfColor(p) ? esc(sfColor(p).nom) + ' · ' : ''}${esc(shopMoney(shopUnit(p, qty)))}${shopUnit(p, qty) < shopPrice(p) ? ' · koʻp olganda' : ''}</small>${sfBulkHint(p, qty)}${sfWar(p)}</span>
       <div class="sf-qty"><button onclick="sfAdd(${pidJs},-1)" aria-label="Kamaytirish">${ICONF.minus}</button><b>${qty}</b><button onclick="sfAdd(${pidJs},1)" aria-label="Koʻpaytirish">${ICONF.add}</button></div></div>`; }).join('')}</div>
     <h3 class="sf-h">Qanday olasiz?</h3>
     <div class="sf-seg"><button class="${SF.del === 'pickup' ? 'on' : ''}" onclick="SF.del='pickup';sfRender()">${ICONF.store}<span>Doʻkondan olib ketaman</span></button>
@@ -1310,7 +1320,7 @@ function sfOrder() {
   const p2d = shopPhoneDigits(SF.phone2 || '').replace(/^998/, ''), phone2 = p2d ? fwPhoneFmt(p2d) : '';
   if (p2d && p2d.length !== 9) { toast('Qoʻshimcha raqamni toʻliq yozing yoki boʻsh qoldiring', 'error'); return; }
   if (SF.del === 'courier' && !String(SF.addr || '').trim()) { toast('Manzilni yozing', 'error'); return; }
-  const items = sfCartList().map(({ p, qty }) => ({ pid: p.id, sku: p.sku, name: p.name, qty, priceUsd: shopPrice(p), color: sfColor(p) ? sfColor(p).nom : '' }));
+  const items = sfCartList().map(({ p, qty }) => ({ pid: p.id, sku: p.sku, name: p.name, qty, priceUsd: shopUnit(p, qty), color: sfColor(p) ? sfColor(p).nom : '' }));
   if (!items.length) return;
   SF.order = shopCreateOrder({ source: 'site', delivery: SF.del, cust: { name, phone, ...(phone2 ? { phone2 } : {}), address: String(SF.addr || '').trim() }, items, note: SF.note, test: true, branch: SF.br || S.branch });
   SF.cart = {}; SF.view = 'done'; sfRender();

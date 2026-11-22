@@ -103,11 +103,14 @@ async function testReminder() {
   const list = ev.dueList(data, date);
   assert.deepEqual(list.map(x => x.name), ['Vali', 'Ali']);
   const t = ev.remindText({ branchNames: {} }, list, date);
-  // v25.6.10: jadval — Mijoz | Qarz, so'm | Kun (har mijoz bitta qator)
-  assert.match(t, /Bugun toʻlash kerak \(1\)[\s\S]*Mijoz\s+Qarz, so'm\n-{30}\nAli\s+1 200 000\n/);
-  assert.match(t, /Muddati oʻtgan \(1\)[\s\S]*Mijoz\s+Qarz, so'm\s+Kun\n-{30}\nVali\s+500 000\s+6<\/pre>/);
-  assert.match(t, /JAMI \(2\)\s+1 700 000 so'm/);
-  for (const line of t.match(/<pre>([\s\S]*?)<\/pre>/g).join('\n').replace(/<\/?pre>/g, '').split('\n')) assert.ok(line.length <= 30, 'ustun kengligi 30: ' + line);
+  // v25.6.10: har ma'lumot o'z ustunida — Mijoz | Telefon | Qarz | Kun; JAMI shu jadvalda, Qarz ustuni ostida
+  assert.match(t, /Bugun toʻlash kerak \(1\)[\s\S]*Mijoz\s+Telefon\s+Qarz\n-{34}\nAli\s+998901\s+1 200 000\n-{34}\nJAMI \(1\)\s+1 200 000/);
+  assert.match(t, /Muddati oʻtgan \(1\)[\s\S]*Mijoz\s+Telefon\s+Qarz Kun\n-{34}\nVali\s+-\s+500 000\s+6\n/);
+  const lines = t.match(/<pre>([\s\S]*?)<\/pre>/g).join('\n').replace(/<\/?pre>/g, '').split('\n');
+  for (const line of lines) assert.ok(line.length <= 34, 'kenglik 34: ' + line);
+  // Qarz ustuni hamma qatorda bir joyda tugaydi (30-belgi): mijoz qatori ham, JAMI ham
+  for (const l of lines.filter((x) => /^(Ali|JAMI)/.test(x))) assert.equal(l.length, 30, 'Qarz ustuni tekis: ' + l);
+  assert.equal(lines.find((x) => /^Vali/.test(x)).indexOf('500 000') + 7, 30, 'muddati o\'tganda ham Qarz o\'sha ustunda');
   // v25.6.10: ilova bilan bir xil — eski to'langan nasiya, uzaytirilgan muddat, rad etilgan savdo soxta eslatma bermaydi
   const d2 = { settings: { usdUzs: 12500 }, branchStore: { baza: {
     customers: [{ id: 9, name: 'Bek', debt: 500000, dueOv: { 93: '2026-12-20' } }, { id: 8, name: 'Eski', debt: 200000, debtDue: '2026-11-01' }],

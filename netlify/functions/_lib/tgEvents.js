@@ -238,24 +238,27 @@ function dueList(data, date) {
 function remindText(st, list, date) {
   const today = list.filter((x) => x.due === date), late = list.filter((x) => x.due < date);
   const days = (d) => Math.round((Date.parse(date) - Date.parse(d)) / 864e5);
-  // v25.6.10: haqiqiy ustunlar (jadval): Mijoz | Qarz, so'm | Kun — har mijoz bitta qator, ostida telefon (va filial)
+  // v25.6.10: har ma'lumot O'Z USTUNIDA: Mijoz | Telefon | Qarz | Kun; JAMI — shu jadvalda, Qarz ustuni ostida
   const F = require('./tgFmt'), many = Object.keys(st.branchNames || {}).length > 1;
-  const NW = 13, DW = 11, KW = 5;   // 13 + 1 + 11 + 5 = 30 (F.W)
+  const NW = 9, TW = 9, QW = 11, KW = 4;   // 9 + 1 + 9 + 11 + 4 = 34
   const pad = (t, w, right) => { t = F.asc(t); t = t.length > w ? t.slice(0, w - 1) + '.' : t; return right ? ' '.repeat(w - t.length) + t : t + ' '.repeat(w - t.length); };
+  const tel = (p) => { const d = String(p || '').replace(/\D/g, ''); return d.length >= 9 ? d.slice(-9) : (d || '-'); };   // 901112233
+  const line = (a, b, c, d) => pad(a, NW) + ' ' + pad(b, TW) + pad(c, QW, true) + pad(d, KW, true);
+  const W = NW + 1 + TW + QW + KW;
   const table = (arr, lateMode) => {
-    const head = pad('Mijoz', NW) + ' ' + pad("Qarz, so'm", DW, true) + (lateMode ? pad('Kun', KW, true) : '');
-    const rows = arr.slice(0, 30).flatMap((x) => [
-      pad(x.name || 'Mijoz', NW) + ' ' + pad(F.sp(x.debt), DW, true) + (lateMode ? pad(String(days(x.due)), KW, true) : ''),
-      ...(x.phone ? ['  ' + F.cut(x.phone, F.W - 2)] : []),
-      ...(many ? ['  ' + F.cut(branchName(st, x.filial), F.W - 2)] : []),
-    ]);
-    return F.pre([head, F.LINE, ...rows]);
+    const fil = many ? [...new Set(arr.map((x) => x.filial))] : [];
+    const row = (x) => line(x.name || 'Mijoz', tel(x.phone), F.sp(x.debt), lateMode ? String(days(x.due)) : '');
+    // bir necha filial — har filial o'z sarlavhasi bilan (ustunlar buzilmaydi)
+    const rows = fil.length > 1 ? fil.flatMap((f) => ['[' + F.cut(branchName(st, f), W - 2) + ']', ...arr.filter((x) => x.filial === f).slice(0, 30).map(row)])
+      : arr.slice(0, 30).map(row);
+    const sum = arr.reduce((t, x) => t + x.debt, 0);
+    return F.pre([line('Mijoz', 'Telefon', 'Qarz', lateMode ? 'Kun' : ''), '-'.repeat(W), ...rows, '-'.repeat(W),
+      line(`JAMI (${arr.length})`, '', F.sp(sum), ''), ...(fil.length === 1 ? ['[' + F.cut(branchName(st, fil[0]), W - 2) + ']'] : [])].map((r) => r.replace(/\s+$/, '')));
   };
-  const out = [`⏰ <b>Nasiya eslatmasi</b> · ${fmtDate(date)}`];
+  const out = [`⏰ <b>Nasiya eslatmasi</b> · ${fmtDate(date)} · <i>qarz so'mda</i>`];
   if (today.length) out.push(`📅 <b>Bugun toʻlash kerak (${today.length})</b>`, table(today, false));
   if (late.length) out.push(`⚠️ <b>Muddati oʻtgan (${late.length})</b>`, table(late, true));
-  const tot = list.reduce((a, x) => a + x.debt, 0);
-  out.push(F.pre([F.row(`JAMI (${list.length})`, F.uzs(tot))]));
+  if (today.length && late.length) out.push(F.pre([line(`JAMI (${list.length})`, '', F.sp(list.reduce((a, x) => a + x.debt, 0)), '').replace(/\s+$/, '')]));
   return out.join('\n').slice(0, 3900);
 }
 

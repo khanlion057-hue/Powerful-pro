@@ -3965,3 +3965,5 @@ body .dl-wrap{ min-height:calc(100vh / var(--fw-z, 1)); }
   color:var(--text-secondary); background:var(--bg-card); border:1px solid var(--border); padding:4px 12px; border-radius:999px; box-shadow:0 4px 14px rgba(0,0,0,.18); }
 @keyframes fwBbMove{ 0%{ left:-35%; } 100%{ left:100%; } }
 @media (prefers-reduced-motion: reduce){ #fw-boot-busy .fw-bb-bar i{ animation:none; left:0; width:100%; opacity:.6; } }
+/* 16) v25.6.10: ta'minotchi mahsulotlar hisoboti — kompyuterda keng oyna (jadval ustunlari kesilmaydi) */
+@media (min-width:900px){ .bs-box:has(#spr-body){ max-width:min(1040px, 94vw); width:min(1040px, 94vw); } }

@@ -26,6 +26,6 @@ async function run() {
   assert.equal(s.d, '2026-10-07', 'savdo sanasi bazada — tanlangan eski sana (prod funksiyasi v37)');
   const s2 = { ...sale, localId: 'sb2', inv: 'I-bd2', saleDate: undefined };
   await q(`select sale_checkout_v37('f729', 'k-sb2', $1::jsonb, '[]'::jsonb, null, 'Admin', 'admin') r`, [JSON.stringify(s2)]);
-  assert.equal((await q(`select (sale_date = current_date) ok from sales where local_id='sb2'`))[0].ok, true, 'sanasiz — bugun');
+  assert.equal((await q(`select (sale_date = (now() at time zone 'Asia/Tashkent')::date) ok from sales where local_id='sb2'`))[0].ok, true, 'sanasiz — bugun');
 }
 module.exports = { name: 'P122 — Eski sana bazada (PGlite)', cases: [{ name: 'kirim va savdo tanlangan sana bilan yoziladi (v37, stock_debt_op)', run }] };

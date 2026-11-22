@@ -6799,7 +6799,7 @@ function kirimCalc() {
   const itemsCalc = items.map(it=>{
     const prodCostOrig = it.price * it.qty;
     const prodUsd = cur==='CNY' ? CUR.cnyToUsd(prodCostOrig) : cur==='UZS' ? CUR.toUsd(prodCostOrig) : prodCostOrig;
-    return { ...it, prodUsd, unitUsd: prodUsd/it.qty };
+    return { ...it, prodUsd, unitUsd: prodUsd/it.qty, prodOrig: prodCostOrig };
   });
 
   const goodsTotalUsd = itemsCalc.reduce((s,i)=>s+i.prodUsd,0);
@@ -6993,7 +6993,8 @@ async function _kirimSaveCore(firmaPay) {
     const bno = String((S.batchCounter||0)+1).padStart(2,'0');
     const status = S.kirimStatus==='transit' ? 'transit' : 'active';
     const objs = rows.map(r=>({
-      id:uid(), pid:r.pid, bno, origin, cur, qty:r.qty, sold:0, costUsd:r.costUsd, _goodsUsd: r.qty > 0 ? Math.round((+r.prodUsd || 0) / r.qty * 10000) / 10000 : 0, bankFeeUsd: bankFee/rows.length, ...fwAccBatch(cur, r.costUsd),
+      id:uid(), pid:r.pid, bno, origin, cur, qty:r.qty, sold:0, costUsd:r.costUsd, _goodsUsd: r.qty > 0 ? Math.round((+r.prodUsd || 0) / r.qty * 10000) / 10000 : 0, bankFeeUsd: bankFee/rows.length, ...fwAccBatch(cur, r.costUsd, suppForBatch),
+      ...(cur === 'UZS' && r.qty > 0 && +r.prodOrig > 0 ? { goodsUzs: Math.round(+r.prodOrig / r.qty * 100) / 100 } : {}),
       suppId, consignment: isConsign,
       rates:{usdUzs:CUR.usdUzs, usdCny: cur==='CNY' ? (S.kirimLocalCny||CUR.usdCny) : CUR.usdCny},
       date:(S.kirimDate||td()), status, arrivedDate: status==='transit' ? null : (S.kirimDate||td()), performedBy: (CURRENT_USER?.name || 'Admin'),   // v25.6.9: eski sana
@@ -7014,7 +7015,7 @@ async function _kirimSaveCore(firmaPay) {
     objs.forEach(o=>S.batches.push(o));
     if (r.authority) fwApplyLedger(r.authority);
     // v25 (41): so'mda hisoblanadigan partiyalar — serverda belgilanadi (tannarx so'mda qotadi)
-    { const uz = objs.filter(o => o.accCur === 'UZS').map(o => o.id); if (uz.length) fwAccMark(uz); }
+    { const uz = objs.filter(o => o.accCur === 'UZS').map(o => ({ id: o.id, costUzs: o.costUzs, goodsUzs: o.goodsUzs })); if (uz.length) fwAccMark(uz); }
     S._kirimBoxPaid = null; S._kirimFkPaid = null; S._kirimCashRef = null;
     if (isConsign) toast(`📋 Konsignatsiya (${suppForBatch?.name||''}) — qarz faqat sotilganda yoziladi`);
     const wasTransit0 = S.kirimStatus==='transit';
@@ -7035,7 +7036,7 @@ async function _kirimSaveCore(firmaPay) {
       id:bid, pid:r.pid, bno,
       origin, cur, qty:r.qty, sold:0,
       costUsd:r.costUsd,
-      bankFeeUsd: bankFee/rows.length, ...fwAccBatch(cur, r.costUsd),
+      bankFeeUsd: bankFee/rows.length, ...fwAccBatch(cur, r.costUsd, suppForBatch),
       suppId, consignment: isConsign,
       rates:{usdUzs:CUR.usdUzs, usdCny: cur==='CNY' ? (S.kirimLocalCny||CUR.usdCny) : CUR.usdCny}, // shu kirim uchun HAQIQIY ishlatilgan CNY kurs saqlanadi (global emas)
       date:(S.kirimDate||td()), status: S.kirimStatus==='transit' ? 'transit' : 'active', arrivedDate: S.kirimStatus==='transit' ? null : (S.kirimDate||td()),
@@ -7708,11 +7709,95 @@ function tmRows(list) {
       ${debt?`<button class="fw-btn ok" onclick="openPaySupplierDebt(${JSON.stringify(s.id).replace(/"/g,'&quot;')})">${ICONF.money}<span>Toʻlash</span></button>`:''}
       ${debt&&hasPerm('taminotchilar.edit')?`<button class="fw-btn" onclick="openDebtDiscount('supp',${s.id})">${ICONF.percent}<span>Chegirma</span></button>`:''}
       ${typeof sadvRowBtns==='function'?sadvRowBtns(s):''}
+      <button class="fw-btn" onclick="openSuppProducts(${JSON.stringify(s.id).replace(/"/g,'&quot;')})">${ICONF.inventory}<span>Mahsulotlar</span></button>
       <button class="fw-btn" onclick="openTaminotchiTarixi(${JSON.stringify(s.id).replace(/"/g,'&quot;')})">${ICONF.history}<span>Tarix</span></button>
       <button class="fw-btn" onclick="editSupplier(${JSON.stringify(s.id).replace(/"/g,'&quot;')})">${ICONF.edit}<span>Tahrir</span></button>
     </div></article>`; }).join('')}</div>`;
 }
 
+// v25.6.10 (egasi: «aynan undan kelgan mahsulotlar — nima sotildi, nima qoldi»): TA'MINOTCHI BO'YICHA MAHSULOTLAR HISOBOTI.
+// Har mahsulot: keldi · sotildi · qoldi · narx (ta'minotchi bergan valyutada: so'mda qotgan bo'lsa — so'm, aks holda $) ·
+// sotilgan summa (konsignatsiyada — shu summa ta'minotchiga qarz) · qolgan summa. Excel va chop etish.
+const SPR = { f: 'all' };
+function suppProductRows(sid) {
+  const pm = new Map((S.products || []).map(p => [String(p.id), p]));
+  const g = new Map();
+  (S.batches || []).filter(b => b && String(b.suppId) === String(sid) && b.status !== 'deleted').forEach(b => {
+    const uzs = +b.goodsUzs > 0 || (b.accCur === 'UZS' && +b.costUzs > 0);
+    const price = uzs ? (+b.goodsUzs > 0 ? +b.goodsUzs : +b.costUzs) : (+b.goodsUsd > 0 ? +b.goodsUsd : +b.costUsd || 0);
+    const key = String(b.pid) + '|' + (uzs ? 'U' : 'D') + '|' + price;
+    const p = pm.get(String(b.pid)) || {};
+    const r = g.get(key) || { pid: b.pid, name: p.name || '—', sku: p.sku || '', unit: p.unit || 'dona', cur: uzs ? 'UZS' : 'USD', price, keldi: 0, sotildi: 0, cons: false, first: b.date || '' };
+    r.keldi += +b.qty || 0; r.sotildi += +b.sold || 0; r.cons = r.cons || !!b.consignment; if (b.date && b.date < r.first) r.first = b.date;
+    g.set(key, r);
+  });
+  return [...g.values()].map(r => ({ ...r, qoldi: Math.max(0, r.keldi - r.sotildi), sotSum: r.sotildi * r.price, qolSum: Math.max(0, r.keldi - r.sotildi) * r.price }))
+    .sort((a, b) => String(a.name).localeCompare(String(b.name), 'uz'));
+}
+function _sprNum(v) { v = Math.round((+v || 0) * 1000) / 1000; return Number.isInteger(v) ? fwNum(v) : String(v); }
+function _sprMoney(v, cur) { return cur === 'UZS' ? fwMoneyUzs(Math.round(v)) : CUR.fmtUsd(v); }
+function _sprTotals(rows) {
+  const t = { UZS: { sot: 0, qol: 0 }, USD: { sot: 0, qol: 0 }, keldi: 0, sotildi: 0, qoldi: 0 };
+  rows.forEach(r => { t[r.cur].sot += r.sotSum; t[r.cur].qol += r.qolSum; t.keldi += r.keldi; t.sotildi += r.sotildi; t.qoldi += r.qoldi; });
+  const both = (k) => [t.UZS[k] > 0.004 ? fwMoneyUzs(Math.round(t.UZS[k])) : '', t.USD[k] > 0.004 ? CUR.fmtUsd(t.USD[k]) : ''].filter(Boolean).join(' + ') || '—';
+  return { t, both };
+}
+function openSuppProducts(sid) {
+  const s = (S.suppliers || []).find(x => String(x.id) === String(sid)); if (!s) return;
+  SPR.sid = sid; SPR.f = 'all';
+  openSheet({ ic: 'inventory', c: 'amber', title: esc(s.name) + ' — mahsulotlar', sub: s.isConsignment ? 'Sotish uchun olingan tovar: qarz faqat sotilgan qism uchun' : 'Shu taʼminotchidan kelgan tovarlar',
+    body: '<div id="spr-body"></div>', foot: '' });
+  sprRender();
+}
+function sprRender() {
+  const box = document.getElementById('spr-body'); if (!box) return;
+  const s = (S.suppliers || []).find(x => String(x.id) === String(SPR.sid)) || {};
+  const all = suppProductRows(SPR.sid);
+  const rows = all.filter(r => SPR.f === 'left' ? r.qoldi > 0 : SPR.f === 'sold' ? r.sotildi > 0 : true);
+  const { t, both } = _sprTotals(all);
+  const n = _sprNum;
+  const chip = (k, l, c) => `<button class="pm-chip${SPR.f === k ? ' on' : ''}" style="--c:var(--${c})" onclick="SPR.f='${k}';sprRender()">${l}</button>`;
+  const cols = [{ h: 'Mahsulot', k: 'name' }, { h: 'Keldi', k: 'keldi', num: true }, { h: 'Sotildi', k: 'sotildi', num: true }, { h: 'Qoldi', k: 'qoldi', num: true },
+    { h: 'Narx', k: 'price', num: true }, { h: s.isConsignment ? 'Qarz (sotilgan)' : 'Sotilgan summa', k: 'sot', num: true }, { h: 'Qolgan summa', k: 'qol', num: true }];
+  const trows = rows.map(r => ({ sort: { name: r.name, keldi: r.keldi, sotildi: r.sotildi, qoldi: r.qoldi, price: r.cur === 'UZS' ? r.price / (CUR.usdUzs || 1) : r.price, sot: r.cur === 'UZS' ? r.sotSum / (CUR.usdUzs || 1) : r.sotSum, qol: r.cur === 'UZS' ? r.qolSum / (CUR.usdUzs || 1) : r.qolSum },
+    cells: [`<b class="dt-name">${esc(r.name)}</b><small class="dt-sub">${esc(r.sku)}${r.cons ? ' · konsignatsiya' : ''}</small>`, n(r.keldi), r.sotildi > 0 ? `<b>${n(r.sotildi)}</b>` : '<span class="dt-muted">0</span>',
+      r.qoldi > 0 ? n(r.qoldi) : '<span class="dt-muted">0</span>', _sprMoney(r.price, r.cur), r.sotSum > 0 ? `<b style="color:var(--amber)">${_sprMoney(r.sotSum, r.cur)}</b>` : '<span class="dt-muted">—</span>', _sprMoney(r.qolSum, r.cur)] }));
+  box.innerHTML = `
+    <div class="bs-card" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;text-align:center;margin-bottom:10px">
+      <div><b>${n(t.keldi)}</b><br><small class="dt-muted">Keldi</small></div><div><b style="color:var(--amber)">${n(t.sotildi)}</b><br><small class="dt-muted">Sotildi</small></div><div><b style="color:var(--emerald)">${n(t.qoldi)}</b><br><small class="dt-muted">Qoldi</small></div>
+    </div>
+    <div class="bs-card" style="margin-bottom:10px"><div class="dk-kv"><span>${s.isConsignment ? 'Sotilgani uchun qarz' : 'Sotilgan tovar summasi'}</span><b style="color:var(--amber)">${both('sot')}</b></div>
+      <div class="dk-kv"><span>Qolgan tovar summasi</span><b>${both('qol')}</b></div>
+      ${suppIsUzs(s) ? `<div class="dk-kv"><span>Hozirgi qarz (soʻmda)</span><b style="color:var(--red)">${fwMoneyUzs(+s.debtUzs || 0)}</b></div>` : `<div class="dk-kv"><span>Hozirgi qarz</span><b style="color:var(--red)">${CUR.fmtUsd(+s.debt || 0)}</b></div>`}</div>
+    <div class="pm-chips">${chip('all', 'Hammasi ' + all.length, 'gold')}${chip('left', 'Qolgani bor', 'emerald')}${chip('sold', 'Sotilgani', 'amber')}</div>
+    ${rows.length ? fwTable('spr', cols, trows, { re: 'sprRender()', empty: 'Mahsulot yoʻq' }) : fwEmpty('inventory', 'Mahsulot yoʻq', 'Bu taʼminotchidan kirim qilinmagan yoki filtrga mos mahsulot yoʻq.')}
+    <div class="fr-acts" style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <button class="fr-act" style="--c:var(--emerald);justify-content:center" onclick="sprExcel()">Excel</button>
+      <button class="fr-act" style="--c:var(--sky);justify-content:center" onclick="sprPrint()">Chop etish</button></div>`;
+}
+function _sprTable() {
+  const rows = suppProductRows(SPR.sid);
+  const head = ['Mahsulot', 'Kod', 'Keldi', 'Sotildi', 'Qoldi', 'Valyuta', 'Narx', 'Sotilgan summa', 'Qolgan summa'];
+  return { rows, head, data: rows.map(r => [r.name, r.sku, r.keldi, r.sotildi, r.qoldi, r.cur === 'UZS' ? "so'm" : '$', r.cur === 'UZS' ? Math.round(r.price) : r.price, r.cur === 'UZS' ? Math.round(r.sotSum) : Math.round(r.sotSum * 100) / 100, r.cur === 'UZS' ? Math.round(r.qolSum) : Math.round(r.qolSum * 100) / 100]) };
+}
+async function sprExcel() {
+  const s = (S.suppliers || []).find(x => String(x.id) === String(SPR.sid)) || {};
+  const { head, data } = _sprTable();
+  try { await xlsxDownload(`${String(s.name || 'taminotchi').replace(/[^\wЀ-ӿ-]+/g, '_')}_mahsulotlar_${td()}.xlsx`, 'Mahsulotlar', head, data); } catch (e) { toast('Excel yaratilmadi: ' + e.message, 'error'); }
+}
+function sprPrint() {
+  const s = (S.suppliers || []).find(x => String(x.id) === String(SPR.sid)) || {};
+  const { rows, head, data } = _sprTable(); const { both } = _sprTotals(rows);
+  const w = fwDocWin();
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${esc(s.name || '')}</title>
+  <style>body{font-family:Arial,sans-serif;font-size:12px;margin:24px}table{width:100%;border-collapse:collapse}th{background:#1a2236;color:#f5a623;padding:6px;text-align:left}
+  td{padding:5px 6px;border-bottom:1px solid #eee}td.n{text-align:right;white-space:nowrap}.tot td{font-weight:bold;background:#f6f6f6}</style></head><body>
+  <h2>${esc(s.name || '')} — mahsulotlar hisoboti</h2><p>${new Date().toLocaleString('uz-UZ')}${s.isConsignment ? ' · sotish uchun olingan tovar' : ''}</p>
+  <table><thead><tr>${head.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>
+  ${data.map(r => `<tr>${r.map((v, i) => `<td class="${i >= 2 && i !== 5 ? 'n' : ''}">${typeof v === 'number' ? (Number.isInteger(v) ? fwNum(v) : v.toFixed(2)) : esc(v)}</td>`).join('')}</tr>`).join('')}
+  <tr class="tot"><td colspan="7">JAMI</td><td class="n">${esc(both('sot'))}</td><td class="n">${esc(both('qol'))}</td></tr></tbody></table></body></html>`);
+  w.document.close(); w.print();
+}
 // Jadval qatoridagi «⋯» — qolgan amallar (chegirma, zaklad, tarix, aloqa)
 function tmRowMenu(sid) {
   const s = (S.suppliers || []).find(x => String(x.id) === String(sid)); if (!s) return;
@@ -7720,6 +7805,7 @@ function tmRowMenu(sid) {
   const a = (ic, col, l, on) => `<button class="fr-act" style="--c:var(--${col});justify-content:flex-start" onclick="closeSheet();${on}">${ICONF[ic] || ''}<span>${l}</span></button>`;
   const z = typeof sadvRowBtns === 'function' ? sadvRowBtns(s).replace(/class="fw-btn( ok)?"/g, 'class="fr-act" style="--c:var(--gold);justify-content:flex-start"').replace(/onclick="/g, 'onclick="closeSheet();') : '';
   openSheet({ ic:'truck', c:'amber', title: esc(s.name), sub: esc([s.country, s.contact].filter(Boolean).join(' · ')), body: `<div style="display:grid;gap:8px">${[
+    a('inventory', 'emerald', 'Mahsulotlar hisoboti', `openSuppProducts(${q})`),
     a('history', 'sky', 'Tarix', `openTaminotchiTarixi(${q})`),
     suppHasDebt(s) && hasPerm('taminotchilar.edit') ? a('percent', 'amber', 'Qarzga chegirma', `openDebtDiscount('supp',${q})`) : '', z,
   ].join('')}</div>${(s.tg||s.wa||s.wechat)?`<div class="sp-chs" style="margin-top:10px">${suppContactChips(s)}</div>`:''}${s.note?`<p class="bs-note" style="margin-top:10px">📝 ${esc(String(s.note).slice(0,400))}</p>`:''}`, foot: '' });
@@ -9316,7 +9402,9 @@ function fwAccMode(k) {
 // Kirim valyutasi → hisob (tannarx) valyutasi
 function fwAccCurFor(inputCur, mode) { mode = mode || fwAccMode(); return mode === 'uzs' ? 'UZS' : mode === 'mixed' && inputCur === 'UZS' ? 'UZS' : 'USD'; }
 // So'mda hisoblanadigan partiya: tannarx so'mda qotadi (shu kirim kursi bo'yicha)
-function fwAccBatch(cur, costUsd) { const a = fwAccCurFor(cur); return a === 'UZS' ? { accCur: 'UZS', costUzs: Math.round((+costUsd || 0) * CUR.usdUzs) } : { accCur: 'USD' }; }
+// v25.6.10 (56): ta'minotchi SO'MDA va kirim so'mda — partiya so'mda qotadi (Baza rejimi qanday bo'lishidan qat'i nazar)
+function fwAccCurForSupp(cur, supp) { return cur === 'UZS' && supp && suppIsUzs(supp) ? 'UZS' : fwAccCurFor(cur); }
+function fwAccBatch(cur, costUsd, supp) { const a = fwAccCurForSupp(cur, supp); return a === 'UZS' ? { accCur: 'UZS', costUzs: Math.round((+costUsd || 0) * CUR.usdUzs) } : { accCur: 'USD' }; }
 // So'mdagi partiyalar: kurs o'zgarganda $ tannarx = so'mdagi tannarx / bugungi kurs (so'mda o'zgarmaydi)
 function fwAccRepriceLocal() {
   const r = +CUR.usdUzs || 0; if (r < 100) return 0; let n = 0;
@@ -9334,9 +9422,11 @@ async function fwAccReprice() {
   }
   try { save(); } catch (_) {}
 }
-async function fwAccMark(localIds) {
-  if (!(typeof fwLedgerRemote === 'function' && fwLedgerRemote()) || !localIds.length) return;
-  try { const r = await fwLedgerCall('stock-debt-ops', { kind: 'acc_uzs', payload: { mark: localIds.map(String) } }); if (r && r.authority) fwApplyLedger(r.authority); }
+// marks: ["localId", ...] yoki [{ id, costUzs, goodsUzs }] — 56: ta'minotchi bergan ANIQ so'm narxi (konsignatsiya qarzi shundan)
+async function fwAccMark(marks) {
+  if (!(typeof fwLedgerRemote === 'function' && fwLedgerRemote()) || !marks.length) return;
+  const mark = marks.map(m => m && typeof m === 'object' ? { id: String(m.id), costUzs: Math.round((+m.costUzs || 0) * 100) / 100, ...(+m.goodsUzs > 0 ? { goodsUzs: Math.round(+m.goodsUzs * 100) / 100 } : {}) } : String(m));
+  try { const r = await fwLedgerCall('stock-debt-ops', { kind: 'acc_uzs', payload: { mark } }); if (r && r.authority) fwApplyLedger(r.authority); }
   catch (e) { toast("So'mdagi tannarx serverda belgilanmadi: " + e.message, 'warning'); }
 }
 // v25 (egasi qarori 2026-11-10): rejim BIR MARTA tanlanadi; birinchi tanlovdan keyin 10 kun ichida faqat egasining
@@ -15111,6 +15201,12 @@ async function importBatchXlsx() {
 
     const suppForImport = suppId ? S.suppliers.find(x=>x.id===suppId) : null;
     const isConsignImport = !!(suppForImport && suppForImport.isConsignment);
+    // v25.6.10 (56): so'mdagi ta'minotchidan so'mda kirim — partiya so'mda qotadi, qarz aniq so'mda (kurs ta'sir qilmaydi)
+    const uzsAcc = curSel === 'UZS' && fwAccCurForSupp('UZS', suppForImport) === 'UZS';
+    if (curSel === 'UZS' && suppForImport && !suppIsUzs(suppForImport)
+      && !confirm(`«${suppForImport.name}» — DOLLAR taʼminotchisi. Soʻmdagi narxlar $ ga aylantirilib yoziladi va unga qarz $ da yuritiladi (kurs oʻzgarsa soʻm summasi oʻzgaradi).\n\nUnga soʻmda qaytarmoqchi boʻlsangiz: «Bekor», keyin Taʼminotchilar → ${suppForImport.name} → Tahrir → valyuta «Soʻm».\n\nBaribir $ da davom etilsinmi?`)) {
+      restoreProducts(); restoreProducts = null; btnReset(); return;
+    }
     let cnt=0, priceCnt=0, goodsTotal=0;
     // v24.6: shu fayl qisman saqlangan bo'lsa (aloqa uzildi) — partiya ID'lari, raqami va saqlangan qismlar
     // qurilmada eslab qolinadi (sahifa yangilansa ham): qayta yuklanganda saqlangan qism IKKINCHI marta yozilmaydi
@@ -15131,7 +15227,8 @@ async function importBatchXlsx() {
     const newBatches = rows.map((r,i)=>{
       const finalCost = Math.round(r.baseCostUsd*10000)/10000;
       goodsTotal += (r.goodsUsd||0)*r.qty; // v10 (B13): qarzga faqat TOVAR qiymati (yo'lkira/bank/bojxona ta'minotchiga tegishli emas — qo'lda Kirim bilan bir xil)
-      return {id:_ids[i],pid:r.p.id,bno,origin,cur:'USD',qty:r.qty,sold:0,costUsd:finalCost,goodsUsd:Math.round((r.goodsUsd||0)*10000)/10000,bankFeeUsd:0,suppId,consignment:isConsignImport,rates:{usdUzs:CUR.usdUzs,usdCny:CUR.usdCny},date:eiDate,status:'active',performedBy:(CURRENT_USER?.name||'Admin'),items:[]};
+      const uz = uzsAcc ? { accCur:'UZS', goodsUzs: Math.round((r.priceNative||0)*100)/100, costUzs: Math.round(((r.priceNative||0) + Math.max(0, (r.baseCostUsd||0) - (r.goodsUsd||0)) * CUR.usdUzs)*100)/100 } : {};   // yo'lkira/bank — aniq farqdan (yaxlitlash qoldig'isiz)
+      return {id:_ids[i],pid:r.p.id,bno,origin,cur:'USD',qty:r.qty,sold:0,costUsd:finalCost,goodsUsd:Math.round((r.goodsUsd||0)*10000)/10000,bankFeeUsd:0,suppId,consignment:isConsignImport,...uz,rates:{usdUzs:CUR.usdUzs,usdCny:CUR.usdCny},date:eiDate,status:'active',performedBy:(CURRENT_USER?.name||'Admin'),items:[]};
     });
     // v24.6: server bir so'rovda eng ko'pi 500 partiya qabul qiladi — katta fayl 400 talik QISMLARGA bo'linadi
     // (har qism serverda bitta tranzaksiya; ta'minotchi qarzi — har qismning o'z tovar qiymati).
@@ -15178,6 +15275,8 @@ async function importBatchXlsx() {
         if (r.optim>0)   { r.p.optMarkupPct = Math.round(((r.optim/nb.costUsd)-1)*1000000)/10000; }
       }
     });
+    if (uzsAcc) { const marks = newBatches.filter((nb, i) => chunks.some(([a, z], c) => prog.done.includes(c) && i >= a && i < z) && nb.accCur === 'UZS')
+      .map(nb => ({ id: nb.id, costUzs: nb.costUzs, goodsUzs: nb.goodsUzs })); for (let i = 0; i < marks.length; i += 400) await fwAccMark(marks.slice(i, i + 400)); }
     if (fwLedgerRemote()) {
       // server qarzi allaqachon javobda qo'llangan (fwLedgerCall → authority)
     } else

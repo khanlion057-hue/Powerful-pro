@@ -184,7 +184,15 @@ exports.handler = async (event) => {
       return json({ ...r.data, filial, ledger: true }, 200);
     }
     if (body.kind === 'acc_uzs') {
-      const mark = Array.isArray(p.mark) ? p.mark.slice(0, 500).map(String).filter(x => ID_RE.test(x)) : [];
+      // ["localId"] yoki [{ id, costUzs, goodsUzs }] — 56: ta'minotchi bergan aniq so'm narxi (har biri chegaralar bilan tekshiriladi)
+      const mark = Array.isArray(p.mark) ? p.mark.slice(0, 500).map((m) => {
+        if (m && typeof m === 'object') {
+          const id = String(m.id || '');
+          if (!ID_RE.test(id) || !isNum(m.costUzs, 0, 1e11) || !(m.costUzs > 0)) return null;
+          return { id, costUzs: +m.costUzs, ...(isNum(m.goodsUzs, 0, 1e11) && m.goodsUzs > 0 ? { goodsUzs: +m.goodsUzs } : {}) };
+        }
+        const id = String(m); return ID_RE.test(id) ? id : null;
+      }).filter(Boolean) : [];
       const r = await admin.rpc('batch_acc_uzs', { p_filial: filial, p_mark: mark, p_reprice: !!p.reprice });
       if (r.error) {
         if (r.error.code === 'PGRST202' || r.error.code === '42883' || /batch_acc_uzs/.test(String(r.error.message || ''))) return json({ error: "So'mda hisob uchun 41-migratsiya qo'llanishi kerak", code: 'MIGRATION41_PENDING' }, 409);

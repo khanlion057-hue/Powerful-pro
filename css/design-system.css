@@ -3902,3 +3902,58 @@ body .dl-wrap{ min-height:calc(100vh / var(--fw-z, 1)); }
   display:grid; place-items:center; margin:12px auto 4px; cursor:pointer; }
 .fw-bio-btn:active{ transform:scale(.96); }
 .fw-bio-card .fw-pin-alt + .fw-pin-alt{ margin-top:2px; opacity:.8; }
+/* ═══ 11) v25.6.10: KOMPYUTER JADVALI (.dt) — ro'yxatlar ≥1100px da ═══ */
+.dt-wrap{ background:var(--bg-card); border:1px solid var(--border); border-radius:14px; overflow-x:auto; }
+.dt{ width:100%; border-collapse:separate; border-spacing:0; font-size:13.5px; }
+.dt thead th{ position:sticky; top:0; z-index:1; background:var(--bg-secondary); color:var(--text-muted); font-size:11.5px; font-weight:700; letter-spacing:.04em;
+  text-transform:uppercase; text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); white-space:nowrap; user-select:none; }
+.dt th.srt{ cursor:pointer; } .dt th.srt:hover{ color:var(--text-primary); }
+.dt td{ padding:8px 12px; border-bottom:1px solid var(--border); vertical-align:middle; color:var(--text-primary); }
+.dt tbody tr:last-child td{ border-bottom:0; }
+.dt .num{ text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.dt tr.click{ cursor:pointer; } .dt tr.click:hover td{ background:var(--bg-hover, color-mix(in srgb, var(--gold) 6%, transparent)); }
+.dt tfoot td{ font-weight:800; background:var(--bg-secondary); border-top:1px solid var(--border); border-bottom:0; }
+.dt code{ font-size:12px; color:var(--text-secondary); }
+.dt .dt-name{ font-weight:600; display:block; max-width:520px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.dt .dt-sub, .dt .dt-muted{ color:var(--text-muted); font-size:12px; }
+.dt .dt-img{ width:36px; height:36px; border-radius:8px; background:var(--bg-secondary); display:grid; place-items:center; overflow:hidden; color:var(--text-muted); }
+.dt .dt-img img{ width:100%; height:100%; object-fit:cover; } .dt .dt-img svg{ width:18px; height:18px; }
+.dt .dt-pill{ display:inline-block; font-size:11.5px; font-weight:700; padding:3px 9px; border-radius:999px; color:var(--c); background:color-mix(in srgb, var(--c) 14%, transparent); }
+.dt .dt-link{ border:0; background:none; color:var(--text-primary); font:inherit; font-weight:700; cursor:pointer; padding:2px 4px; border-radius:6px; font-variant-numeric:tabular-nums; }
+.dt .dt-link:hover{ background:var(--bg-secondary); color:var(--gold); }
+.dt .dt-empty{ text-align:center; color:var(--text-muted); padding:28px; }
+.dt-more{ display:block; width:100%; border:0; border-top:1px solid var(--border); background:transparent; color:var(--gold); font:inherit; font-weight:700; padding:11px; cursor:pointer; }
+.dt-act{ border:1px solid var(--border); background:transparent; color:var(--text-secondary); border-radius:8px; padding:4px 10px; font:inherit; font-size:12.5px; font-weight:600; cursor:pointer; white-space:nowrap; }
+.dt-act:hover{ color:var(--gold); border-color:var(--gold); }
+.dt-act.pri{ color:var(--gold); border-color:color-mix(in srgb, var(--gold) 50%, var(--border)); }
+/* 12) Kompyuterda asboblar qatori: katta to'q sariq tugma va rang-barang plitkalar o'rniga ixcham tugmalar (bitta-ikki qator) */
+@media (min-width:1100px){
+  .page-section:not(.k-mode-form) .kr-add{ width:auto; min-height:40px; border-radius:10px; padding:0 18px; display:inline-flex; justify-content:center; box-shadow:none; }
+  .page-section:not(.k-mode-form) .kr-add .kr-add-l{ gap:8px; font-size:14px; }
+  .page-section .kr-4, .page-section .fw-acts{ display:flex !important; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+  .page-section .kr-4 .kr-q{ flex:0 0 auto; flex-direction:row; gap:8px; min-height:38px; padding:0 14px; border-radius:10px;
+    background:transparent; border:1px solid var(--border); color:var(--text-primary); box-shadow:none; }
+  .page-section .kr-4 .kr-q:hover{ border-color:var(--c); }
+  .page-section .kr-4 .kr-q svg{ width:18px; height:18px; }
+  .page-section .kr-4 .kr-q span{ font-size:13px; font-weight:600; overflow:visible; }
+  .page-section .kr-4 .kr-q em{ position:static; margin-left:2px; }
+  .pm-top{ justify-content:flex-start; gap:8px; }
+}
+@media (min-width:1100px){ .pm-top .pm-add{ flex:0 0 auto; } }
+/* 13) Jadval: avatar, amallar qatori, muddati o'tgan qator */
+.dt .dt-av{ width:30px; height:30px; border-radius:50%; display:inline-grid; place-items:center; font-size:11.5px; font-weight:800; color:var(--c);
+  background:color-mix(in srgb, var(--c) 16%, transparent); margin-right:10px; vertical-align:middle; flex:0 0 auto; }
+.dt td:first-child .dt-av + .dt-name{ display:inline-block; vertical-align:middle; max-width:calc(100% - 44px); }
+.dt .dt-acts{ display:inline-flex; gap:6px; justify-content:flex-end; width:100%; }
+.dt tr[data-st="due"] td:first-child{ box-shadow:inset 3px 0 0 var(--red); }
+.dt .fw-tag{ font-style:normal; font-size:11px; }
+/* 14) Kompyuterda filtr chiplari va bo'lim tablari cho'zilmaydi — matnga teng, chapdan */
+@media (min-width:1100px){
+  .page-section .pm-chips > *, .page-section .pm-chips > button, .page-section .pos-chips > button, .page-section .pm-chips.dk-chips > button{ flex:0 0 auto; padding:0 16px; }
+  .page-section .kr-tabs{ display:inline-flex; max-width:100%; }
+  .page-section .kr-tabs .kr-tab{ flex:0 0 auto; padding:0 20px; min-width:110px; }
+  .page-section .kr-tabs .kr-cal{ flex:0 0 46px; min-width:0; padding:0; }
+}
+.dt .dt-bar{ display:inline-flex; align-items:center; gap:8px; justify-content:flex-end; white-space:nowrap; }
+.dt .dt-bar i{ width:56px; height:5px; border-radius:3px; background:var(--bg-secondary); overflow:hidden; display:block; }
+.dt .dt-bar em{ display:block; height:100%; background:var(--c); border-radius:3px; }

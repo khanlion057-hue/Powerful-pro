@@ -188,8 +188,8 @@ async function testCustomerNameXssEscaped() {
       window.__xss = 0;
       const html = mjRows([{ id: 1, name: '<img src=x onerror="window.__xss=1">', phone: '<b>1</b>', debt: 0, total: 0 }]);
       const div = document.createElement('div'); div.innerHTML = html; document.body.appendChild(div);
-      // v23.3: mijozlar ro'yxati — kartochkalar (.fw-pc); ism .fw-pc-m > b ichida, telefon <small> ichida
-      return { hasImg: !!div.querySelector('img'), hasB: !!div.querySelector('.fw-pc-m small b, .fw-pc-m > b b'), text: div.querySelector('.fw-pc-m > b').textContent, esc: esc(`<a href="x">'&`) };
+      // v23.3: telefonda kartochka (.fw-pc-m > b), v25.6.10: kompyuterda jadval (.dt-name) — ikkalasida ham matn sifatida
+      return { hasImg: !!div.querySelector('img'), hasB: div.innerHTML.includes('<b>1</b>'), text: div.querySelector('.fw-pc-m > b, .dt-name').textContent, esc: esc(`<a href="x">'&`) };
     });
     await page.waitForTimeout(100);
     assert.equal(r.hasImg, false, "Mijoz ismidagi <img> teg sifatida emas, matn sifatida chiqishi kerak");

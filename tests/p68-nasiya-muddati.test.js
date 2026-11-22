@@ -145,8 +145,9 @@ module.exports = {
           go('mijozlar');
           const pm = document.getElementById('pg-mijozlar');
           out.mj = { board: !!pm.querySelector('.fw-due-board'), chips: [...pm.querySelectorAll('.pm-chip')].map(b => b.textContent.trim()), qarzsiz: /Qarzsiz/.test(pm.textContent),
-            chip1: pm.querySelector('.fw-pc .fw-due-badge')?.textContent, hot: pm.querySelectorAll('.fw-pc.fw-pc-due').length };
-          S.mjF = 'due'; pgMijozlar(); out.dueList = [...document.querySelectorAll('#mj-table .fw-pc-m > b')].map(b => b.textContent);
+            // v25.6.10: kompyuterda jadval — muddati o'tgan/bugungi qator tr[data-st=due]
+            chip1: pm.querySelector('.fw-pc .fw-due-badge, #mj-table tbody tr .fw-due-badge')?.textContent, hot: pm.querySelectorAll('.fw-pc.fw-pc-due, #mj-table tr[data-st="due"]').length };
+          S.mjF = 'due'; pgMijozlar(); out.dueList = [...document.querySelectorAll('#mj-table .fw-pc-m > b, #mj-table .dt-name')].map(b => b.textContent);
           S.mjF = ''; pgMijozlar();
           // Xabar oynasi — matn va WhatsApp havola
           const opened = []; window.open = (u) => { opened.push(u); return null; };

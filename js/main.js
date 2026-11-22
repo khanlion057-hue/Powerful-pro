@@ -3571,6 +3571,18 @@ function qrList(q) {
 }
 function qrRows(list) {
   if (!list.length) return fwEmpty('receipt', 'Savdo topilmadi', 'Boshqa davrni tanlang yoki chek raqamini tekshiring.');
+  // v25.6.10: kompyuterda — jadval (Chek | Sana | Mijoz | Sotuvchi | Mahsulotlar | Summa | Amallar)
+  if (fwIsDesk()) {
+    const q = v => JSON.stringify(v).replace(/"/g,'&quot;'), canRet = hasPerm('qaytarish.create');
+    const cols = [{ h:'Chek', k:'inv', w:'120px' }, { h:'Sana', k:'d', w:'100px' }, { h:'Mijoz', k:'c' }, { h:'Sotuvchi', k:'st', w:'130px' }, { h:'Mahsulotlar' },
+      { h:'Summa', k:'t', num:true, w:'110px' }, { h:'', w:'210px' }];
+    const rows = list.map(s => { const items = s.items||[], debt = (+s.debtUsd||0) > 0;
+      return { sort:{ inv:s.inv||'', d:s.date||'', c:fwCustLabel(s.custName), st:s.staffName||'', t:+s.totalUsd||0 },
+        cells:[ `<code>${esc(s.inv||'')}</code>`, fmtD(s.date), `<b>${esc(fwCustLabel(s.custName))}</b>${debt?' <span class="dt-pill" style="--c:var(--red)">Nasiya</span>':''}${s.edited?' <span class="dt-pill" style="--c:var(--gold)">Tahrirlangan</span>':''}`,
+          esc(s.staffName||'Admin'), `<span class="dt-muted">${items.length} xil · ${esc(items.slice(0,2).map(i=>i.name||i.sku).join(', '))}${items.length>2?'…':''}</span>`, `<b>${CUR.fmtUsd(s.totalUsd)}</b>`,
+          `<span class="dt-acts">${canRet ? `<button class="dt-act pri" onclick="openSaleReturn(${q(s.id)})">Qaytarish</button>` : ''}<button class="dt-act" onclick="openSaleEdit(${q(s.id)})">Tahrir</button><button class="dt-act" style="color:var(--red)" onclick="deleteSale(${q(s.id)})" title="Butunlay oʻchirish" aria-label="Savdoni butunlay oʻchirish">Oʻchirish</button></span>` ] }; });
+    return fwTable('qr', cols, rows, { re:"qrFilter()", empty:'Savdo topilmadi' });
+  }
   return `<div class="fw-list">${list.map(s=>{ const items=s.items||[]; const debt=(+s.debtUsd||0)>0;
     return `<article class="qr-s">
       <div class="om-b-h"><code>${esc(s.inv||'')}</code>${s.edited?'<span class="fw-tag" style="--c:var(--gold)">Tahrirlangan</span>':''}${debt?'<span class="fw-tag" style="--c:var(--red)">Nasiya</span>':''}<time>${fmtD(s.date)}</time></div>
@@ -4255,6 +4267,24 @@ function pmGallery(pid) { const p = (S.products || []).find(x => String(x.id) ==
 function pmCards(prods) {
   if (!prods.length) return `<div class="kr-empty pm-empty">${ICONF.inventory}<b>Mahsulot topilmadi</b><span>Qidiruv yoki filtrni oʻzgartiring, yoki yangi mahsulot qoʻshing.</span></div>`;
   const n = v => Math.round(+v||0).toLocaleString('en-US').replace(/,/g,' ');
+  // v25.6.10: kompyuterda — jadval (Rasm | Nomi | Kod | Kategoriya | Qoldiq | Min | Tannarx | Narx | Holat), saralanadi
+  if (S.pmView !== 'grid' && fwIsDesk()) {
+    const cost0 = canSeeCost();
+    const cols = [{ h:'', w:'52px' }, { h:'Nomi', k:'name' }, { h:'Kod', k:'sku', w:'120px' }, { h:'Kategoriya', k:'cat', w:'150px' }, { h:'Qoldiq', k:'st', num:true, w:'90px' },
+      { h:'Min', k:'min', num:true, w:'64px' }, ...(cost0 ? [{ h:'Tannarx', k:'cost', num:true, w:'100px' }] : []), { h:'Narx', k:'sell', num:true, w:'110px' }, { h:'Holat', k:'state', w:'110px' }];
+    const rows = prods.map(p => {
+      const st = getStock(p.id), cost = getCostFIFO(p.id), sell = sellPrice(p, cost);
+      const state = p.archived ? ['Arxivda','text-muted'] : p.directSale ? ['Doim bor','purple'] : st===0 ? ['Qolmadi','red'] : st<=p.minStock ? ['Kam','amber'] : ['Bor','emerald'];
+      return { on:`openProductCard(${p.id})`, sort:{ name:p.name, sku:p.sku, cat:p.cat, st:p.directSale ? 1e9 : st, min:+p.minStock||0, cost, sell:cost>0 ? sell : -1, state:state[0] },
+        cells:[ `<span class="dt-img"${p.image ? ` onclick="event.stopPropagation();pmGallery(${p.id})"` : ''}>${p.image ? `<img src="${esc(p.image)}" alt="" loading="lazy">` : ICONF.inventory}</span>`,
+          `<b class="dt-name">${esc(p.name)}</b>${p.brand ? `<small class="dt-sub">${esc(p.brand)}</small>` : ''}`, `<code>${esc(p.sku||'')}</code>`, esc(p.cat||'—'),
+          p.directSale ? '<span class="dt-muted">taʼminotchidan</span>' : `<b style="${st===0?'color:var(--red)':''}">${n(st)}</b> <span class="dt-muted">${esc(p.unit||'dona')}</span>`, n(p.minStock),
+          ...(cost0 ? [cost>0 ? CUR.fmtUsd(cost) : '—'] : []),
+          `<button class="dt-link" onclick="event.stopPropagation();pmPriceSheet(${p.id})">${cost>0 ? CUR.fmtUsd(sell) : 'narx yoʻq'}</button>`,
+          `<span class="dt-pill" style="--c:var(--${state[1]})">${state[0]}</span>` ] };
+    });
+    return fwTable('pm', cols, rows, { re:'pmFilter()', empty:'Mahsulot topilmadi' });
+  }
   if (S.pmView !== 'grid') return prods.map(p=>{
     const st = getStock(p.id), cost = getCostFIFO(p.id), sell = sellPrice(p, cost);
     const state = p.archived ? ['Arxivda','text-muted','inbox'] : p.directSale ? ['Doim bor','purple','truck'] : st===0 ? ['Qolmadi','red','close'] : st<=p.minStock ? ['Kam','amber','warning'] : ['Bor','emerald','check'];
@@ -4316,7 +4346,7 @@ function pmFilter() {
   else if (sort==='stockDesc') res.sort((a,b)=>sk(b)-sk(a));
   else if (sort==='price') res.sort((a,b)=>sellPrice(b,getCostFIFO(b.id))-sellPrice(a,getCostFIFO(a.id)));
   const g = document.getElementById('pm-grid');
-  if (g) { g.className = S.pmView === 'grid' ? 'pm-grid' : 'pml-list'; g.innerHTML = pmCards(res); }
+  if (g) { g.className = S.pmView === 'grid' ? 'pm-grid' : (fwIsDesk() ? 'pm-dt' : 'pml-list'); g.innerHTML = pmCards(res); }
   const c = document.getElementById('pm-count'); if (c) c.textContent = `${res.length} ta · ${PM_SORTS[sort]}`;
 }
 
@@ -5337,6 +5367,26 @@ function omRender() {
     return [b.bno, p?.sku, p?.name, b.origin].some(v=>String(v||'').toLowerCase().includes(q));
   });
   if (!list.length) { box.innerHTML = fwEmpty('inventory', 'Partiya topilmadi', q ? 'Qidiruvni oʻzgartiring.' : 'Kirim qilinganda partiyalar shu yerda chiqadi.'); return; }
+  // v25.6.10: kompyuterda — jadval (Partiya | Sana | Mahsulot | Manba | Qoldiq | Tannarx | Holat | Amal)
+  if (fwIsDesk()) {
+    const pm = new Map((S.products||[]).map(p => [p.id, p]));
+    const cols = [{ h:'Partiya', k:'bno', w:'90px' }, { h:'Sana', k:'d', w:'100px' }, { h:'Mahsulot', k:'n' }, { h:'Manba', k:'o', w:'200px' }, { h:'Qoldiq', k:'rem', num:true, w:'170px' },
+      { h:'Tannarx', k:'c', num:true, w:'110px' }, { h:'Holat', k:'st', w:'110px' }, { h:'', w:'150px' }];
+    const rows = list.map(b => {
+      const p = pm.get(b.pid), rem = b.qty - b.sold, pct = b.qty > 0 ? Math.max(0, Math.min(100, Math.round(rem / b.qty * 100))) : 0;
+      const isTransit = b.status==='transit', isEmpty = b.status==='empty', c = isTransit?'purple':isEmpty?'red':rem<=3?'amber':'emerald';
+      const stl = isTransit?'Yoʻlda':isEmpty?'Tugagan':rem<=3?'Kam qoldi':'Omborda';
+      return { sort:{ bno:b.bno||'', d:b.date||'', n:p?.name||'', o:b.origin||'', rem, c:+b.costUsd||0, st:stl },
+        cells:[ `<code>${esc(b.bno)}</code>`, fmtD(b.date), `<b class="dt-name">${esc(p?.name||'—')}</b><small class="dt-sub">${esc(p?.sku||'')}</small>`,
+          `<span class="dt-muted">${esc(b.origin||'—')} · ${b.cur==='CNY'?'CNY':b.cur==='UZS'?'Soʻm':'USD'}${b.accCur==='UZS'?' → soʻm':''}</span>`,
+          `<span class="dt-bar" style="--c:var(--${c})"><i><em style="width:${pct}%"></em></i><b>${rem}</b> / ${b.qty} ${esc(p?.unit||'dona')}</span>`,
+          b.accCur==='UZS'&&+b.costUzs>0 ? fwNum(b.costUzs)+' soʻm' : CUR.fmtUsd(b.costUsd||0),
+          `<span class="dt-pill" style="--c:var(--${c})">${stl}</span>`,
+          `<span class="dt-acts">${isTransit ? `<button class="dt-act pri" onclick="openArrivalCustoms('${escJsAttr(b.bno)}')">Keldi</button>` : ''}<button class="dt-act" style="color:var(--red)" onclick="deleteBatch('${escJsAttr(String(b.id))}')" title="Partiyani oʻchirish" aria-label="Partiyani oʻchirish">Oʻchirish</button></span>` ] };
+    });
+    box.innerHTML = fwTable('om', cols, rows, { re:'omRender()', empty:'Partiya topilmadi' });
+    return;
+  }
   box.innerHTML = `<div class="fw-list">${list.slice(0,300).map(b=>{
     const p=S.products.find(x=>x.id===b.pid);
     const rem=b.qty-b.sold, pct=b.qty>0?Math.max(0,Math.min(100,Math.round(rem/b.qty*100))):0;
@@ -7015,6 +7065,31 @@ const fwMoneyUsd = v => { const n = Math.round((+v||0)*100)/100; return (n<0?'�
 const fwMoneyUzs = v => (Math.round(+v||0)).toLocaleString('en-US').replace(/,/g,' ') + ' soʻm';
 // Ixcham so'm (plitka/ustunlar uchun): 42,5 mln · 1,2 mlrd · 850 000
 const fwShortUzs = v => { const n=+v||0, a=Math.abs(n), t=(x,d)=>x.toFixed(d).replace(/\.?0+$/,'').replace('.',','); return a>=1e9 ? t(n/1e9,2)+' mlrd' : a>=1e6 ? t(n/1e6,2)+' mln' : Math.round(n).toLocaleString('en-US').replace(/,/g,' '); };
+// ════════════════════════════════════════════
+// v25.6.10 (egasi talabi «kompyuterda professional»): KOMPYUTER JADVALI — ro'yxatlar ≥1100px da ustunli, saralanadigan jadval.
+// Telefon o'zgarmaydi (kartochkalar). cols: [{ h, k (saralash kaliti), num (o'ngga, tabular), w (kenglik) }];
+// rows: [{ cells: [html...], sort: { k: qiymat }, on: "onclick" }]; re — saralash/«yana»dan keyin qayta chizish (masalan "pmFilter()").
+// ════════════════════════════════════════════
+function fwIsDesk() { try { return window.matchMedia('(min-width:1100px)').matches; } catch (_) { return false; } }
+const FW_DT = {};
+function fwTable(id, cols, rows, o = {}) {
+  const st = FW_DT[id] || (FW_DT[id] = { k: o.sortKey || null, dir: o.sortDir || 1, lim: 100 });
+  let list = rows.slice();
+  if (st.k) list.sort((a, b) => { const x = a.sort ? a.sort[st.k] : null, y = b.sort ? b.sort[st.k] : null;
+    if (typeof x === 'number' || typeof y === 'number') return ((+x || 0) - (+y || 0)) * st.dir;
+    return String(x ?? '').localeCompare(String(y ?? ''), 'uz') * st.dir; });
+  const shown = list.slice(0, st.lim);
+  const th = cols.map(c => {
+    const on = c.k && st.k === c.k, arrow = on ? (st.dir > 0 ? ' ▲' : ' ▼') : '';
+    return `<th class="${c.num ? 'num' : ''}${c.k ? ' srt' : ''}"${c.w ? ` style="width:${c.w}"` : ''}${c.k ? ` onclick="fwDtSort('${id}','${c.k}',${JSON.stringify(o.re || '').replace(/"/g, '&quot;')})" aria-sort="${on ? (st.dir > 0 ? 'ascending' : 'descending') : 'none'}"` : ''}>${c.h}${arrow}</th>`; }).join('');
+  const tr = shown.map(r => `<tr${r.on ? ` class="click" onclick="${r.on}"` : ''}${r.cls ? ` data-st="${r.cls}"` : ''}>${r.cells.map((v, i) => `<td class="${cols[i] && cols[i].num ? 'num' : ''}">${v}</td>`).join('')}</tr>`).join('');
+  const more = list.length > shown.length ? `<button type="button" class="dt-more" onclick="FW_DT['${id}'].lim+=100;${o.re || ''}">Yana ${Math.min(100, list.length - shown.length)} ta (jami ${list.length})</button>` : '';
+  return `<div class="dt-wrap"><table class="dt"><thead><tr>${th}</tr></thead><tbody>${tr || `<tr><td colspan="${cols.length}" class="dt-empty">${o.empty || 'Maʼlumot yoʻq'}</td></tr>`}</tbody>${o.foot ? `<tfoot><tr>${o.foot.map((v, i) => `<td class="${cols[i] && cols[i].num ? 'num' : ''}">${v}</td>`).join('')}</tr></tfoot>` : ''}</table>${more}</div>`;
+}
+function fwDtSort(id, k, re) { const st = FW_DT[id] || (FW_DT[id] = { lim: 100, dir: 1 }); if (st.k === k) st.dir = -st.dir; else { st.k = k; st.dir = 1; } try { if (re) (new Function(re))(); } catch (e) { console.warn(e); } }
+// Ekran kengligi kompyuter/telefon chegarasidan o'tsa — joriy sahifa qayta chiziladi (jadval ↔ kartochka)
+try { window.matchMedia('(min-width:1100px)').addEventListener('change', () => { try { if (S && S.page && typeof go === 'function') go(S.page); } catch (_) {} }); } catch (_) {}
+
 function fwHero({ tone='gold', label='', badge='', big='', bigColor='', cols=[], foot='' }) {
   return `<section class="ox-hero fw-hero" style="--hc:var(--${tone})">
     <div class="ox-hero-top"><span>${label}</span>${badge?`<span class="ox-date">${badge}</span>`:''}</div>
@@ -7134,6 +7209,27 @@ function mjRows(list) {
   if (!list.length) return !(S.customers||[]).length ? fwEmpty('person', 'Hali mijoz yoʻq', '«Mijoz qoʻshish» tugmasi bilan qoʻshing — savdoda nasiya va qarzlar shu yerda yuritiladi.')
     : fwEmpty('person', 'Mijoz topilmadi', (document.getElementById('mj-q')?.value || S.mjQ) ? 'Qidiruvni oʻzgartiring.' : 'Bu filtrda mijoz yoʻq.');
   const bought = mjBought(), today = fwLocalDay();
+  // v25.6.10: kompyuterda — jadval (Mijoz | Telefon | Qarz $ | Qarz so'm | Muddat | Jami xarid | Amallar), saralanadi
+  if (fwIsDesk()) {
+    const canPay = hasPerm('mijozlar.debt_payment') || hasPerm('mijozlar.edit');
+    const cols = [{ h:'Mijoz', k:'name' }, { h:'Telefon', k:'ph', w:'150px' }, { h:'Qarz ($)', k:'debt', num:true, w:'110px' }, { h:"Qarz (soʻm)", k:'debt', num:true, w:'140px' },
+      { h:'Muddat', k:'due', w:'150px' }, { h:'Jami xarid', k:'buy', num:true, w:'120px' }, { h:'', w:'250px' }];
+    const rows = list.map(c => {
+      const debt = (c.debt||0) > 0, sm = debt ? fwCustDueSum(c, S.sales, today) : null, buy = bought[c.id] || CUR.toUsd(c.total||0);
+      const tg = _cloudEnabled && _tgCustLinks && _tgCustLinks[c.id];
+      return { on:`openMijozTarixi(${c.id})`, cls: sm && (sm.st==='overdue'||sm.st==='today') ? 'due' : '',
+        sort:{ name:c.name, ph:c.phone||'', debt:+c.debt||0, due: sm ? (sm.st==='overdue'?0:sm.st==='today'?1:2) : 3, buy },
+        cells:[ `<span class="dt-av" style="--c:var(--${fwToneOf(c.id)})">${fwInitials(c.name)}</span><b class="dt-name">${esc(c.name)}</b>${c.disc?` <em class="fw-tag">−${+c.disc||0}%</em>`:''}${tg?' <span class="dt-muted" title="Telegram botga ulangan">✈</span>':''}`,
+          c.phone ? esc(c.phone) : '<span class="dt-muted">—</span>',
+          debt ? `<b style="color:var(--red)">${CUR.fmtUsd(CUR.toUsd(c.debt))}</b>` : '<span class="dt-muted">—</span>',
+          debt ? fwMoneyUzs(c.debt) : '<span class="dt-muted">—</span>',
+          sm ? fwDueChip(sm) : '<span class="dt-muted">—</span>', CUR.fmtUsd(buy),
+          `<span class="dt-acts" onclick="event.stopPropagation()">${debt && canPay ? `<button class="dt-act pri" onclick="openPayDebt(${c.id})">Toʻlash</button>` : ''}${debt ? `<button class="dt-act" onclick="fwDueSend(${c.id})" title="Eslatma yuborish">Xabar</button>` : ''}<button class="dt-act" onclick="editCustomer(${c.id})">Tahrir</button><button class="dt-act" onclick="mjRowMenu(${c.id},this)" aria-label="Boshqa amallar" title="Boshqa amallar">⋯</button></span>` ] };
+    });
+    const sum = list.reduce((s,c)=>s+(c.debt>0?+c.debt:0),0);
+    return fwTable('mj', cols, rows, { re:'mjFilter()', empty:'Mijoz topilmadi',
+      foot:[`<b>Jami: ${list.length} ta</b>`, '', `<b>${CUR.fmtUsd(CUR.toUsd(sum))}</b>`, `<b>${fwMoneyUzs(sum)}</b>`, '', '', ''] });
+  }
   return `<div class="fw-list">${list.map(c=>{ const debt=(c.debt||0)>0; const sm = debt ? fwCustDueSum(c, S.sales, today) : null; return `<article class="fw-pc${sm&&(sm.st==='overdue'||sm.st==='today')?' fw-pc-due':''}">
     <span class="fw-av" style="--c:var(--${fwToneOf(c.id)})">${fwInitials(c.name)}</span>
     <div class="fw-pc-m"><b>${esc(c.name)}</b><small>${esc(c.phone||'Telefon yoʻq')}${c.disc?` · <em class="fw-tag">−${+c.disc||0}%</em>`:''}</small>
@@ -7150,6 +7246,18 @@ function mjRows(list) {
     </div></article>`; }).join('')}</div>`;
 }
 
+// Jadval qatoridagi «⋯» — qolgan amallar (kartochkadagi tugmalar bilan bir xil)
+function mjRowMenu(cid) {
+  const c = (S.customers || []).find(x => String(x.id) === String(cid)); if (!c) return;
+  const debt = (c.debt || 0) > 0;
+  const a = (ic, col, l, on) => `<button class="fr-act" style="--c:var(--${col});justify-content:flex-start" onclick="closeSheet();${on}">${ICONF[ic] || ''}<span>${l}</span></button>`;
+  openSheet({ ic:'person', c:'gold', title: esc(c.name), sub: esc(c.phone || ''), body: `<div style="display:grid;gap:8px">${[
+    a('history', 'sky', 'Tarix', `openMijozTarixi(${c.id})`),
+    debt && hasPerm('mijozlar.edit') ? a('percent', 'amber', 'Qarzga chegirma', `openDebtDiscount('cust',${c.id})`) : '',
+    _cloudEnabled ? a('send', 'indigo', 'Telegram bot', `openCustTg(${c.id})`) : '',
+    a('print', 'purple', 'Hisob-varaqni chop etish', `printCustStatement(${c.id})`),
+  ].join('')}</div>`, foot: '' });
+}
 function mjFilter() {
   S.mjQ = document.getElementById('mj-q')?.value||'';
   const t = document.getElementById('mj-table');
@@ -7556,6 +7664,24 @@ function tmList() {
 function tmRows(list) {
   if (!list.length) return !(S.suppliers||[]).length ? fwEmpty('truck', 'Hali taʼminotchi yoʻq', '«Taʼminotchi qoʻshish» tugmasi bilan qoʻshing — kirim va qarzlar shu yerda yuritiladi.')
     : fwEmpty('truck', 'Taʼminotchi topilmadi', (document.getElementById('tm-q')?.value || S.tmQ) ? 'Qidiruvni oʻzgartiring.' : 'Bu filtrda taʼminotchi yoʻq.');
+  // v25.6.10: kompyuterda — jadval (Taʼminotchi | Mamlakat | Turi | Qarzimiz | Toʻlangan | Amallar)
+  if (fwIsDesk()) {
+    const q = v => JSON.stringify(v).replace(/"/g,'&quot;');
+    const cols = [{ h:'Taʼminotchi', k:'name' }, { h:'Mamlakat', k:'cn', w:'130px' }, { h:'Turi', k:'t', w:'190px' }, { h:'Qarzimiz', k:'debt', num:true, w:'150px' },
+      { h:'Toʻlangan', k:'paid', num:true, w:'130px' }, { h:'', w:'230px' }];
+    let sumUsd = 0, sumUzs = 0;
+    const rows = list.map(s => {
+      const debt = suppHasDebt(s); if (debt) { if (suppIsUzs(s)) sumUzs += +s.debtUzs || 0; else sumUsd += +s.debt || 0; }
+      const tags = `${suppIsUzs(s)?'<span class="dt-pill" style="--c:var(--emerald)">Soʻmda</span> ':''}${s.isConsignment?'<span class="dt-pill" style="--c:var(--purple)">Konsignatsiya</span>':'<span class="dt-muted">Oddiy</span>'}${s.allowDirectSale?' <span class="dt-pill" style="--c:var(--emerald)">Direct</span>':''}`;
+      return { on:`openTaminotchiTarixi(${q(s.id)})`,
+        sort:{ name:s.name, cn:s.country||'', t:(s.isConsignment?'K':'O'), debt: suppIsUzs(s) ? CUR.toUsd(+s.debtUzs||0) : +s.debt||0, paid:+s.paid||0 },
+        cells:[ `<span class="dt-av" style="--c:var(--${fwToneOf(s.id)})">${fwInitials(s.name)}</span><b class="dt-name">${esc(s.name)}</b>${s.contact?`<small class="dt-sub" style="margin-left:44px;display:block">${esc(s.contact)}</small>`:''}`,
+          esc(s.country||'—'), tags, debt ? `<b style="color:var(--amber)">${suppDebtTxt(s)}</b>` : '<span class="dt-muted">—</span>', CUR.fmtUsd(s.paid||0),
+          `<span class="dt-acts" onclick="event.stopPropagation()">${debt ? `<button class="dt-act pri" onclick="openPaySupplierDebt(${q(s.id)})">Toʻlash</button>` : ''}<button class="dt-act" onclick="editSupplier(${q(s.id)})">Tahrir</button><button class="dt-act" onclick="tmRowMenu(${q(s.id)})" aria-label="Boshqa amallar" title="Boshqa amallar">⋯</button></span>` ] };
+    });
+    return fwTable('tm', cols, rows, { re:'tmFilter()', empty:'Taʼminotchi topilmadi',
+      foot:[`<b>Jami: ${list.length} ta</b>`, '', '', `<b>${[sumUsd>0?CUR.fmtUsd(sumUsd):'', sumUzs>0?CUR.fmtUzs(sumUzs):''].filter(Boolean).join(' + ') || '—'}</b>`, '', ''] });
+  }
   return `<div class="fw-list">${list.map(s=>{ const debt=suppHasDebt(s); return `<article class="fw-pc">
     <span class="fw-av" style="--c:var(--${fwToneOf(s.id)})">${fwInitials(s.name)}</span>
     <div class="fw-pc-m"><b>${esc(s.name)}</b><small>${esc(s.country||'—')}${s.contact?` · ${esc(s.contact)}`:''}</small>
@@ -7571,6 +7697,17 @@ function tmRows(list) {
     </div></article>`; }).join('')}</div>`;
 }
 
+// Jadval qatoridagi «⋯» — qolgan amallar (chegirma, zaklad, tarix, aloqa)
+function tmRowMenu(sid) {
+  const s = (S.suppliers || []).find(x => String(x.id) === String(sid)); if (!s) return;
+  const q = JSON.stringify(s.id).replace(/"/g,'&quot;');
+  const a = (ic, col, l, on) => `<button class="fr-act" style="--c:var(--${col});justify-content:flex-start" onclick="closeSheet();${on}">${ICONF[ic] || ''}<span>${l}</span></button>`;
+  const z = typeof sadvRowBtns === 'function' ? sadvRowBtns(s).replace(/class="fw-btn( ok)?"/g, 'class="fr-act" style="--c:var(--gold);justify-content:flex-start"').replace(/onclick="/g, 'onclick="closeSheet();') : '';
+  openSheet({ ic:'truck', c:'amber', title: esc(s.name), sub: esc([s.country, s.contact].filter(Boolean).join(' · ')), body: `<div style="display:grid;gap:8px">${[
+    a('history', 'sky', 'Tarix', `openTaminotchiTarixi(${q})`),
+    suppHasDebt(s) && hasPerm('taminotchilar.edit') ? a('percent', 'amber', 'Qarzga chegirma', `openDebtDiscount('supp',${q})`) : '', z,
+  ].join('')}</div>${(s.tg||s.wa||s.wechat)?`<div class="sp-chs" style="margin-top:10px">${suppContactChips(s)}</div>`:''}${s.note?`<p class="bs-note" style="margin-top:10px">📝 ${esc(String(s.note).slice(0,400))}</p>`:''}`, foot: '' });
+}
 function tmFilter() {
   S.tmQ = document.getElementById('tm-q')?.value||'';
   const t = document.getElementById('tm-table');
@@ -11344,6 +11481,20 @@ function pgKassalar() {
 function ksMovesRender() {
   const box = document.getElementById('ks-mv'); if (!box) return;
   document.querySelectorAll('.ks-tabs button').forEach((b,i)=>b.classList.toggle('on', ['','in','out'][i]===(S.ksF||'')));
+  // v25.6.10: kompyuterda — jadval (Sana | Vaqt | Izoh | Kassa | Kirim | Chiqim), 100 tadan
+  if (fwIsDesk()) {
+    const all = (S.cashTxns||[]).filter(t=>!S.ksF || t.type===S.ksF);
+    const money = t => t.cur==='USD' ? CUR.fmtUsd(t.amount) : CUR.fmtUzs(t.amount);
+    const tm = t => t.ts ? new Date(t.ts).toLocaleTimeString('uz-UZ',{hour:'2-digit',minute:'2-digit'}) : '';
+    const rows = all.map((t, i) => ({ sort:{ i, d:(t.date||'')+(t.ts?String(t.ts):''), desc:t.desc||'', box:t.boxName||'', a: t.type==='in' ? +t.amount||0 : -(+t.amount||0) },
+      cells:[ `${t.date===td()?'Bugun':fmtD(t.date)}`, `<span class="dt-muted">${esc(tm(t))}</span>`, `<b class="dt-name">${esc(t.desc||'—')}</b>`,
+        esc(t.boxName || (S.cashboxes.find(k=>k.id===t.boxId)||{}).name || ''),
+        t.type==='in' ? `<b style="color:var(--emerald)">+${money(t)}</b>` : '', t.type!=='in' ? `<b style="color:var(--red)">−${money(t)}</b>` : '' ] }));
+    const hasTs = all.some(t => t.ts); if (!hasTs) rows.forEach(r => r.cells.splice(1, 1));
+    const cols = [{ h:'Sana', k:'d', w:'110px' }, ...(hasTs ? [{ h:'Vaqt', w:'70px' }] : []), { h:'Izoh', k:'desc' }, { h:'Kassa', k:'box', w:'170px' }, { h:'Kirim', k:'a', num:true, w:'150px' }, { h:'Chiqim', num:true, w:'150px' }];
+    box.innerHTML = fwTable('ks', cols, rows, { re:'ksMovesRender()', empty:'Hali harakat yoʻq — har savdo, kirim, xarajat va toʻlov shu yerda koʻrinadi.' });
+    return;
+  }
   const list = (S.cashTxns||[]).filter(t=>!S.ksF || t.type===S.ksF).slice(0,80);
   let last = '';
   box.innerHTML = list.map(t=>{ const head = t.date!==last ? `<div class="ks-day">${t.date===td()?'Bugun':fmtD(t.date)}</div>` : ''; last = t.date;

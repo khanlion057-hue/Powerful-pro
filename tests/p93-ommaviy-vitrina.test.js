@@ -75,6 +75,11 @@ async function testOrder() {
     const st = await call(S, 'POST', { a: 'status', s: 'powerful', list: [{ id: ok.j.id, tk: ok.j.tk }, { id: c1.j.id, tk: 'x'.repeat(12) }] });
     assert.equal(st.j.orders.length, 1); assert.equal(st.j.orders[0].label, 'Qabul qilindi'); assert.equal(st.j.orders[0].total, 760000);
     assert.equal((await call(S, 'POST', { a: 'nimadir' })).status, 400);
+    // v25.6.10: aloqa uzilib qayta yuborilsa (o'sha kalit) — ikkinchi buyurtma yaratilmaydi
+    const n0 = S.admin.db.rows.baza.data.shop.orders.length;
+    const k1 = await call(S, 'POST', { ...base, k: 'okey-test-0001' }), k2 = await call(S, 'POST', { ...base, k: 'okey-test-0001' });
+    assert.equal(k2.j.no, k1.j.no); assert.equal(k2.j.id, k1.j.id); assert.equal(k2.j.total, k1.j.total);
+    assert.equal(S.admin.db.rows.baza.data.shop.orders.length, n0 + 1, 'faqat bitta buyurtma');
   } finally { S.close(); }
 }
 

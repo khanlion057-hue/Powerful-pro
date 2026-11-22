@@ -559,9 +559,9 @@ function dlOrderHtml() {
       </div>
       <button onclick="dlRefreshCatalog()" style="background:none;border:none;color:var(--blue);font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;margin-left:8px;min-height:40px;padding:0 10px">Yangilash</button>
     </div>
-    ${(() => { const cs = [...new Set(CATALOG.map(p => p.cat).filter(Boolean))].sort(); return cs.length > 1 ? `<div class="pm-cats" style="margin:0 0 10px">${['', ...cs].map(c => `<button class="pm-cat${(DLO.cat || '') === c ? ' on' : ''}" onclick="DLO.cat=${JSON.stringify(c).replace(/"/g, '&quot;')};dlRenderContent()">${c ? esc(c) : 'Hammasi'}</button>`).join('')}</div>` : ''; })()}
+    ${(() => { const cs = [...new Set(CATALOG.map(p => p.cat).filter(Boolean))].sort(); return cs.length > 1 ? `<div class="pm-cats" style="margin:0 0 10px">${['', ...cs].map(c => `<button class="pm-cat${(DLO.cat || '') === c ? ' on' : ''}" onclick="DLO.cat=${JSON.stringify(c).replace(/"/g, '&quot;')};DLO.lim=60;dlRenderContent()">${c ? esc(c) : 'Hammasi'}</button>`).join('')}</div>` : ''; })()}
     <div class="dl-card" style="margin-bottom:12px">
-      <input class="dl-input" id="dl-order-search" placeholder="🔍 Mahsulot qidirish" oninput="dlRenderOrderList()" style="margin-bottom:0">
+      <input class="dl-input" id="dl-order-search" placeholder="🔍 Mahsulot qidirish" oninput="DLO.lim=60;dlRenderOrderList()" style="margin-bottom:0">
     </div>
     <div class="dl-card" id="dl-order-list" style="margin-bottom:12px;max-height:420px;overflow-y:auto"></div>
     ${cartCount ? `<div class="pos-bar-wrap dl-barw"><button class="pos-bar" onclick="dlSubmitOrder()"><em>${cartCount} xil</em><b>${Object.values(ORDER_CART).reduce((a, q) => a + q, 0)} dona</b><span>Buyurtmani yuborish ›</span></button></div>` : ''}
@@ -593,7 +593,9 @@ function dlRenderOrderList() {
   const list = document.getElementById('dl-order-list');
   if (!list) return;
   const filtered = dlOrderFilter(q);
-  list.innerHTML = filtered.length ? filtered.slice(0, 60).map(p => {
+  // v25.6.10: avval 60 tadan keyingilari ko'rinmasdi — endi 60 tadan, oxirida «Yana N ta» tugmasi
+  const lim = DLO.lim || 60;
+  list.innerHTML = filtered.length ? filtered.slice(0, lim).map(p => {
     const qty = ORDER_CART[p.id] || 0;
     return `<div class="dl-prow">
       <div style="display:flex;align-items:center;gap:10px;min-width:0">${dlThumbHtml(p.id)}<div style="min-width:0">
@@ -605,7 +607,7 @@ function dlRenderOrderList() {
               : `<button class="pos-add" onclick="dlCartAdjust(${p.id},1,${p.qty})" aria-label="Buyurtmaga qoʻshish">+</button>`}
       </div>
     </div>`;
-  }).join('') : (CATALOG.length===0
+  }).join('') + (filtered.length > lim ? `<button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:8px" onclick="DLO.lim=(DLO.lim||60)+60;dlRenderOrderList()">Yana ${filtered.length - lim} ta mahsulotni koʻrsatish</button>` : '') : (CATALOG.length===0
       ? `<div style="text-align:center;padding:24px;color:var(--text-muted)">
           <div style="font-size:32px;margin-bottom:6px">📭</div>
           Hozircha buyurtma qilinadigan mahsulot yoʻq.<br>Tekshirish uchun yuqoridagi «Yangilash» tugmasini bosing.
@@ -620,14 +622,17 @@ function dlOrderFilter(q) {
   return byName.concat(rest);
 }
 function dlCartSet(pid, v, maxQty) {
+  const st = document.getElementById('dl-order-list')?.scrollTop || 0;
   const n = Math.max(0, Math.min(+maxQty || 0, Math.floor(parseFloat(v) || 0)));
   if (n > 0) ORDER_CART[pid] = n; else delete ORDER_CART[pid];
   const sv = document.getElementById('dl-order-search')?.value || '';
   document.getElementById('dl-content').innerHTML = dlOrderTabHtml();
   const i = document.getElementById('dl-order-search'); if (i) i.value = sv;
   dlRenderOrderList();
+  const l2 = document.getElementById('dl-order-list'); if (l2) l2.scrollTop = st;   // v25.6.10: ro'yxat tepaga sakramaydi
 }
 function dlCartAdjust(pid, delta, maxQty) {
+  const st = document.getElementById('dl-order-list')?.scrollTop || 0;
   const cur = ORDER_CART[pid] || 0;
   const next = Math.max(0, Math.min(maxQty, cur + delta));
   if (next > 0) ORDER_CART[pid] = next; else delete ORDER_CART[pid];
@@ -636,6 +641,7 @@ function dlCartAdjust(pid, delta, maxQty) {
   const input = document.getElementById('dl-order-search');
   if (input) input.value = searchVal;
   dlRenderOrderList();
+  const l2 = document.getElementById('dl-order-list'); if (l2) l2.scrollTop = st;   // v25.6.10: ro'yxat tepaga sakramaydi
 }
 
 async function dlSubmitOrder() {

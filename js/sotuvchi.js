@@ -399,13 +399,15 @@ function svHomeHtml() {
   ${ptBanner('sale', 'Yangi savdo', 'Mahsulotni qidiring yoki shtrix-kodni skanerlang', "svSwitchTab('sale')")}
   ${ptActs([['sale', 'emerald', 'Savdo', "svSwitchTab('sale')"], ['debt', 'amber', 'Qarzlar', "svSwitchTab('debt')"], ['kassa', 'sky', 'Kassa', "svSwitchTab('kassa')"],
     ['history', 'indigo', 'Hisobot', "svSwitchTab('history')"], ['expense', 'red', 'Xarajat', "svSwitchTab('expense')"], ['salary', 'purple', 'Oylik', "svSwitchTab('salary')"],
-    ['orders', 'blue', 'Buyurtmalar', "svSwitchTab('orders')", pend], ['settings', 'text-muted', 'Sozlamalar', 'svOpenSettings()']])}
+    ...(svCanOrders() ? [['orders', 'blue', 'Buyurtmalar', "svSwitchTab('orders')", pend]] : []), ['settings', 'text-muted', 'Sozlamalar', 'svOpenSettings()']])}
   <h2 class="ox-sec">Oxirgi cheklarim</h2>
   ${last.length ? `<div class="pt-last">${last.map(s => `<div class="pt-last-r"><span class="pt-last-ic">${ptIc('sale')}</span><span class="pt-last-t"><b>${esc(s.inv || ('#' + s.id))}</b><small>${esc(custOf(s))} · ${esc(fmtD ? fmtD(s.date) : String(s.date || '').slice(0, 10))}</small></span><b class="pt-last-v">${CUR.fmtUsd(+s.totalUsd || 0)}</b></div>`).join('')}</div>`
     : `<div class="pt-empty">Hali chek yoʻq — birinchi savdoni «Yangi savdo» tugmasi bilan boshlang.</div>`}`;
 }
+// v25.6.10: diller buyurtmalari — faqat diller ruxsati bilan (avval hammaga ko'rinib, «Yangi buyurtma yo'q» deb noto'g'ri ko'rsatardi)
+function svCanOrders() { return !!(ME && (ME.role === 'admin' || (ME.perms && (ME.perms.has('dillerlar.view') || ME.perms.has('dillerlar.orders'))))); }
 function svAllowedTabs() {
-  return ['home','sale','debt','kassa','orders','history','expense'];   // sotuvchi/admin — hammasi (oylik — «Xarajat» ichida)
+  return ['home','sale','debt','kassa', ...(svCanOrders() ? ['orders'] : []),'history','expense'];   // oylik — «Xarajat» ichida
 }
 
 function svShowApp() {
@@ -423,10 +425,11 @@ function svShowApp() {
   });
   if (!allowed.includes(ACTIVE_TAB)) ACTIVE_TAB = allowed[0];
   if (typeof ptShellInit === 'function') ptShellInit({ label: 'Sotuvchi', go: 'svSwitchTab', settings: 'svOpenSettings', logout: 'svLogout', who: ME.name, role: svRoleText(),
-    items: [['home', 'Bosh sahifa'], ['sale', 'Savdo'], ['debt', 'Qarzlar'], ['kassa', 'Kassa'], ['history', 'Hisobot'], ['expense', 'Xarajat'], ['orders', 'Buyurtmalar']] });
+    items: [['home', 'Bosh sahifa'], ['sale', 'Savdo'], ['debt', 'Qarzlar'], ['kassa', 'Kassa'], ['history', 'Hisobot'], ['expense', 'Xarajat'], ...(svCanOrders() ? [['orders', 'Buyurtmalar']] : [])] });
   if (typeof ptSideActive === 'function') ptSideActive(ACTIVE_TAB);
   svRenderContent();
-  svLoadOrdersIfNeeded(true);   // v23.9: yuqoridagi qo'ng'iroq — yangi diller buyurtmalari soni
+  const bell = document.getElementById('sv-bell'); if (bell) bell.style.display = svCanOrders() ? '' : 'none';
+  if (svCanOrders()) svLoadOrdersIfNeeded(true);   // v23.9: yuqoridagi qo'ng'iroq — yangi diller buyurtmalari soni
 }
 
 // v23.9: «Menyu» yo'q — hamma bo'lim ekranda: pastki panel (telefon) / tablar (kompyuter);

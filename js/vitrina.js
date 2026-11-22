@@ -281,11 +281,16 @@
     var p = [d.slice(0, 3), d.slice(3, 5), d.slice(5, 8), d.slice(8, 10), d.slice(10, 12)].filter(Boolean);
     return '+' + p.join(' ');
   }
+  var PENDK = null;   // v25.6.10: yuborilayotgan buyurtma kaliti
   function submit(f) {
     var err = $('vt-err'), btn = $('vt-send');
     var body = { a: 'order', s: D.shop.slug, name: f.name.value.trim(), phone: f.phone.value, address: f.address ? f.address.value.trim() : '', note: f.note.value.trim(),
       delivery: CHK.delivery === 'courier' && D.shop.delivery ? 'courier' : 'pickup', hp: f.hp.value,
       items: Object.keys(CART).filter(function (k) { return BYID[k]; }).map(function (k) { return { pid: BYID[k].id, qty: CART[k] }; }) };
+    // v25.6.10: bir xil buyurtma qayta yuborilsa — o'sha kalit (server ikkinchi buyurtma yaratmaydi)
+    var sig = JSON.stringify([body.name, body.phone, body.delivery, body.address, body.items]);
+    if (!PENDK || PENDK.sig !== sig) PENDK = { sig: sig, k: 'o' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10) };
+    body.k = PENDK.k;
     if (body.name.length < 2) { err.textContent = 'Ismingizni yozing'; f.name.focus(); return; }
     if (String(body.phone).replace(/\D/g, '').length !== 12) { err.textContent = 'Telefon raqamni toʻliq yozing'; f.phone.focus(); return; }
     if (body.delivery === 'courier' && body.address.length < 5) { err.textContent = 'Manzilni yozing'; f.address.focus(); return; }
@@ -295,7 +300,8 @@
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
       .then(function (x) {
         if (!x.ok || !x.j.ok) { err.textContent = (x.j && x.j.error) || 'Yuborilmadi — qayta urinib koʻring'; btn.disabled = false; btn.textContent = 'Qayta yuborish'; if (x.j && x.j.pid) load(); return; }
-        ORD.unshift({ id: x.j.id, tk: x.j.tk, no: x.j.no, at: new Date().toISOString(), total: x.j.total }); lsSet(key('orders'), ORD.slice(0, 30));
+        PENDK = null;
+        if (!ORD.some(function (o) { return o.id === x.j.id; })) ORD.unshift({ id: x.j.id, tk: x.j.tk, no: x.j.no, at: new Date().toISOString(), total: x.j.total }); lsSet(key('orders'), ORD.slice(0, 30));
         CART = {}; lsSet(key('cart'), CART); cartUi(); render();
         sheet('<div class="vt-ok"><i>✅</i><h2 style="padding:0">Buyurtma #' + x.j.no + ' qabul qilindi</h2><p>Jami: <b>' + money(x.j.total) + '</b></p><p style="color:#666">Doʻkon tez orada <b>' + esc(body.phone) + '</b> raqamiga qoʻngʻiroq qilib tasdiqlaydi.</p>'
           + '<button class="vt-prim" data-orders="1">Buyurtmalarim</button><br><br><button class="vt-sec" data-close="1">Xaridni davom ettirish</button></div>');

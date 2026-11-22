@@ -85,9 +85,14 @@ exports.handler = async (event) => {
     for (let attempt = 0; attempt < 3; attempt++) {
       const L = await loadShopData(admin, slug || null);
       if (!L.found) return json({ error: 'Doʻkon topilmadi yoki hozircha yopiq' }, 404);
+      const shop = L.raw.shop && typeof L.raw.shop === 'object' ? L.raw.shop : {};
+      // v25.6.10: takroriy yuborish (aloqa uzilib, mijoz «Qayta yuborish» bosdi) — o'sha buyurtma qaytadi, ikkinchisi yaratilmaydi
+      const ck = typeof body.k === 'string' && /^[A-Za-z0-9-]{8,40}$/.test(body.k) ? body.k : null;
+      const dup = ck && (Array.isArray(shop.orders) ? shop.orders : []).find((o) => o && o.ck === ck);
+      if (dup) return json({ ok: true, no: dup.no, id: dup.id, tk: dup.tk, total: dup.ckTotal, cur: dup.ckCur, dup: true }, 200);
       const r = SP.buildOrder(L.data, L.found, L.view, body);
       if (!r.ok) return json({ error: r.error, pid: r.pid }, 400);
-      const shop = L.raw.shop && typeof L.raw.shop === 'object' ? L.raw.shop : {};
+      if (ck) Object.assign(r.order, { ck, ckTotal: r.total, ckCur: r.cur });
       const nextShop = { ...shop, orders: [r.order, ...(Array.isArray(shop.orders) ? shop.orders : [])].slice(0, 3000), seq: r.seq };
       const nextBranch = { ...L.raw, shop: nextShop };
       let err;

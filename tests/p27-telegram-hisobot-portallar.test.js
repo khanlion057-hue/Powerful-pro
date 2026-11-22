@@ -153,6 +153,7 @@ async function testSellerPhone() {
       const u = route.request().url();
       if (u.includes('/functions/app-data-load')) return json(route, 200, { data: JSON.parse(JSON.stringify(server)) });
       if (u.includes('/functions/staff-whoami')) return json(route, 200, { staff: { id: 9, name: 'Sotuvchi', filial: 'baza', active: true, role: 'sotuvchi' } });
+      if (u.includes('/functions/rbac-user-permissions')) return json(route, 200, { name: 'Sotuvchi', roles: [], permKeys: ['savdo.create', 'dillerlar.view'] });   // v25.6.10: buyurtmalar — diller ruxsati bilan
       if (u.includes('/functions/dealer-data-load')) return json(route, 200, { dealers: [{ id: 1, name: 'D' }] });
       if (u.includes('/functions/dealer-orders-list')) return json(route, 200, { orders: [{ id: 1, dealer_id: 1, status: 'pending', items: [] }, { id: 2, dealer_id: 1, status: 'pending', items: [] }, { id: 3, dealer_id: 1, status: 'approved', items: [] }] });
       if (u.includes('/functions/')) return json(route, 200, {});

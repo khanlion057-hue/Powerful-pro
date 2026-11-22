@@ -30,4 +30,22 @@ async function run() {
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }
 }
-module.exports = { name: 'P104 — Diller: miqdor raqam bilan, rasm to\'liq, buyurtmada nom asosiy', cases: [{ name: 'buyurtma: nom asosiy, qidiruv nom bo\'yicha oldin, raqam kiritish, rasm ko\'rgichi', run }] };
+async function many() {
+  const { browser, page, errors } = await openPage('diller.html', { width: 390, height: 844, mobile: true, loggedIn: true, tables: DEALER_TABLES });
+  try {
+    await page.evaluate(() => { dlSwitchTab('order'); CATALOG.length = 0; for (let i = 1; i <= 75; i++) CATALOG.push({ id: 100 + i, name: 'Mahsulot ' + i, sku: 'M' + i, qty: 9 });
+      ORDER_CART = {}; DLO.seg = 'new'; DLO.lim = 60; dlRenderContent(); dlRenderOrderList(); });
+    assert.equal(await page.$$eval('#dl-order-list .dl-prow', (a) => a.length), 60);
+    assert.match(await page.textContent('#dl-order-list'), /Yana 15 ta/);
+    await page.evaluate(() => [...document.querySelectorAll('#dl-order-list button')].find((b) => /Yana 15/.test(b.textContent)).click());
+    assert.equal(await page.$$eval('#dl-order-list .dl-prow', (a) => a.length), 75, '61-75 ham ko\'rinadi');
+    // «+» bosilganda ro'yxat joyida qoladi
+    await page.evaluate(() => { document.getElementById('dl-order-list').scrollTop = 900; });
+    const before = await page.evaluate(() => document.getElementById('dl-order-list').scrollTop);
+    await page.evaluate(() => dlCartAdjust(130, 1, 9));
+    const after = await page.evaluate(() => document.getElementById('dl-order-list').scrollTop);
+    assert.ok(before > 0 && Math.abs(after - before) < 5, `tepaga sakramadi: ${before} → ${after}`);
+    assert.deepEqual(errors, []);
+  } finally { await browser.close(); }
+}
+module.exports = { name: 'P104 — Diller: miqdor raqam bilan, rasm to\'liq, buyurtmada nom asosiy', cases: [{ name: 'buyurtma: nom asosiy, qidiruv nom bo\'yicha oldin, raqam kiritish, rasm ko\'rgichi', run }, { name: '60 tadan ko\'p mahsulot — «Yana N ta»; + bosilganda ro\'yxat joyida', run: many }] };

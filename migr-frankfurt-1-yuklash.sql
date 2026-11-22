@@ -19,6 +19,17 @@ begin
   end loop;
   execute (select 'truncate ' || string_agg(format('public.%I', relname), ', ') || ' restart identity cascade'
              from pg_class where relnamespace = 'public'::regnamespace and relkind = 'r');
+  -- avval loginlar: staff va dealers jadvallari auth.users ga bog'langan
+  select string_agg(quote_ident(attname), ',' order by attnum) into cols
+    from pg_attribute where attrelid = 'auth.users'::regclass and attnum > 0 and not attisdropped and attgenerated = '';
+  execute format('insert into auth.users (%s) select %s from jsonb_populate_recordset(null::auth.users, $1) on conflict (id) do nothing',
+                 cols, cols) using d -> '__auth_users';
+  get diagnostics n = row_count; res := res || jsonb_build_object('__auth_users', n);
+  select string_agg(quote_ident(attname), ',' order by attnum) into cols
+    from pg_attribute where attrelid = 'auth.identities'::regclass and attnum > 0 and not attisdropped and attgenerated = '';
+  execute format('insert into auth.identities (%s) select %s from jsonb_populate_recordset(null::auth.identities, $1) on conflict do nothing',
+                 cols, cols) using d -> '__auth_identities';
+  get diagnostics n = row_count; res := res || jsonb_build_object('__auth_identities', n);
   -- bog'lanish tartibida: avval boshqa jadvalga tayanmaydiganlar, keyin ularga bog'langanlar
   create temp table _done (oid oid primary key) on commit drop;
   loop
@@ -47,16 +58,6 @@ begin
   for t in select c.relname from pg_class c where c.relnamespace = 'public'::regnamespace and c.relkind = 'r' loop
     execute format('alter table public.%I enable trigger user', t.relname);
   end loop;
-  select string_agg(quote_ident(attname), ',' order by attnum) into cols
-    from pg_attribute where attrelid = 'auth.users'::regclass and attnum > 0 and not attisdropped and attgenerated = '';
-  execute format('insert into auth.users (%s) select %s from jsonb_populate_recordset(null::auth.users, $1) on conflict (id) do nothing',
-                 cols, cols) using d -> '__auth_users';
-  get diagnostics n = row_count; res := res || jsonb_build_object('__auth_users', n);
-  select string_agg(quote_ident(attname), ',' order by attnum) into cols
-    from pg_attribute where attrelid = 'auth.identities'::regclass and attnum > 0 and not attisdropped and attgenerated = '';
-  execute format('insert into auth.identities (%s) select %s from jsonb_populate_recordset(null::auth.identities, $1) on conflict do nothing',
-                 cols, cols) using d -> '__auth_identities';
-  get diagnostics n = row_count; res := res || jsonb_build_object('__auth_identities', n);
   for s in select seq.relname sq, tab.relname tb, a.attname col
            from pg_depend dp join pg_class seq on seq.oid = dp.objid and seq.relkind = 'S'
            join pg_class tab on tab.oid = dp.refobjid

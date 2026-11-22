@@ -53,25 +53,26 @@ async function testReportText() {
   assert.match(t, /Powerful — kunlik hisobot/); assert.match(t, /07\.10\.2026, chorshanba\n💱 Kurs: 1\$ = 12 500 so'm/);
   // v25: ustun uslubi — «nomi ..... qiymat», qiymatlar bitta chiziqda (30 belgi), <pre> ichida
   const R = (l, v) => new RegExp('\n?' + l.replace(/[$()]/g, '\\$&') + ' +' + v.replace(/[$()]/g, '\\$&') + '(\n|</pre>)');
-  assert.match(t, /Bosh kassa<\/b>\n<pre>Dollar +\$1 000\nSo'm +2 500 000 so'm<\/pre>/);
-  assert.match(t, R('Savdo (2 chek)', '$150'), "faqat bugungi, bekor qilingan kirmaydi");
-  assert.match(t, R('  naqd', '$100')); assert.match(t, R('  karta', '$20')); assert.match(t, R('  qarzga', '$30'));
-  assert.match(t, R('Foyda', '$40')); assert.match(t, R('Xarajat (1)', '$15')); assert.match(t, R('Sof foyda', '$25'), 'hamkor kirimi xarajat emas');
-  assert.match(t, R('Undirilgan qarz', '$20'), "250 000 so'm / 12 500; savdo tushumi qarz to'lovi emas");
-  assert.match(t, R('Bosh kassaga', '$140'));
-  assert.match(t, R("KASSALAR\nNaqd so'm", "1 500 000 so'm")); assert.doesNotMatch(t, /Shaxsiy kassa/, "Shaxsiy kassa hisobotga chiqmaydi");
-  assert.match(t, R('QARZLAR\nMijozlar bizga', '$100')); assert.match(t, R("Biz ta'minotchilarga", '$40'));
-  assert.match(t, R('Ali &lt;b&gt;', '$100')); assert.match(t, R('Drel &lt;i&gt;', 'x2')); assert.doesNotMatch(t, /<i>|Ali <b>/, 'nomlardagi HTML ekranlangan');
-  assert.match(t, /Chilonzor<\/b>\n<pre>BUGUN\nSavdo va xarajat yo'q\n-+\nKASSALAR/);
+  // v25.6.10: har bo'lim o'z jadvali; birlik sarlavhada ($ yoki so'm), qatorda takrorlanmaydi; kenglik 34
+  assert.match(t, /Bosh kassa<\/b>\n<pre>Valyuta +Qoldiq\n-{34}\nSo'm +2 500 000\n\$ +1 000\.00<\/pre>/);
+  assert.match(t, R('Cheklar', '2')); assert.match(t, R('Savdo', '150.00'), "faqat bugungi, bekor qilingan kirmaydi");
+  assert.match(t, R(' naqd', '100.00')); assert.match(t, R(' karta', '20.00')); assert.match(t, R(' qarzga', '30.00'));
+  assert.match(t, R('Foyda', '40.00')); assert.match(t, R('Xarajat (1)', '15.00')); assert.match(t, R('SOF FOYDA', '25.00'), 'hamkor kirimi xarajat emas');
+  assert.match(t, R('Undirilgan qarz', '20.00'), "250 000 so'm / 12 500; savdo tushumi qarz to'lovi emas");
+  assert.match(t, R('Bosh kassaga', '140.00'));
+  assert.match(t, /Kassa +So'm +\$\n-{34}\nNaqd so'm +1 500 000/); assert.doesNotMatch(t, /Shaxsiy kassa/, "Shaxsiy kassa hisobotga chiqmaydi");
+  assert.match(t, R('Mijozlar bizga', '100.00')); assert.match(t, R("Biz ta'minotchilarga", '40.00'));
+  assert.match(t, R('Ali &lt;b&gt;', '100.00')); assert.match(t, R('Drel &lt;i&gt;', '2')); assert.doesNotMatch(t, /Ali <b>/, 'nomlardagi HTML ekranlangan');
+  assert.match(t, /Chilonzor<\/b>\n<i>Bugun · \$ da<\/i>\n<pre>Savdo va xarajat yo'q<\/pre>/);
   assert.doesNotMatch(t, /ERP/, "nom bo'lmasa ham «ERP» emas");
   assert.match(buildDailyReport({ settings: {}, branchStore: { baza: {} } }, date)[0], /POWERFUL GROUP — kunlik hisobot/, 'standart brend');
-  assert.match(t, R('Jami savdo (2 chek)', '$150')); assert.match(t, R('Dillerlardan (2)', '$300')); assert.match(t, R('  tasdiq kutmoqda', '1 ta'));
-  // ustunlar tekis: <pre> ichidagi har qator 30 belgidan oshmaydi va qiymatli qatorlar aynan 30
+  assert.match(t, /Umumiy<\/b> · <i>\$ da<\/i>\n<pre>Cheklar +2\nSavdo +150\.00/); assert.match(t, R('Dillerlardan (2)', '300.00')); assert.match(t, R('Tasdiq kutmoqda (ta)', '1'));
+  // ustunlar tekis: <pre> ichidagi har qator 34 belgidan oshmaydi; ikki ustunli qatorlarda qiymat aynan 34-belgida tugaydi
   const rows = [...t.matchAll(/<pre>([\s\S]*?)<\/pre>/g)].flatMap(m => m[1].split('\n')).map(l => l.replace(/&lt;|&gt;|&amp;/g, 'x'));
-  assert.ok(rows.length > 10 && rows.every(l => l.length <= 30), 'qatorlar telefonga sig\'adi');
-  assert.ok(rows.filter(l => /\S\s{2,}\S+$/.test(l)).every(l => l.length === 30), 'qiymatlar bitta chiziqda');
-  assert.ok(rows.filter(l => /^-+$/.test(l)).every(l => l.length === 30), 'ajratuvchi chiziq ham 30 belgi');
-  assert.match(buildDailyReport({ settings: {}, branchStore: { baza: { sales: [{ date, totalUsd: 20.4, paidUsd: 20.4, profitUsd: 1, payType: 'usd' }] } } }, date)[0], /\$20\.40/, "sentli summa — ikki xona");
+  assert.ok(rows.length > 10 && rows.every(l => l.length <= 34), 'qatorlar telefonga sig\'adi: ' + rows.filter(l => l.length > 34));
+  assert.ok(rows.filter(l => /^\S.*\S\s{2,}[\d.\-]+$/.test(l) && !/\d\s{2,}\d/.test(l)).every(l => l.length === 34), 'qiymatlar bitta chiziqda');
+  assert.ok(rows.filter(l => /^-+$/.test(l)).every(l => l.length === 34), 'ajratuvchi chiziq ham 34 belgi');
+  assert.match(buildDailyReport({ settings: {}, branchStore: { baza: { sales: [{ date, totalUsd: 20.4, paidUsd: 20.4, profitUsd: 1, payType: 'usd' }] } } }, date)[0], /Savdo +20\.40/, "sentli summa — ikki xona");
   // Uzun — bir nechta xabarga (har biri ≤ 4000)
   const big = sampleData(date); for (let i = 0; i < 40; i++) big.branchStore['f' + i] = { sales: [{ date, totalUsd: 1, paidUsd: 1, profitUsd: 1, payType: 'usd', items: Array.from({ length: 5 }, (_, j) => ({ name: 'Mahsulot nomi juda uzun ' + j + '-' + i, qty: 1 })) }] };
   const parts = buildDailyReport(big, date, {});
@@ -118,7 +119,7 @@ async function testServer() {
     fixed += 3600e3;   // keyingi soat (22:30) — jadval qayta uradi
     r = await h(sched()); assert.equal(JSON.parse(r.body).sent, 1, 'keyingi soatda yuborildi'); assert.equal(sent.length, 2);
     assert.match(sent[1].url, /api\.telegram\.org\/bot123456789/); assert.equal(sent[1].body.chat_id, '-1001234567890'); assert.equal(sent[1].body.parse_mode, 'HTML');
-    assert.match(sent[1].body.text, /kunlik hisobot/); assert.match(sent[1].body.text, /Savdo \(2 chek\) +\$150\n/);   // v25: ustun uslubi
+    assert.match(sent[1].body.text, /kunlik hisobot/); assert.match(sent[1].body.text, /Cheklar +2\nSavdo +150\.00\n/);   // v25.6.10: ustun uslubi (birlik sarlavhada)
     r = await h(sched()); assert.equal(JSON.parse(r.body).skipped, 'sent', 'bugun ikkinchi marta yuborilmaydi'); assert.equal(sent.length, 2);
     r = await h(post({ action: 'preview' }, 't-admin')); assert.equal(r.statusCode, 404, "HARDENING: jadvaldan tashqari so'rov — 404 (hech narsa bajarilmaydi)"); assert.ok(!('messages' in JSON.parse(r.body)));
     // Administrator: ko'rish (Telegramga ketmaydi), hozir yuborish; sotuvchi — rad; tokenning o'zi javobda yo'q

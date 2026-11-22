@@ -41,10 +41,12 @@ async function notify(admin, st, found, order, total, cur) {
     if (!TOKEN_RE.test(String(st.tgBotToken || '')) || !evtOn(st, 'shop')) return;
     const chats = chatsFor(st, 'shop', { filial: found.key }); if (!chats.length) return;
     const esc = (s) => String(s == null ? '' : s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
-    const money = cur === 'USD' ? '$' + total : String(total).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + " so'm";
-    const F = require('./_lib/tgFmt');   // v25.6.9: ustun uslubi
-    const R = [...order.items.slice(0, 15).map((i) => F.row(F.cut(i.name, 22), 'x' + i.qty)), F.LINE, F.row('Jami', money)];
-    const text = `🛒 <b>Yangi onlayn buyurtma #${order.no}</b>\n👤 ${esc(order.cust.name)} · ${esc(order.cust.phone)}\n${order.delivery === 'courier' ? '🚚 Yetkazib berish: ' + esc(order.cust.address) : '🏬 Olib ketadi'}\n${F.pre(R)}${order.note ? '\n📝 ' + esc(order.note) : ''}`;
+    const F = require('./_lib/tgFmt');   // v25.6.10: jadval — Mahsulot | Soni; JAMI shu jadvalda, birlik sarlavhada
+    const its = order.items.slice(0, 15), n = order.items.reduce((t, i) => t + F.num(i.qty), 0);
+    const tbl = F.table([{ h: 'Mahsulot' }, { h: 'Soni', w: 5, r: true }, { h: cur === 'USD' ? 'Jami $' : "Jami so'm", w: 12, r: true }],
+      [...its.map((i) => [i.name, F.q(i.qty), '']), ...(order.items.length > 15 ? [`... yana ${order.items.length - 15} xil`] : [])],
+      [[`JAMI (${order.items.length})`, F.q(n), cur === 'USD' ? F.m2(total) : F.sp(total)]]);
+    const text = `🛒 <b>Yangi onlayn buyurtma #${order.no}</b>\n👤 ${esc(order.cust.name)} · ${esc(order.cust.phone)}\n${order.delivery === 'courier' ? '🚚 Yetkazib berish: ' + esc(order.cust.address) : '🏬 Olib ketadi'}\n${tbl}${order.note ? '\n📝 ' + esc(order.note) : ''}`;
     await Promise.all(chats.map((c) => ops.within(tgSend(st.tgBotToken, c, text), 4000, null)));
   } catch (_) { /* xabar — ikkinchi darajali */ }
 }

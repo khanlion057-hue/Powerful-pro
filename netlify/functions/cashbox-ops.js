@@ -251,7 +251,7 @@ exports.handler = async (event) => {
     if (!out.replay && !out.recordSkipped && (body.kind === 'cust_debt_pay' || body.kind === 'dealer_pay')) {
       const op0 = ops[0] || {};
       const W = (pr) => require('./_lib/opsGuard').within(pr, 2500, null);   // v25.6.10: Telegram sekin bo'lsa javob kechikmasin
-      if (body.kind === 'cust_debt_pay') await W(notifyCustomerPayment(admin, { filial, customerId: body.record.customerId, amount: op0.amount, currency: op0.currency, debtAfterUzs: out.customerDebt, staffName }));
+      if (body.kind === 'cust_debt_pay') await W(notifyCustomerPayment(admin, { filial, customerId: body.record.customerId, amount: op0.amount, currency: op0.currency, debtAfterUzs: out.customerDebt, staffName, boxName: op0.box_name || null }));
       else await W(notifyDealerPayment(admin, { filial, dealerId: body.record.dealerId, amountUsd: op0.currency === 'USD' ? op0.amount : (serverRate ? op0.amount / serverRate : 0), debtAfterUsd: out.dealerDebtUsd, via: op0.box_name || null, staffName }));
     }
     return json(out, 200);

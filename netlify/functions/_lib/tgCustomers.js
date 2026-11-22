@@ -100,26 +100,27 @@ async function sendToCustomer(admin, token, filial, custId, text) {
 }
 
 // ── Mijozga xabar matnlari (faqat o'z ma'lumoti) ──
+// v25.6.10: ustun uslubi — jadval (Mahsulot | Soni), birlik sarlavhada; summalar so'mda
 function custCreditText({ brand, custName, items, discPct, debtUsd, rate, dueDate }) {
-  const k = 1 - Math.min(100, Math.max(0, num(discPct))) / 100;
-  const F = require('./tgFmt');   // v25.6.9: ustun uslubi
-  const lines = (items || []).slice(0, 30).map((i) => F.row(F.cut(i.name || i.sku || '', 22), F.sp(num(i.qty), 3) + ' dona'));
+  const F = require('./tgFmt'); void discPct;
+  const list = (items || []).slice(0, 30);
   const debtUzs = rate > 0 ? debtUsd * rate : null;
   return [`🧾 <b>${esc(brand)}</b> — nasiya xarid`, custName ? `Hurmatli ${esc(custName)}!` : '',
-    F.pre([...lines, F.LINE, F.row('Qarzga', debtUzs != null ? F.uzs(debtUzs) : F.usd(debtUsd)), ...(dueDate ? [F.row('Qaytarish sanasi', fmtDate(dueDate))] : [])])].filter(Boolean).join('\n') + (k < 1 ? '' : '');
+    F.table([{ h: 'Mahsulot' }, { h: 'Soni', w: 8, r: true }], list.map((i) => [i.name || i.sku || '', F.q(i.qty)]),
+      [debtUzs != null ? ["Qarzga (so'm)", F.sp(debtUzs)] : ['Qarzga ($)', F.m2(debtUsd)], ...(dueDate ? [['Qaytarish sanasi', fmtDate(dueDate)]] : [])])].filter(Boolean).join('\n');
 }
-function custPayText({ brand, amountText, debtAfterUzs }) {
+function custPayText({ brand, amountText, amount, currency, debtAfterUzs }) {
   const full = debtAfterUzs != null && num(debtAfterUzs) <= 0.5;
-  const F = require('./tgFmt');   // v25.6.9: ustun uslubi
-  return [`💵 <b>${esc(brand)}</b> — toʻlovingiz qabul qilindi`, F.pre([F.row('Toʻlandi', amountText), ...(debtAfterUzs != null && !full ? [F.row('Qolgan qarz', F.uzs(debtAfterUzs))] : [])]),
+  const F = require('./tgFmt');
+  return [`💵 <b>${esc(brand)}</b> — toʻlovingiz qabul qilindi`, F.pre([amount != null ? (currency === 'USD' ? F.row('Toʻlandi ($)', F.m2(amount)) : F.row("Toʻlandi (so'm)", F.sp(amount))) : F.row('Toʻlandi', String(amountText)), ...(debtAfterUzs != null && !full ? [F.row("Qolgan qarz (so'm)", F.sp(debtAfterUzs))] : [])]),
     full ? '✅ Qarzingiz toʻliq yopildi. Rahmat!' : ''].filter(Boolean).join('\n');
 }
 function custRemindText({ brand, custName, debtUzs, due, today }) {
-  const F = require('./tgFmt');   // v25.6.9: ustun uslubi
+  const F = require('./tgFmt');
   const late = due < today; const days = Math.round((Date.parse(today) - Date.parse(due)) / 864e5);
   return [`⏰ <b>${esc(brand)}</b> — eslatma`, custName ? `Hurmatli ${esc(custName)}!` : '',
     late ? 'Qarzni qaytarish muddati oʻtdi.' : 'Bugun qarzni qaytarish kuni.',
-    F.pre([F.row('Qarzingiz', F.uzs(debtUzs)), F.row('Qaytarish sanasi', fmtDate(due)), ...(late ? [F.row('Kechikdi', days + ' kun')] : [])])].filter(Boolean).join('\n');
+    F.pre([F.row("Qarzingiz (so'm)", F.sp(debtUzs)), F.row('Qaytarish sanasi', fmtDate(due)), ...(late ? [F.row('Kechikdi (kun)', String(days))] : [])])].filter(Boolean).join('\n');
 }
 
 module.exports = { ROW_ID, CODE_RE, loadLinks, saveLinks, codeFor, unlink, sweep, sendToCustomer, custCreditText, custPayText, custRemindText, key, tgApi };

@@ -111,12 +111,15 @@ async function usageText(admin) {
   if (!r || r.error || !r.data) return null;
   const u = r.data, pct = (v, lim) => (v == null ? '—' : `${Math.round(v / MB)} MB / ${Math.round(lim / MB)} MB (${Math.round((v / lim) * 100)}%)`);
   const warn = (u.db_bytes > 400 * MB || (u.storage_bytes || 0) > 800 * MB) ? '\n⚠️ <b>Chegaraga yaqin — tozalash yoki tarifni oshirish kerak</b>' : '';
-  // v25.6.9: ustun uslubi
-  const F = require('./tgFmt'), p2 = (v, lim) => (v == null ? '-' : `${Math.round(v / MB)}/${Math.round(lim / MB)} MB ${Math.round((v / lim) * 100)}%`);
-  void pct;
-  return ['🖥 <b>Tizim holati</b> (bepul tarif)', F.pre([F.row('Baza', p2(u.db_bytes, 500 * MB)), F.row('Rasmlar', p2(u.storage_bytes, 1024 * MB)), F.LINE,
-    F.row('Xatolar (24 soat)', String(u.errors_24h)), F.row('Sekin javob', String(u.slow_24h)), F.row("Cheklangan so'rov", String(u.rate_24h)),
-    F.row('Telegram navbati', String(u.outbox_pending)), F.row('Yuborilmadi', String(u.outbox_failed_24h))])].join('\n') + warn;
+  // v25.6.10: ustunlar — Resurs | Band MB | Limit | %; hodisalar — alohida jadval
+  const F = require('./tgFmt'); void pct;
+  const mb = (v) => (v == null ? '-' : F.sp(Math.round(v / MB))), pc = (v, lim) => (v == null ? '-' : String(Math.round((v / lim) * 100)));
+  return ['🖥 <b>Tizim holati</b> (bepul tarif)',
+    F.table([{ h: 'Resurs' }, { h: 'Band MB', w: 9, r: true }, { h: 'Limit', w: 7, r: true }, { h: '%', w: 5, r: true }],
+      [['Baza', mb(u.db_bytes), '500', pc(u.db_bytes, 500 * MB)], ['Rasmlar', mb(u.storage_bytes), '1 024', pc(u.storage_bytes, 1024 * MB)]]),
+    F.table([{ h: 'Oxirgi 24 soat' }, { h: 'Soni', w: 8, r: true }],
+      [['Server xatolari', String(u.errors_24h)], ['Sekin javob', String(u.slow_24h)], ["Cheklangan so'rov", String(u.rate_24h)],
+        ['Navbatda (Telegram)', String(u.outbox_pending)], ['Yuborilmagan', String(u.outbox_failed_24h)]])].join('\n') + warn;
 }
 
 module.exports = { _resetMissing: () => { _missingUntil = 0; }, opsOn, within, clientIp, rateHit, report, enqueue, flushOutbox, usageText, RETRYABLE, getAdminClient };

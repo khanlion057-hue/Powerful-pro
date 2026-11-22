@@ -43,20 +43,19 @@ function testSection() {
   const dealers = [{ id: 1, name: 'Ali Diller', debt: 1200, paidToday: 270, stockQty: 15, stockUsd: 240 }, { id: 2, name: "O'tkir ʻaka <b>", debt: 0, paidToday: 0, stockQty: 0, stockUsd: 0 }];
   const msgs = buildDailyReport({ settings: { usdUzs: 12500, company: 'Powerful' }, branchStore: { baza: {} } }, DATE, { firma: { USD: 1, UZS: 2 }, dealers });
   const t = msgs.join('\n---\n');
-  assert.match(t, /Dillerlar<\/b>/); assert.match(t, /Ali Diller\n +Qarz +\$1 200\n +Bugun to'ladi +\$270\n +Ombor \(15 dona\) +\$240/);
-  assert.match(t, /Jami qarz +\$1 200/); assert.match(t, /Bugun to'langan +\$270/); assert.match(t, /Diller ombori +\$240/);
-  assert.doesNotMatch(t.split('Ali Diller')[1].split('Jami qarz')[0].split('\n').slice(4).join('\n'), /Bugun to'ladi|Ombor \(/, "qiymati 0 bo'lsa — qator yo'q");
+  assert.match(t, /Dillerlar<\/b>/); assert.match(t, /Diller +Qarz +Bugun +Ombor\n-{34}\nAli Diller +1 200 +270 +240\n/);   // v25.6.10: har diller bitta qator
+  assert.match(t, /JAMI \(2\) +1 \d{3} +270 +240<\/pre>/);
   assert.equal(nonAscii(t).length, 0, '<pre> ichida faqat ASCII: ' + JSON.stringify(nonAscii(t)));
-  assert.ok(preRows(t).every((l) => l.length <= 30), 'qatorlar telefonga sig\'adi');
+  assert.ok(preRows(t).every((l) => l.length <= 34), 'qatorlar telefonga sig\'adi');
   assert.ok(msgs.every((m) => m.length <= 4000));
   // juda ko'p diller — alohida xabarlarga bo'linadi, hech biri 4000 dan oshmaydi, hech bir diller yo'qolmaydi
-  const many = Array.from({ length: 120 }, (_, i) => ({ id: i + 1, name: 'Diller nomi ' + i, debt: 100 + i, paidToday: i, stockQty: i, stockUsd: i * 2 }));
+  const many = Array.from({ length: 120 }, (_, i) => ({ id: i + 1, name: 'Diller ' + i, debt: 100 + i, paidToday: i, stockQty: i, stockUsd: i * 2 }));
   const big = buildDailyReport({ settings: {}, branchStore: { baza: {} } }, DATE, { firma: { USD: 1, UZS: 2 }, dealers: many });
   assert.ok(big.length > 1 && big.every((m) => m.length <= 4000), 'xabarlar chegarasi: ' + big.map((m) => m.length));
-  for (let i = 0; i < 120; i++) assert.ok(big.join('').includes('Diller nomi ' + i + '\n'), 'diller #' + i + ' bor');
+  for (let i = 0; i < 120; i++) assert.ok(new RegExp('Diller ' + i + ' +' + (100 + i) + ' +' + i + ' +' + (i * 2) + '(\\n|<)').test(big.join('\n')), 'diller #' + i + ' bor');
   // eski yo'l (extra.dealers yo'q, data.dealers bor) buzilmaydi
   const old = buildDailyReport({ settings: {}, branchStore: { baza: {} }, dealers: [{ name: 'Eski', debt: 7 }] }, DATE, { firma: { USD: 1, UZS: 2 } }).join('');
-  assert.match(old, /Eski\n +Qarz +\$7(\n|<)/);
+  assert.match(old, /Eski +7 +0 +0\n/);
 }
 
 async function testMonthNoDoubleCount() {
@@ -68,9 +67,9 @@ async function testMonthNoDoubleCount() {
   const admin = { from(t) { const q = { select: () => q, gte: () => q, lt: () => q, order: () => q, then: (ok) => Promise.resolve({ data: rows[t] || [], error: null }).then(ok) }; return q; } };
   const rep = await ev.monthDealerReports(admin, {}, '2026-10');
   const a = rep.perDealer[0].text;
-  assert.match(a, /To'lagan +\$7(\n|<)/, "7 + 99 - 99 = 7 (ikki marta sanalmaydi)");
+  assert.match(a, /To'lagan +7\.00(\n|<)/, "7 + 99 - 99 = 7 (ikki marta sanalmaydi)");
   assert.equal(nonAscii(a).length, 0, 'oy yakuni ham faqat ASCII: ' + JSON.stringify(nonAscii(a))); assert.equal(nonAscii(rep.overview).length, 0);
-  assert.ok(preRows(rep.overview).every((l) => l.length <= 30));
+  assert.ok(preRows(rep.overview).every((l) => l.length <= 34));
 }
 
 module.exports = { name: "P97 — kunlik hisobot: Dillerlar (qarz, bugungi to'lov, ombor) va ASCII (v25.6)", cases: [

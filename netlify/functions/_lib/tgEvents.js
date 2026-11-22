@@ -20,23 +20,13 @@ const tc = require('./tgCustomers');
 const ops = require('./opsGuard');
 const brandOf = (st) => String(st.company || process.env.FW_BRAND_NAME || 'POWERFUL GROUP').slice(0, 60);
 
-const num = (v) => { const x = Number(v); return Number.isFinite(x) ? x : 0; };
-const esc = (s) => String(s == null ? '' : s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
-const sp = (n, d = 0) => { const v = Math.round(num(n) * 10 ** d) / 10 ** d; const [i, f] = Math.abs(v).toFixed(d).split('.'); return (v < 0 ? '−' : '') + i.replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + (f && +f ? '.' + f : ''); };
-const usd = (n) => '$' + sp(n, Math.abs(num(n)) >= 1000 ? 0 : 2);
-const uzs = (n) => sp(n) + " so'm";
+// v25.6.10: barcha yordamchilar — yagona tgFmt'dan (kenglik 34, kirill → lotin, jadval)
+const F = require('./tgFmt');
+const { num, esc, sp, m2, usd, uzs, cut, W, row, asc, pre, LINE, table } = F;
 const fmtDate = (d) => String(d || '').slice(0, 10).split('-').reverse().join('.');
-const cut = (s, n) => { s = String(s || ''); return s.length > n ? s.slice(0, n - 1) + '.' : s; };
-const W = 30;
-function row(l, v) {
-  l = String(l); v = String(v);
-  if (l.length + 1 + v.length <= W) return esc(l + ' '.repeat(W - l.length - v.length) + v);
-  return esc(l) + '\n' + esc(' '.repeat(Math.max(0, W - v.length)) + v);
-}
-// v25.6: Telegram <pre> — faqat ASCII (aks holda ustunlar tekis chiqmaydi): tipografik tutuq/minus/ko'paytirish belgilari oddiy belgiga
-const asc = (t) => String(t).replace(/[\u02BB\u02BC\u2018\u2019\u02B9]/g, "'").replace(/\u2212/g, '-').replace(/\u00D7/g, 'x').replace(/\u2026/g, '.');
-const pre = (rows) => '<pre>' + rows.map(asc).join('\n') + '</pre>';
-const LINE = '-'.repeat(W);
+const qty = F.q;
+// Mahsulotlar jadvali: Mahsulot | Soni | Summa ($) — nomga eng ko'p joy (narx = summa / soni)
+const goodsCols = [{ h: 'Mahsulot' }, { h: 'Soni', w: 5, r: true }, { h: 'Summa', w: 10, r: true }];
 
 function evtOn(st, kind) { const e = st && st.tgEvt; return !(e && typeof e === 'object' && e[kind] === false); }
 function chatList(v) {
@@ -92,28 +82,26 @@ async function send(st, kind, text, ctx = {}) {
 
 // ── 1) Nasiya savdo ──
 function creditSaleText({ st, filial, cust, items, discPct, paidUsd, creditUseUzs, rate, dueDate, dueDays, inv, staffName, custDebtUzs, serverDebtUsd, serverTotalUsd }) {
-  const k = 1 - Math.min(100, Math.max(0, num(discPct))) / 100;
-  const lines = (items || []).slice(0, 40).map((i) => {
-    const q = num(i.qty), pr = num(i.sellUsd) * k;
-    return [esc(cut(i.name || i.sku || ('#' + i.pid), W)), row(`  ${sp(q, 3)} × ${usd(pr)}`, usd(q * pr))].join('\n');
-  });
-  if ((items || []).length > 40) lines.push(esc(`… yana ${items.length - 40} ta`));
-  let total = (items || []).reduce((a, i) => a + num(i.qty) * num(i.sellUsd) * k, 0);
+  const dp = Math.min(100, Math.max(0, num(discPct))), k = 1 - dp / 100;
+  const list = (items || []).slice(0, 40);
+  const rows = list.map((i) => [i.name || i.sku || ('#' + i.pid), qty(i.qty), m2(num(i.qty) * num(i.sellUsd))]);
+  if ((items || []).length > 40) rows.push(`... yana ${items.length - 40} ta`);
+  const gross = (items || []).reduce((a, i) => a + num(i.qty) * num(i.sellUsd), 0);
+  let total = gross * k;
   let paid = num(paidUsd) + (rate > 0 ? num(creditUseUzs) / rate : 0);
   let debt = Math.max(0, total - paid);
   if (serverDebtUsd != null) { if (serverTotalUsd != null) total = num(serverTotalUsd); debt = Math.max(0, num(serverDebtUsd)); paid = Math.max(0, total - debt); }   // v25.6.10: bazadagi qiymat
-  const both = (v) => rate > 0 ? `${usd(v)} · ${uzs(Math.round(v * rate))}` : usd(v);
-  const R = [...lines, LINE, row('Jami', usd(total)), row('Toʻlandi', usd(paid)), row('Qarzga', usd(debt))];
+  const foot = [[`JAMI (${list.length})`, '', m2(gross)], ...(dp > 0 || total < gross - 0.005 ? [[`Chegirma ${sp(dp, 2)}%`, '', '-' + m2(gross - total)]] : []),
+    ['Toʻlandi', '', m2(paid)], ['QARZGA', '', m2(debt)]];
+  const info = [...(rate > 0 ? [row("Qarzga (so'm)", sp(Math.round(debt * rate)))] : []), ...(dueDate ? [row('Qaytarish sanasi', fmtDate(dueDate))] : []),
+    ...(dueDays ? [row('Muddat (kun)', String(dueDays))] : []), ...(custDebtUzs != null ? [LINE, row("Jami qarzi (so'm)", sp(custDebtUzs))] : [])];
   const out = [
-    `🧾 <b>Nasiya savdo</b>${inv ? ' · ' + esc(inv) : ''}`,
-    `👤 <b>${esc(cust && cust.name || 'Mijoz')}</b>`,
-    `📞 ${esc(cust && cust.phone || 'telefon yoʻq')}`,
+    `🧾 <b>Nasiya savdo</b>${inv ? ' · ' + esc(inv) : ''} · <i>narx $ da</i>`,
+    `👤 <b>${esc(cust && cust.name || 'Mijoz')}</b> · ${esc(cust && cust.phone || 'telefon yoʻq')}`,
     `🏢 ${esc(branchName(st, filial))}${staffName ? ' · ' + esc(staffName) : ''}`,
-    pre(R),
-    `💰 Qarzga: <b>${esc(both(debt))}</b>`,
+    table(goodsCols, rows, foot),
+    ...(info.length ? [pre(info)] : []),
   ];
-  if (dueDate) out.push(`📅 Qaytarish sanasi: <b>${fmtDate(dueDate)}</b>${dueDays ? ` (${dueDays} kun)` : ''}`);
-  if (custDebtUzs != null) out.push(`📒 Mijozning umumiy qarzi: <b>${esc(uzs(custDebtUzs))}</b>`);
   return { text: out.join('\n'), debt };
 }
 
@@ -138,22 +126,30 @@ async function notifyCreditSale(admin, args) {
 }
 
 // ── 2) Mijoz qarz to'lovi (kassa orqali) ──
-async function notifyCustomerPayment(admin, { filial, customerId, amount, currency, debtAfterUzs, staffName }) {
+async function notifyCustomerPayment(admin, { filial, customerId, amount, currency, debtAfterUzs, staffName, boxName }) {
   try {
     const { st, main } = await loadSettings(admin);
     if (!evtOn(st, 'pay')) return;
     const b = await loadBranch(admin, main, filial);
     const c = (b.customers || []).find((x) => x && Number(x.id) === Number(customerId)) || {};
     const full = debtAfterUzs != null && num(debtAfterUzs) <= 0.5;
+    // v25.6.10: ustunlar — so'mda; dollar to'lov bo'lsa $ ustuni va kurs ham
+    const rate = num(st.usdUzs), isUsd = currency === 'USD';
+    const paidUzs = isUsd ? (rate > 0 ? Math.round(num(amount) * rate) : null) : num(amount);
+    const after = debtAfterUzs != null ? Math.max(0, num(debtAfterUzs)) : null;
+    const rows = [...(after != null && paidUzs != null ? [['Oldingi qarz', sp(after + paidUzs), '']] : []),
+      ['Toʻlandi', paidUzs != null ? sp(paidUzs) : '-', isUsd ? m2(amount) : '']];
+    const foot = [['Qolgan qarz', after != null ? sp(after) : '-', ''], ...(isUsd && rate > 0 ? [['Kurs 1$', sp(rate), '']] : [])];
     const text = [
-      full ? '✅ <b>Qarz toʻliq yopildi</b>' : '💵 <b>Qarz toʻlovi</b>',
+      (full ? '✅ <b>Qarz toʻliq yopildi</b>' : '💵 <b>Qarz toʻlovi</b>'),
       `👤 <b>${esc(c.name || 'Mijoz')}</b>${c.phone ? ' · ' + esc(c.phone) : ''}`,
-      `🏢 ${esc(branchName(st, filial))}${staffName ? ' · ' + esc(staffName) : ''}`,
-      pre([row('Toʻlandi', currency === 'USD' ? usd(amount) : uzs(amount)), row('Qolgan qarz', debtAfterUzs != null ? uzs(Math.max(0, debtAfterUzs)) : '—')]),
+      `🏢 ${esc(branchName(st, filial))}${staffName ? ' · ' + esc(staffName) : ''}${boxName ? ' · ' + esc(boxName) : ''}`,
+      isUsd ? table([{ h: '' }, { h: "So'm", w: 12, r: true }, { h: '$', w: 10, r: true }], rows, foot)
+        : table([{ h: '' }, { h: "So'm", w: 14, r: true }], rows.map((r) => r.slice(0, 2)), foot.map((r) => r.slice(0, 2))),
     ].join('\n');
     await send(st, 'pay', text, { filial, admin });
     if (evtOn(st, 'customer')) await tc.sendToCustomer(admin, st.tgBotToken, filial, customerId,
-      tc.custPayText({ brand: brandOf(st), amountText: currency === 'USD' ? usd(amount) : uzs(amount), debtAfterUzs }));
+      tc.custPayText({ brand: brandOf(st), amountText: currency === 'USD' ? usd(amount) : uzs(amount), amount, currency, debtAfterUzs }));
   } catch (e) { console.warn('[tgEvents] pay', e && e.message); }
 }
 
@@ -169,17 +165,18 @@ async function notifyDealerOp(admin, { kind, mode, dealerId, items, filial, staf
     const d = await dealerRow(admin, dealerId);
     const title = kind === 'ship' ? (mode === 'debt' ? '📦 <b>Dillerga qarzga berildi</b>' : '📦 <b>Dillerga joʻnatildi</b> (sotish uchun)')
       : kind === 'return' ? '↩️ <b>Dillerdan qaytdi</b>' : '🛒 <b>Diller savdosi</b>';
-    let sum = 0;
-    const R = (items || []).slice(0, 40).map((i) => {
-      const q = num(i.qty), pr = num(i.priceUsd);
-      if (pr > 0) { sum += q * pr; return [esc(cut(i.name || i.sku || ('#' + i.pid), W)), row(`  ${sp(q, 3)} × ${usd(pr)}`, usd(q * pr))].join('\n'); }
-      return row(cut(i.name || i.sku || ('#' + i.pid), 22), '×' + sp(q, 3));
-    });
-    if (sum > 0) { R.push(LINE); R.push(row('Jami', usd(sum))); }
-    if (kind === 'sale' && pct != null) R.push(row('Xizmat haqi', sp(pct, 2) + '%'));
-    const text = [title, `👤 <b>${esc(d.name)}</b>${d.phone ? ' · ' + esc(d.phone) : ''}${d.region ? ' · ' + esc(d.region) : ''}`,
-      `🏢 ${esc(branchName(st, filial))}${staffName ? ' · ' + esc(staffName) : ''}`, pre(R),
-      `📒 Diller qarzi: <b>${esc(usd(d.debt_usd))}</b>`].join('\n');
+    // v25.6.10: jadval — Mahsulot | Soni | Narx | Summa; JAMI va diller qarzi shu jadvalda
+    const list = (items || []).slice(0, 40);
+    const priced = list.some((i) => num(i.priceUsd) > 0);
+    const sum = list.reduce((t, i) => t + num(i.qty) * num(i.priceUsd), 0), n = list.reduce((t, i) => t + num(i.qty), 0);
+    const body = priced
+      ? table(goodsCols, list.map((i) => [i.name || i.sku || ('#' + i.pid), qty(i.qty), num(i.priceUsd) > 0 ? m2(num(i.qty) * num(i.priceUsd)) : '']),
+        [[`JAMI (${list.length})`, qty(n), m2(sum)], ...(kind === 'sale' && pct != null ? [[`Xizmat ${sp(pct, 2)}%`, '', m2(sum * num(pct) / 100)]] : []), ['Diller qarzi', '', m2(d.debt_usd)]])
+      : table([{ h: 'Mahsulot' }, { h: 'Soni', w: 8, r: true }], list.map((i) => [i.name || i.sku || ('#' + i.pid), qty(i.qty)]),
+        [[`JAMI (${list.length})`, qty(n)], ...(kind === 'sale' && pct != null ? [[`Xizmat haqi, %`, sp(pct, 2)]] : [])]);
+    const text = [title + (priced ? ' · <i>$ da</i>' : ''), `👤 <b>${esc(d.name)}</b>${d.phone ? ' · ' + esc(d.phone) : ''}${d.region ? ' · ' + esc(d.region) : ''}`,
+      `🏢 ${esc(branchName(st, filial))}${staffName ? ' · ' + esc(staffName) : ''}`, body,
+      ...(priced ? [] : [pre([row('Diller qarzi ($)', m2(d.debt_usd))])])].join('\n');
     await send(st, 'dealer', text, { dealerId, admin });
   } catch (e) { console.warn('[tgEvents] dealer', e && e.message); }
 }
@@ -192,10 +189,14 @@ async function notifyDealerPayment(admin, { dealerId, amountUsd, debtAfterUsd, v
     const full = after <= 0.005;
     // v25.6.10: state — 'pending' (diller yubordi, kassir tasdig'i kutilmoqda), 'rejected' (rad etildi — qarz qaytdi)
     const head = state === 'pending' ? '⏳ <b>Diller pul yubordi — tasdiq kutilmoqda</b>' : state === 'rejected' ? '❌ <b>Diller toʻlovi rad etildi</b>' : full ? '✅ <b>Diller qarzi toʻliq yopildi</b>' : '💵 <b>Diller toʻlovi qabul qilindi</b>';
-    const text = [head,
+    // v25.6.10: ustun — $; oldingi qarz ham ko'rinadi
+    const R = state === 'rejected' ? [row('Rad etildi', m2(amountUsd)), row("Qarz (o'zgarmadi)", m2(Math.max(0, after)))]
+      : state === 'pending' ? [row('Hozirgi qarz', m2(Math.max(0, after) + num(amountUsd))), row('Yubordi', m2(amountUsd)), LINE, row('Tasdiqlansa qarz', m2(Math.max(0, after)))]
+      : [row('Oldingi qarz', m2(Math.max(0, after) + num(amountUsd))), row('Toʻlandi', m2(amountUsd)), LINE, row('Qolgan qarz', m2(Math.max(0, after)))];
+    const text = [head + ' · <i>$ da</i>',
       `👤 <b>${esc(d.name)}</b>${d.phone ? ' · ' + esc(d.phone) : ''}`,
       `🏢 ${esc(branchName(st, filial))}${staffName ? ' · ' + esc(staffName) : ''}${via ? ' · ' + esc(via) : ''}`,
-      pre([row(state === 'rejected' ? 'Rad etildi' : state === 'pending' ? 'Yubordi' : 'Toʻlandi', usd(amountUsd)), row(state === 'pending' ? 'Tasdiqlansa qarz' : 'Qolgan qarz', usd(Math.max(0, after)))])].join('\n');
+      pre(R)].join('\n');
     await send(st, 'dealer', text, { dealerId, admin });
   } catch (e) { console.warn('[tgEvents] dealer-pay', e && e.message); }
 }
@@ -282,13 +283,15 @@ async function monthDealerReports(admin, st, ym) {
     const ret = mine.filter((x) => /return/i.test(String(x.type))).reduce((a, x) => a + num(x.qty) * num(x.cost_usd), 0);
     const paid = pays.filter((x) => x.dealer_id === d.id).reduce((a, x) => a + num(x.amount_usd), 0);
     tShip += ship; tRet += ret; tPay += paid; tDebt += num(d.debt_usd);
-    const rows = [row('Olgan (tannarx)', usd(ship)), ...(ret > 0 ? [row('Qaytargan', usd(ret))] : []), row('Toʻlagan', usd(paid)), row('Oy oxiridagi qarz', usd(d.debt_usd))];
-    R.push(esc(cut(d.name, W)), row('  Olgan', usd(ship)), ...(ret > 0 ? [row('  Qaytargan', usd(ret))] : []), row('  Toʻlagan', usd(paid)), row('  Qarzi', usd(d.debt_usd)));
-    perDealer.push({ dealerId: d.id, text: `📆 <b>${esc(d.name)} — ${title}</b>\n` + pre(rows) });
+    // v25.6.10: ustunlar — har diller bitta qator; har dillerga o'zi — ikki ustun
+    const rows = [row('Olgan (tannarx)', m2(ship)), row('Qaytargan', m2(ret)), row('Toʻlagan', m2(paid)), LINE, row('Hozirgi qarz', m2(d.debt_usd))];
+    R.push([d.name, sp(ship - ret), sp(paid), sp(d.debt_usd)]);
+    perDealer.push({ dealerId: d.id, text: `📆 <b>${esc(d.name)}</b>\n${title} · <i>$ da</i>\n` + pre(rows) });
   }
   if (!perDealer.length) return { overview: null, perDealer };
-  R.push(LINE, row('Jami olgan', usd(tShip)), ...(tRet > 0 ? [row('Jami qaytgan', usd(tRet))] : []), row('Jami toʻlagan', usd(tPay)), row('Jami qarz', usd(tDebt)));
-  return { overview: (`📆 <b>Dillerlar — ${title}</b>\n` + pre(R)).slice(0, 3900), perDealer };
+  const tbl = table([{ h: 'Diller' }, { h: 'Oldi', w: 7, r: true }, { h: "To'ladi", w: 8, r: true }, { h: 'Qarz', w: 8, r: true }],
+    R, [['JAMI', sp(tShip - tRet), sp(tPay), sp(tDebt)]]);
+  return { overview: (`📆 <b>Dillerlar — ${title}</b> · <i>$ da</i>\n` + tbl + `\n<i>Oldi — olgani, qaytargani ayirilgan (tannarxda); Qarz — hozirgi holat</i>`).slice(0, 3900), perDealer };
 }
 
 // Eslatmani filiallarga bo'lish: { filial: [...] } — filial guruhiga faqat o'z mijozlari
@@ -301,9 +304,11 @@ async function productNames(main) { const m = {}; ((main && main.products) || []
 function qtyLines(list, names) {
   const by = {}; (list || []).forEach((i) => { const k = Number(i.pid); by[k] = (by[k] || 0) + num(i.qty); });
   const rows = Object.entries(by).sort((a, z) => z[1] - a[1]), total = rows.reduce((a, [, q]) => a + q, 0);
-  const lines = rows.slice(0, 12).map(([pid, q]) => row(cut(names[pid] || ('#' + pid), 22), sp(q, 2)));
+  const lines = rows.slice(0, 12).map(([pid, q]) => [names[pid] || ('#' + pid), qty(q)]);
   if (rows.length > 12) lines.push('... yana ' + (rows.length - 12) + ' xil');
-  return { lines, kinds: rows.length, total };
+  // v25.6.10: jadval — Mahsulot | Soni; JAMI shu jadvalda
+  const tbl = () => table([{ h: 'Mahsulot' }, { h: 'Soni', w: 9, r: true }], lines, [[`JAMI (${rows.length} xil)`, qty(total)]]);
+  return { lines, kinds: rows.length, total, tbl };
 }
 async function notifyStockIn(admin, args) {
   try {
@@ -312,7 +317,7 @@ async function notifyStockIn(admin, args) {
     const names = await productNames(main), q = qtyLines((args.batches || []).map((b) => ({ pid: b.pid, qty: b.qty })), names);
     if (!q.kinds) return;
     const title = args.reason === 'import' ? 'Excel kirim' : args.reason === 'dealer_return' ? 'Dillerdan qaytgan tovar' : 'Tovar kirimi';
-    const text = [`📥 <b>${title}</b> · ${esc(branchName(st, args.filial))}${args.staffName ? ' · ' + esc(args.staffName) : ''}`, pre([...q.lines, LINE, row(`Jami (${q.kinds} xil)`, sp(q.total, 2) + ' dona')])].join('\n');
+    const text = [`📥 <b>${title}</b> · ${esc(branchName(st, args.filial))}${args.staffName ? ' · ' + esc(args.staffName) : ''}`, q.tbl()].join('\n');
     await send(st, 'stock', text, { filial: args.filial, admin });
   } catch (e) { console.warn('[tgEvents] stock', e && e.message); }
 }
@@ -325,7 +330,7 @@ async function notifyTransfer(admin, args) {
     const FIL = /^[A-Za-z0-9_-]{1,40}$/, kinds = { tr_request: ['📨', "Tovar so'rovi"], tr_ship: ['🚚', "Tovar jo'natildi"], tr_receive: ['📦', 'Tovar qabul qilindi'] };
     const k = kinds[args.kind]; if (!k || (!q.kinds && args.kind !== 'tr_receive')) return;
     const mk = (who, dir) => [`${k[0]} <b>${k[1]}</b>`, `🏢 ${esc(branchName(st, me))}${other && FIL.test(other) ? ` ${dir} ${esc(branchName(st, other))}` : ''}${args.staffName ? ' · ' + esc(args.staffName) : ''}`,
-      ...(q.kinds ? [pre([...q.lines, LINE, row(`Jami (${q.kinds} xil)`, sp(q.total, 2) + ' dona')])] : [])].join('\n');
+      ...(q.kinds ? [q.tbl()] : [])].join('\n');
     await send(st, 'stock', mk(me, args.kind === 'tr_ship' ? '→' : '←'), { filial: me, admin });
     if (other && FIL.test(other) && other !== me) await send(st, 'stock', mk(other, args.kind === 'tr_ship' ? '→' : '←'), { filial: other, admin, onlyOwn: true });
   } catch (e) { console.warn('[tgEvents] transfer', e && e.message); }

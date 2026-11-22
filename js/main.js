@@ -1781,11 +1781,31 @@ async function authFetch(url, options = {}) {
   return res;
 }
 
-async function initData() {
+// v25.6.10 (egasi: «yuklash oynasi jonga tegadi»): TEZ OCHILISH — qurilmadagi oxirgi nusxa DARHOL ko'rsatiladi, bulutdagi
+// yangisi fonda keladi va ekran jimgina yangilanadi. Shu 1–2 soniyada ekran amallarga yopiq (fwBootBusy) — eskirgan
+// ma'lumot ustida savdo/saqlash bo'lmaydi (pul hisobi buzilmaydi). Qurilmada nusxa bo'lmasa — avvalgidek kutiladi.
+let _fwBootRefresh = null;
+async function initData(opts = {}) {
+  if (opts.fast && localStorage.getItem('bp_data')) {
+    await _initDataCore(null, false);
+    _fwBootRefresh = _cloudLoad().then(
+      async (cd) => { if (cd) await _initDataCore(cd, true); else await _initDataTail(); },
+      async () => { await _initDataTail(); });
+    return;
+  }
+  await _initDataCore(await _cloudLoad(), true);
+}
+async function _initDataTail() {
+  await dlLoadDealerData(); // dillerlar — endi alohida, RLS bilan himoyalangan jadvallardan
+  await dlLoadOrders();
+  await dlLoadStaff();
+  if (typeof dpnStart === 'function') dpnStart();   // v23.8: diller yuborgan pul — bildirishnomalar
+  if (typeof ntfStart === 'function') ntfStart();   // v24: 🔔 bildirishnomalar (31-migratsiya)
+}
+async function _initDataCore(cloudData, tail) {
   // 1. Avval cloud'dan yuklab ko'ramiz — app-data-load.js Function ichida
   //    app_data_branches ustunligi ALLAQACHON hisobga olingan (1.1-qadam),
   //    shuning uchun bu yerda alohida, to'g'ridan-to'g'ri so'rov shart emas.
-  const cloudData = await _cloudLoad();
   const raw = cloudData ? JSON.stringify(cloudData) : localStorage.getItem('bp_data');
 
   let d0 = null;
@@ -1894,11 +1914,7 @@ async function initData() {
     syncExtraBranchesFromCloud(); // xuddi shu — qo'shilgan yangi filiallar ro'yxati uchun ham
     // Cloud yuklangan bo'lsa localStorage'ni ham yangilaymiz (yangi filial-tuzilmasi bilan)
     if (cloudData) { S._store[S.branch] = _snapshotBranch(); localStorage.setItem('bp_data', JSON.stringify({...d, branchStore:S._store, activeBranch:S.branch})); }
-    await dlLoadDealerData(); // dillerlar — endi alohida, RLS bilan himoyalangan jadvallardan
-    await dlLoadOrders();
-    await dlLoadStaff();
-    if (typeof dpnStart === 'function') dpnStart();   // v23.8: diller yuborgan pul — bildirishnomalar
-    if (typeof ntfStart === 'function') ntfStart();   // v24: 🔔 bildirishnomalar (31-migratsiya)
+    if (tail) await _initDataTail();
     S._syncBaseline = _numericBaselineSnapshot(); // xavfsiz saqlash uchun boshlang'ich nuqta
     return;
   }
@@ -14560,6 +14576,79 @@ const XL_SAMPLE_RE = /^namuna\b/i;
 // v24.5: chegaralar — juda katta fayl brauzerni osib qo'ymasin, xato aniq ko'rsatilsin
 const XL_MAX_ROWS = 20000;
 const XL_MAX_BYTES = 50 * 1024 * 1024;
+// v25.6.10: boshqa dasturlarda (Python openpyxl va h.k.) yaratilgan .xlsx — Excel ochadi, ExcelJS esa «reading 'anchors'»
+// xatosi bilan to'xtaydi: (1) bog'lanishlar «/xl/...» ABSOLYUT yo'l bilan, (2) rasm joylashuvi «xdr:» prefikssiz yozilgan.
+// Bunday faylda ikkalasi standart ko'rinishga keltiriladi (jadval mazmuni, rasmlar o'zgarmaydi) va qayta o'qiladi.
+async function xlLoad(wb, buf) {
+  try { await wb.xlsx.load(buf); return; }
+  catch (e) {
+    let fixed = null;
+    try { fixed = await xlFixAbsRels(buf); } catch (_) { fixed = null; }
+    if (!fixed) throw e;
+    await wb.xlsx.load(fixed);
+  }
+}
+const _XL_CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function _xlCrc32(u8) { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = _XL_CRC[(c ^ u8[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function _xlRelTarget(relsPath, target) {
+  // «xl/worksheets/_rels/sheet1.xml.rels» manbasi — «xl/worksheets»; «_rels/.rels» — ildiz
+  const parts = relsPath.split('/'); parts.splice(-2, 2);
+  const from = parts.filter(Boolean), to = target.replace(/^\/+/, '').split('/');
+  let i = 0; while (i < from.length && i < to.length - 1 && from[i] === to[i]) i++;
+  return '../'.repeat(from.length - i) + to.slice(i).join('/');
+}
+// Rasm joylashuvi (drawingN.xml) prefikssiz yozilgan bo'lsa (<wsDr xmlns="...spreadsheetDrawing">) — ExcelJS faqat «xdr:» ni taniydi.
+// Standart nomlar maydonidagi (prefikssiz) teglarga «xdr:» qo'shiladi; «a:», «r:» kabi boshqa prefikslar o'zgarmaydi.
+function _xlDrawingPrefix(txt) {
+  const NS = 'http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing';
+  if (!new RegExp('<wsDr\\b[^>]*\\bxmlns="' + NS.replace(/[./]/g, '\\$&') + '"').test(txt)) return txt;
+  return txt.replace(/<(\/?)([A-Za-z][\w.-]*)(?=[\s>/])/g, (m, sl, tag) => '<' + sl + 'xdr:' + tag).replace('xmlns="' + NS + '"', 'xmlns:xdr="' + NS + '"');
+}
+// null — tuzatish kerak emas (yoki zip o'qilmadi)
+async function xlFixAbsRels(buf) {
+  const u8 = new Uint8Array(buf instanceof ArrayBuffer ? buf : buf.buffer || buf), dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
+  let eocd = -1; for (let i = u8.length - 22; i >= Math.max(0, u8.length - 65557); i--) if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  if (eocd < 0) return null;
+  const n = dv.getUint16(eocd + 10, true); let p = dv.getUint32(eocd + 16, true);
+  const dec = new TextDecoder(), enc = new TextEncoder(), entries = []; let changed = false;
+  for (let k = 0; k < n; k++) {
+    if (dv.getUint32(p, true) !== 0x02014b50) return null;
+    const method = dv.getUint16(p + 10, true), crc = dv.getUint32(p + 16, true), csize = dv.getUint32(p + 20, true), usize = dv.getUint32(p + 24, true);
+    const fl = dv.getUint16(p + 28, true), xl = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true), loc = dv.getUint32(p + 42, true);
+    const nameB = u8.slice(p + 46, p + 46 + fl), name = dec.decode(nameB);
+    p += 46 + fl + xl + cl;
+    const lfl = dv.getUint16(loc + 26, true), lxl = dv.getUint16(loc + 28, true), start = loc + 30 + lfl + lxl;
+    let e = { nameB, method, crc, csize, usize, data: u8.subarray(start, start + csize) };
+    const isRels = /\.rels$/i.test(name), isDrw = /^xl\/drawings\/[^/]+\.xml$/i.test(name);
+    if ((isRels || isDrw) && (method === 0 || method === 8)) {
+      let raw = e.data;
+      if (method === 8) {
+        if (typeof DecompressionStream === 'undefined') return null;
+        raw = new Uint8Array(await new Response(new Blob([e.data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
+      }
+      const txt = dec.decode(raw);
+      const out = isRels
+        ? txt.replace(/(<Relationship\b[^>]*?\bTarget=")(\/[^"]+)(")/g, (m, a, t, b) => /TargetMode="External"/.test(m) ? m : a + _xlRelTarget(name, t) + b)
+        : _xlDrawingPrefix(txt);
+      if (out !== txt) { const d = enc.encode(out); e = { nameB, method: 0, crc: _xlCrc32(d), csize: d.length, usize: d.length, data: d }; changed = true; }
+    }
+    entries.push(e);
+  }
+  if (!changed) return null;
+  const chunks = [], central = []; let off = 0;
+  for (const e of entries) {
+    const h = new Uint8Array(30 + e.nameB.length), hv = new DataView(h.buffer);
+    hv.setUint32(0, 0x04034b50, true); hv.setUint16(4, 20, true); hv.setUint16(6, 0x0800, true); hv.setUint16(8, e.method, true);
+    hv.setUint32(14, e.crc, true); hv.setUint32(18, e.csize, true); hv.setUint32(22, e.usize, true); hv.setUint16(26, e.nameB.length, true); h.set(e.nameB, 30);
+    const c = new Uint8Array(46 + e.nameB.length), cv = new DataView(c.buffer);
+    cv.setUint32(0, 0x02014b50, true); cv.setUint16(4, 20, true); cv.setUint16(6, 20, true); cv.setUint16(8, 0x0800, true); cv.setUint16(10, e.method, true);
+    cv.setUint32(16, e.crc, true); cv.setUint32(20, e.csize, true); cv.setUint32(24, e.usize, true); cv.setUint16(28, e.nameB.length, true); cv.setUint32(42, off, true); c.set(e.nameB, 46);
+    chunks.push(h, e.data); central.push(c); off += h.length + e.data.length;
+  }
+  const cdSize = central.reduce((t, c) => t + c.length, 0), end = new Uint8Array(22), ev = new DataView(end.buffer);
+  ev.setUint32(0, 0x06054b50, true); ev.setUint16(8, entries.length, true); ev.setUint16(10, entries.length, true); ev.setUint32(12, cdSize, true); ev.setUint32(16, off, true);
+  return await new Blob([...chunks, ...central, end]).arrayBuffer();
+}
 function xlFileGuard(f) {
   if (f && f.size > XL_MAX_BYTES) return `Fayl juda katta (${Math.round(f.size/1024/1024)} MB) — eng ko'pi ${XL_MAX_BYTES/1024/1024} MB`;
   return null;
@@ -14720,7 +14809,7 @@ async function importProducts(input) {
   const fErr = xlFileGuard(f); if (fErr) { toast('⛔ ' + fErr, 'error'); return; }
   try {
     const wb = new ExcelJS.Workbook();
-    await wb.xlsx.load(await f.arrayBuffer());
+    await xlLoad(wb, await f.arrayBuffer());
     const ws = xlDataSheet(wb);
     const rErr = xlRowsGuard(ws); if (rErr) { toast('⛔ ' + rErr, 'error'); return; }
     const imgMap = wsImagesByRow(wb, ws);
@@ -14874,7 +14963,7 @@ async function importBatchXlsx() {
   let restoreProducts = null;   // kutilmagan xatoda ham mahsulotlar oldingi holatiga qaytadi
   try {
     const wb = new ExcelJS.Workbook();
-    await wb.xlsx.load(await f.arrayBuffer());
+    await xlLoad(wb, await f.arrayBuffer());
     const ws = xlDataSheet(wb);
     const rErr = xlRowsGuard(ws); if (rErr) { btnReset(); xlShowErrors([rErr]); return; }
     const imgMap = wsImagesByRow(wb, ws);
@@ -15316,7 +15405,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     let uid = null, has = false;
     try { const { data: { session } } = await _db.auth.getSession(); uid = session?.user?.id || null; has = !!session; } catch (_) {}
     const remembered = (has || navigator.onLine === false) && typeof fwRememberGet === 'function' ? fwRememberGet(uid) : null;
-    if (remembered) { if (fwEnterWithInfo(remembered, true) !== 'here') return; entered = true; }
+    if (remembered) {
+      // egasi: «kirishda barmoq izi so'rash mayli» — barmoq izi yoqilgan bo'lsa ilova OCHILGANDA so'raladi (fondan qaytishda emas)
+      const q = typeof fwQuickGet === 'function' ? fwQuickGet() : null;
+      const info = q && q.bio ? await fwQuickUnlock(uid) : remembered;
+      if (info) { if (fwEnterWithInfo(info, true) !== 'here') return; entered = true; }
+      else { await showUnifiedLogin(); return; }
+    }
     if (!entered && typeof fwQuickGet === 'function' && fwQuickGet()) {
       if (has || navigator.onLine === false) {
         const info = (typeof fwQuickRecent === 'function' && fwQuickRecent(uid)) || await fwQuickUnlock(uid);
@@ -15339,8 +15434,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Loading
   const mainEl = document.getElementById('main-content-area');
   const loadEl = document.getElementById('bp-loading');
-  if (mainEl) mainEl.style.display='none';
-  if (loadEl) loadEl.style.display='flex';
+  const _fastBoot = !!localStorage.getItem('bp_data');   // v25.6.10: qurilmada nusxa bor — yuklash oynasisiz
+  if (!_fastBoot) {
+    if (mainEl) mainEl.style.display='none';
+    if (loadEl) loadEl.style.display='flex';
+  }
 
   // v25.3: xodim ruxsatlari ma'lumot bilan PARALLEL so'raladi (avval ketma-ket — bitta to'liq server aylanishi tejaladi);
   // natija ma'lumot yuklangandan keyin qo'llanadi (tartib o'zgarmaydi)
@@ -15349,7 +15447,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ staffId: Number(_staffIdEarly) }) })
     .then(async (r) => ({ ok: r.ok, data: await r.json().catch(() => ({})) }), (e) => ({ err: e })) : null;
 
-  await initData();
+  await initData({ fast: _fastBoot });
 
   // Oxirgi tanlangan filialni tiklash (parolsiz — bu faqat shu qurilmadagi holat)
   const savedBranch = localStorage.getItem('bp_active_branch');
@@ -15391,6 +15489,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   go((PAGE_VIEW_PERMISSION[_wantedPage] && !hasPerm(PAGE_VIEW_PERMISSION[_wantedPage])) ? 'dashboard' : _wantedPage);
   updateSidebarUser();
   if (typeof fwBackRootInstall === 'function') fwBackRootInstall();   // v25.6.8: Bosh sahifada «Orqaga» — chiqish tasdig'i
+  // v25.6.10: tez ochilish — bulutdagi yangi ma'lumot kelguncha amallar yopiq, kelgach joriy sahifa qayta chiziladi
+  if (_fwBootRefresh) {
+    fwBootBusy(true);
+    _fwBootRefresh.catch(() => {}).finally(() => {
+      fwBootBusy(false); _fwBootRefresh = null;
+      try { renderBranchBadge(); updateSidebarUser(); go(S.page || 'dashboard'); } catch (e) { console.warn(e); }
+    });
+  }
   if (CUR.lastRateDate !== td()) { setTimeout(()=>openRateModal(false), 500); }
   // v25: «Onlayn rejim faol» xabari har ochilishda pastki tugmani yopardi — endi faqat oflayn/onlayn o'zgarganda (pastdagi belgi)
 
@@ -15412,6 +15518,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // PWA — service worker endi js/shared.js da ro'yxatdan o'tadi (admin, sotuvchi va diller sahifalari uchun)
 
+// v25.6.10: tez ochilishda — bulut ma'lumoti kelguncha ekran amallarga yopiq (shaffof qatlam) + tepada ingichka «Yangilanmoqda…»
+function fwBootBusy(on) {
+  let el = document.getElementById('fw-boot-busy');
+  if (!on) { if (el) el.remove(); return; }
+  if (el) return;
+  el = document.createElement('div'); el.id = 'fw-boot-busy'; el.setAttribute('role', 'status'); el.setAttribute('aria-live', 'polite');
+  el.innerHTML = '<div class="fw-bb-bar"><i></i></div><span class="fw-bb-t">Yangilanmoqda…</span>';
+  ['click', 'pointerdown', 'touchstart', 'keydown'].forEach(t => el.addEventListener(t, (e) => { e.preventDefault(); e.stopPropagation(); }, { capture: true }));
+  document.body.appendChild(el);
+}
 // v25: tasdiqlangan (oflayn parol / PIN / barmoq izi) kirish — o'z sahifasiga
 // v25.3: inPlace=true — admin sahifasi QAYTA YUKLANMAYDI ('here' qaytadi, chaqiruvchi shu yerda davom etadi)
 function fwEnterWithInfo(info, inPlace) {

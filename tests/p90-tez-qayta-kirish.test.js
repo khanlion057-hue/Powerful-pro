@@ -68,7 +68,7 @@ async function testCodeGuards() {
   assert.match(main, /fwEnterWithInfo\(info, true\) !== 'here'/);
   assert.match(main, /if \(inPlace\) return 'here';/);
   // Ruxsatlar parallel
-  assert.ok(main.indexOf('const _permPre') < main.indexOf('await initData();'), 'ruxsatlar soʻrovi maʼlumotdan oldin boshlanadi');
+  assert.ok(main.indexOf('const _permPre') < main.indexOf('await initData('), 'ruxsatlar soʻrovi maʼlumotdan oldin boshlanadi');
   // Service worker: /h/ — keshdan, sahifa — 1,5 s
   assert.match(sw, /url\.pathname\.startsWith\('\/h\/'\)\) \{ e\.respondWith\(cacheFirst\(req\)\)/);
   assert.match(sw, /const NAV_TIMEOUT_MS = 1500;/);

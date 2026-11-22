@@ -1,16 +1,41 @@
-# Bazani Frankfurtga ko'chirish (v25.6.9)
+# Bazani Frankfurtga ko'chirish (v25.6.10)
 
-Yangi loyiha yaratildi: **powerful-pro-eu** (`anozulqnzoilncjvqsvo`, eu-central-1). Eski: `aniqvrvjawduyrexfufd` (Sidney).
-URL: https://anozulqnzoilncjvqsvo.supabase.co — anon kalit `js/config.js` ga o'tkazishda yoziladi (service_role kalit FAQAT Netlify muhitida).
+| | Eski | Yangi |
+|---|---|---|
+| Loyiha | `Powerful-pro` (`aniqvrvjawduyrexfufd`) | `Powerful-pro-eu` (`marqgbbwqpqohtzjkyyy`) |
+| Mintaqa | Sidney (ap-southeast-2) | Frankfurt (eu-central-1) |
+| URL | https://aniqvrvjawduyrexfufd.supabase.co | https://marqgbbwqpqohtzjkyyy.supabase.co |
 
-## Tartib (har qadamdan keyin tekshiring; eski baza oxirigacha tegilmaydi)
-1. **Eski bazada sinovni tozalang** (Sozlamalar → Sinovni tozalash; avval 49-migratsiya). Shunda ko'chadigan ma'lumot kam bo'ladi.
-2. **Sxema:** yangi loyiha → SQL Editor → `supabase/schema.sql` tarkibini to'liq qo'yib RUN; keyin `supabase-migration-49-sinov-tozalash.sql`.
-3. **Ma'lumot:** mahsulotlar, kirim partiyalari (`batches`), `app_data`, `app_data_branches`, `dealers`, `staff`, `catalog_products`, rollar/ruxsatlar.
-   Eski loyihada Table Editor → Export CSV → yangisida Import. (Auth foydalanuvchilari va parollar ko'chmaydi.)
-4. **Foydalanuvchilar:** `npm run create-admin` bilan egasi hisobi; xodim va dillerlar — ilovadan qayta qo'shiladi (parollar yangidan beriladi).
-5. **Rasmlar:** Storage `product-images` bucket yaratib, rasmlarni ko'chiring (yoki mahsulot rasmlari qayta yuklanadi).
-6. **Ulash:** Netlify muhit: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (yangi), `js/config.js` da URL va anon kalit; Netlify → Functions region → **Frankfurt (eu-central-1)**.
-7. Deploy → tekshiruv → eski loyihani 1 hafta zaxirada saqlang, keyin to'xtating.
+Netlify funksiyalari hozir: **us-east-2 (Ogayo)** — `/.netlify/functions/health` javobidagi `region`.
 
-Tezlik: funksiya va baza bir mintaqada bo'lsa so'rov ~200 ms o'rniga ~5–20 ms kutadi.
+## 1-bosqich — tayyorlash (bajarildi, ilova ishlab turdi)
+- Sxema: `supabase/schema.sql` + prodakshndan olingan tuzatish (barcha funksiyalar, ustunlar, triggerlar,
+  RLS, huquqlar). Avtomatik solishtirish: **702/702 obyekt mos** (md5).
+- Sinov yuklash (`migr-frankfurt-1-yuklash.sql`): 69 jadvaldan 67 tasi baytigacha bir xil (loginlar va
+  parol xeshlari bilan); farq — faqat ko'chirishdan keyin tushgan 2 ta monitoring yozuvi.
+- Rasmlar: 113/113 nusxalandi, md5 bir xil.
+- Vaqtinchalik ko'prik: yangi loyihada yopiq `fw-migr-tmp` storage + `fw_migr_get` / `fw_migr_load`
+  funksiyalari (faqat SQL Editor/servis uchun; anon/authenticated chaqira olmaydi).
+
+## 2-bosqich — ko'chirish (≈30 daqiqa, savdo to'xtatiladi)
+1. Xodimlarga: «30 daqiqa savdo qilmang».
+2. Claude: eski bazadan oxirgi nusxa (`data2.json`) — faqat o'qish.
+3. Egasi: **Powerful-pro-eu → SQL Editor** → `migr-frankfurt-2-kochirish.sql` → Run → natijani yuborish.
+4. Claude: jadvalma-jadval md5 solishtirish (rasm havolalari yangi manzilga almashgan holda); yangi rasmlar bo'lsa — nusxalash.
+5. Egasi: **Netlify → Project configuration → Environment variables**:
+   - `SUPABASE_URL` = `https://marqgbbwqpqohtzjkyyy.supabase.co`
+   - `SUPABASE_SERVICE_ROLE_KEY` = yangi loyiha → Project Settings → API Keys → `service_role` (secret) —
+     **faqat Netlify'ga**, chatga yozilmaydi.
+   - (ixtiyoriy) Functions → Region → **eu-central-1 (Frankfurt)**, agar tarifda bo'lsa.
+6. Claude: `js/config.js` (URL + ochiq anon kalit) → test → commit → deploy («deploy qil» bilan).
+7. Tekshiruv: `health` (`db: true`), kirish (eski parollar bilan), savdo, kassa, rasm, Telegram bot; Netlify loglarida vaqt.
+
+## 3-bosqich — tozalash
+- Yangi loyihada vaqtinchalik ko'prik: `fw_migr_tmp_*` storage qoidalari, `fw_migr_get`, `fw_migr_load`
+  o'chiriladi (`migr-frankfurt-3-tozalash.sql`).
+- Eski loyiha 1–2 hafta zaxira sifatida qoladi (o'zgartirilmaydi), keyin to'xtatiladi.
+
+## Orqaga qaytish
+2-bosqichning 5–6-qadamlarigacha eski baza ishlayveradi. Muammo bo'lsa — Netlify muhitidagi ikki qiymat
+va `js/config.js` eski qiymatlarga qaytariladi, deploy. Eski bazada hech narsa o'zgartirilmagan.
+Diqqat: yangi bazaga ko'chirishdan keyin yozilgan savdolar eski bazaga o'tmaydi — qaytish faqat birinchi soatlarda mantiqli.

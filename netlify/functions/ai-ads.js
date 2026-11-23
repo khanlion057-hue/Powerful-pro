@@ -5,7 +5,8 @@
 //   POST { action:'candidates', filial? }                — reklama uchun mahsulotlar (narx — SERVERDA)             · reklama.view
 //   POST { action:'settings_get', filial? }              — filial sozlamalari                                       · reklama.view
 //   POST { action:'settings_save', filial?, settings }   — saqlash (tekshiriladi)                                   · reklama.settings
-//   (keyingi bosqichlar: text, img, upload_url, publish, drafts, draft_action, history)
+//   POST { action:'text', filial?, pid, kind?, variant?, template? } — sarlavha, matn, heshteglar (AI yoki shablon) · reklama.create
+//   (keyingi bosqichlar: img, upload_url, publish, drafts, draft_action, history)
 //
 // Qoidalar: deny-by-default (ruxsatsiz — 403); do'kon yoqilmagan filialda — 409 SHOP_OFF; 58 yo'q — 409 MIGRATION58_PENDING.
 // Bot tokeni va AI kaliti javobga hech qachon qo'shilmaydi. Tana 1 MB dan katta bo'lsa — 413.
@@ -13,19 +14,17 @@
 const { getAdminClient, json, methodGuard, parseBody, requireStaffAuth, resolveFilial, serverError } = require('./_lib/supabaseAdmin');
 const { TOKEN_RE } = require('./_lib/dailyReportRun');
 const AA = require('./_lib/aiAds');
+const AT = require('./_lib/aiText');
+const SP = require('./_lib/shopPublic');
 
 const ENDPOINT = 'ai-ads';
 const MAX_BODY = 1024 * 1024;
-const PERM = { status: 'reklama.view', candidates: 'reklama.view', settings_get: 'reklama.view', settings_save: 'reklama.settings' };
+const PERM = { status: 'reklama.view', candidates: 'reklama.view', settings_get: 'reklama.view', settings_save: 'reklama.settings', text: 'reklama.create' };
 const missing58 = (e) => !!e && (e.code === '42P01' || e.code === 'PGRST205' || /ai_ad_|ai_usage/.test(String(e.message || '')) && /does not exist|could not find|schema cache/i.test(String(e.message || '')));
 
-function aiInfo() {
-  const key = String(process.env.AI_API_KEY || '').trim();
-  const lim = Number(process.env.AI_MONTHLY_LIMIT);
-  return { on: key.length >= 10, provider: String(process.env.AI_PROVIDER || 'gemini').toLowerCase().slice(0, 20),
-    model: String(process.env.AI_MODEL || '').slice(0, 60), limit: Number.isInteger(lim) && lim >= 0 ? lim : 300 };
-}
-const monthOf = (now = Date.now()) => new Date(now + 5 * 3600000).toISOString().slice(0, 7);   // Toshkent oyi
+// AI holati — kalit javobga chiqmaydi
+function aiInfo() { const c = AT.aiConfig(); return { on: c.on, provider: c.provider, limit: c.limit, why: c.why }; }
+const monthOf = (now = Date.now()) => AT.monthOf(now);   // Toshkent oyi
 
 exports.handler = async (event) => {
   const methodErr = methodGuard(event, ['POST']);
@@ -65,9 +64,25 @@ exports.handler = async (event) => {
       const used = Number((u && u.count) || 0);
       const st = L.settings || {};
       return json({ ok: true, filial, shopOn: L.shopOn,
-        ai: { on: ai.on, provider: ai.on ? ai.provider : null, used, limit: ai.limit, left: Math.max(0, ai.limit - used), month, exhausted: ai.on && used >= ai.limit },
+        ai: { on: ai.on, provider: ai.on ? ai.provider : null, why: ai.why, used, limit: ai.limit, left: Math.max(0, ai.limit - used), month, exhausted: ai.on && used >= ai.limit },
         telegram: { bot: TOKEN_RE.test(String(st.tgBotToken || '')), channel: AA.channelOf(settings, st) || null, ownerGroup: !!st.tgChatId },
         lang: settings.lang }, 200);
+    }
+
+    if (body.action === 'text') {
+      if (!(Number.isSafeInteger(body.pid) && body.pid > 0)) return json({ error: "Mahsulot noto'g'ri" }, 400);
+      const L = await AA.loadBranch(admin, filial);
+      if (!L.shopOn) return json({ error: "Bu filialda onlayn-do'kon yoqilmagan", code: 'SHOP_OFF' }, 409);
+      const p = (L.data.products || []).find((x) => x && Number(x.id) === body.pid);
+      // faqat vitrinada ko'rinadigan va «Reklama qilmaslik» belgisi yo'q mahsulot
+      const pub = p && !p.noAds ? SP.publicProduct(p, SP.catalogCtx(L.data, filial, L.view)) : null;
+      if (!pub) return json({ error: "Mahsulot reklama uchun mos emas (vitrinada yo'q yoki «Reklama qilmaslik» belgilangan)", code: 'NOT_ELIGIBLE' }, 404);
+      const kind = ['discount', 'new', 'top', 'stuck'].includes(body.kind) ? body.kind : 'new';
+      const variant = Number.isInteger(body.variant) && body.variant >= 0 && body.variant < 100 ? body.variant : undefined;
+      const out = await AT.generateText({ admin, product: { name: pub.name, cat: pub.cat, desc: pub.desc }, pid: body.pid, kind, lang: settings.lang,
+        variant, template: body.template === true });
+      return json({ ok: true, text: { title: out.title, body: out.body, tags: out.tags, source: out.source, note: out.note, variant: out.variant, count: out.count, lang: settings.lang, kind },
+        ai: out.ai }, 200);
     }
 
     // candidates

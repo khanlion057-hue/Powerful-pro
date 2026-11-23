@@ -206,8 +206,8 @@ Hech bir rolga avtomatik berilmaydi (deny-by-default) — admin hammasini ko'rad
 ## 9. Bosqichlar holati
 | Bosqich | Holat | Tekshiruv |
 |---|---|---|
-| 1. Nomzodlar (server) | ✅ | `tests/p138-ai-reklama-nomzodlar.test.js` (PGlite + haqiqiy `ai-ads`) |
-| 2. Matn | — | |
+| 1. Nomzodlar (server) | ✅ | `tests/p138-ai-reklama-nomzodlar.test.js` (PGlite + haqiqiy `ai-ads`; 1000 qator chegarasi) |
+| 2. Matn | ✅ | `tests/p139-ai-reklama-matn.test.js` (shablonlar, AI'ga ketgan haqiqiy so'rov tanasi, limit, tozalash) |
 | 3. Canvas va video | — | |
 | 4. Telegram | — | kanal ID kerak |
 | 5. Avtopilot | — | |

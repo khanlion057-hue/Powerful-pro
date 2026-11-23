@@ -1250,14 +1250,19 @@ const PERMISSIONS_CATALOG = [
   {key:'sozlamalar.edit', module:'sozlamalar', label:"Sozlamalarni o'zgartirish"},
   {key:'rollar.manage', module:'rollar', label:'Rol va ruxsatlarni boshqarish'},
   {key:'firma_kassa.view', module:'firma_kassa', label:"Bosh kassani ko'rish"},
-  {key:'firma_kassa.transact', module:'firma_kassa', label:'Bosh kassada pul harakati'}
+  {key:'firma_kassa.transact', module:'firma_kassa', label:'Bosh kassada pul harakati'},
+  // v25.8 (58): AI-reklama — hech bir rolga avtomatik berilmaydi
+  {key:'reklama.view', module:'reklama', label:"AI-reklamani ko'rish (nomzodlar, navbat, tarix)"},
+  {key:'reklama.create', module:'reklama', label:'AI-reklama posti tayyorlash (matn, rasm, video)'},
+  {key:'reklama.publish', module:'reklama', label:'AI-reklamani Telegram kanalga yuborish va qoralamani tasdiqlash'},
+  {key:'reklama.settings', module:'reklama', label:'AI-reklama sozlamalari (kanal, til, mezonlar, avtopilot)'}
 ];
 const RBAC_MODULE_LABELS = {
   dashboard:'Bosh sahifa', savdo:'Savdo', qaytarish:'Qaytarishlar', mahsulotlar:'Mahsulotlar',
   ombor:'Ombor', kirim:'Import/Kirim', mijozlar:'Mijozlar', taminotchilar:"Ta'minotchilar",
   hamkorlar:'Hamkorlar', dillerlar:'Dillerlar', sotuvchilar:'Sotuvchilar/Xodimlar',
   kassalar:'Kassalar', xarajatlar:'Xarajatlar', hisobot:'Hisobotlar', sozlamalar:'Sozlamalar', rollar:'Rollar',
-  firma_kassa:'Bosh kassa'
+  firma_kassa:'Bosh kassa', reklama:'AI-reklama'
 };
 // Sidebar bandi (data-page) -> shu sahifani ko'rish uchun kerak ruxsat kaliti
 const PAGE_VIEW_PERMISSION = {
@@ -4645,6 +4650,7 @@ function pmForm(p, prefillName) {
         </div>
         ${meField('Diller ball foizi', `<div class="me-amt"><input class="form-control" id="ep-point-pct" type="number" step="0.5" min="0" value="${+p.pointPct || 0}"><i>%</i></div>`, 'Sotuv summasidan qancha ball hisoblanadi')}
         ${meField('Filial xizmat foizi (alohida)', `<div class="me-amt"><input class="form-control" id="ep-branch-pct" type="number" step="0.5" min="0" max="100" placeholder="filialniki" value="${p.branchPct != null && p.branchPct !== '' ? +p.branchPct : ''}"><i>%</i></div>`, "Boʻsh — filial kartasidagi foiz. Faqat sotilgan tovar uchun: filial sotsa, shu foiz uning xizmat haqi")}
+        ${meSw('ep-no-ads', 'Reklama qilmaslik', "AI-reklama bu mahsulotni tavsiya qilmaydi va avtopilot uni chiqarmaydi (masalan foydasi past yoki tugayotgan tovar). Vitrinaga taʼsir qilmaydi.", !!p.noAds)}
         ${meSw('ep-direct-sale', "Omborda yoʻq boʻlsa ham sotiladi (taʼminotchidan)", "Doim taʼminotchidan toʻgʻridan sotiladi — ombor qoldigʻini talab qilmaydi va kamaytirmaydi.", !!p.directSale)}
         <div class="me-2" style="margin-top:8px">
           ${meField('Direct Sale taʼminotchisi', `<select class="form-control" id="ep-ds-supp"><option value="">— tanlanmagan —</option>${[...S.suppliers].sort((a,b)=>(b.allowDirectSale?1:0)-(a.allowDirectSale?1:0)).map(s=>`<option value="${s.id}" ${String(p.dsSuppId)===String(s.id)?'selected':''}>${s.allowDirectSale?'🚚 ':''}${esc(s.name)}</option>`).join('')}</select>`, 'Sotuvchi Direct Sale qilganda qarz shu taʼminotchiga yoziladi')}
@@ -4738,7 +4744,7 @@ async function pmfSave(btn) {
   Object.assign(p, { name, sku, param1: (g('ep-p1')?.value || '').trim(), param2: (g('ep-p2')?.value || '').trim(), brand: (g('ep-brand')?.value || '').trim(),
     cat: PMF.cat || 'Kategoriyasiz', unit: PMF.unit || 'dona', minStock: minS, maxStock: maxS,
     markupPct: parseAmt(g('pm-markup-pct')?.value || 25), optMarkupPct: parseAmt(g('pm-opt-pct')?.value || 15), pointPct: parseAmt(g('ep-point-pct')?.value || 0), branchPct: (g('ep-branch-pct') && String(g('ep-branch-pct').value).trim() !== '') ? Math.min(100, Math.max(0, parseAmt(g('ep-branch-pct').value))) : null,
-    directSale: !!g('ep-direct-sale')?.checked,
+    directSale: !!g('ep-direct-sale')?.checked, noAds: !!g('ep-no-ads')?.checked,   // v25.8: AI-reklamadan chiqarish
     dsSuppId: (g('ep-ds-supp')?.value ? (/^\d{1,16}$/.test(g('ep-ds-supp').value) ? Number(g('ep-ds-supp').value) : g('ep-ds-supp').value) : null),
     dsCostUsd: Math.max(0, parseAmt(g('ep-ds-cost')?.value || 0)) || null, desc: String(g('ep-desc')?.value || '').slice(0, 2000), barcode: bc || '', barcodes: PMF.bcs.slice(0, 20),
     warrantyM: (m => FW_WARRANTY.includes(m) ? m : 0)(+(document.querySelector('#pmf-war button.on')?.dataset.m || 0)),

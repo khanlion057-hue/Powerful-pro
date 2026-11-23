@@ -25,7 +25,7 @@ for a in "$@"; do
   esac
 done
 NETLIFY=(npx --yes netlify-cli@17.38.1)
-EXPECTED=69   # v25.7: + loss-pin; v25.6.9: + trial-reset, telegram-query; v25.3: + shop-public; v25.2: + client-error; v25: B2B olib tashlandi (b2b, b2b-inbound) — 65 − 2; v25.1: + tg-customer
+EXPECTED=70   # v25.8: + ai-ads; v25.7: + loss-pin; v25.6.9: + trial-reset, telegram-query; v25.3: + shop-public; v25.2: + client-error; v25: B2B olib tashlandi (b2b, b2b-inbound) — 65 − 2; v25.1: + tg-customer
 step() { echo "== $*"; }
 die() { echo "⛔ $*"; exit 2; }
 

@@ -1,6 +1,6 @@
 # AI-reklama moduli — reja (v25.8)
 
-Holat: **REJA — egasi tasdig'ini kutmoqda.** Kod hali yozilmagan.
+Holat: **reja tasdiqlangan (2026-11-23).** 1-bosqich bajarildi; keyingi bosqichlar — ketma-ket.
 Maqsad: onlayn-do'kon mahsulotidan Telegram kanal uchun foto-post yoki Reels video, Instagram uchun esa
 saqlab beriladigan fayl. Hammasi Netlify Free + Supabase Free ichida, oyiga 0 so'm (AI — ixtiyoriy).
 
@@ -185,19 +185,29 @@ Hech bir rolga avtomatik berilmaydi (deny-by-default) — admin hammasini ko'rad
 
 ---
 
-## 8. Ochiq savollar (1-bosqichdan oldin javob kerak)
+## 8. Egasining qarorlari (2026-11-23)
 
-1. **Qaysi bot kanalga yozadi?** Topshiriqda — do'kon boti (`shopBotToken`). Hozirgi «yangi mahsulot e'loni» esa hisobot boti
-   (`tgBotToken`) bilan `tgAnnounceChats` ga yuboradi. Do'kon botini kanalga administrator qilasizmi? **Kanal ID yoki @username?**
-2. **Tasdiqlash xabari egasi guruhiga** — hisobot boti (`tgBotToken` + `tgChatId`) bilanmi? (Do'kon boti egasi guruhida bo'lmasligi mumkin.)
-3. **Musiqa:** men litsenziyasi aniq bo'lgan trekni o'zim yuklab, huquqini kafolatlay olmayman. Variantlar:
-   a) siz 3–5 trek berasiz (masalan Pixabay Music yoki YouTube Audio Library'dan, litsenziya havolasi bilan);
-   b) musiqa brauzerda dastur bilan yaratiladi (oddiy ritm/akkordlar, fayl yo'q, mualliflik muammosi yo'q);
-   c) hozircha musiqasiz.
-4. **Telegram xatosida navbat:** `tg_outbox` ni rasm/video uchun kengaytiramizmi (58 da ustun qo'shiladi), yoki xato bo'lsa
-   post «yuborilmadi» bo'lib, panelda «Qayta yuborish» tugmasi yetadimi?
-5. **«Yangi» mezoni:** mahsulotda qo'shilgan sana yo'q — ID dagi vaqt, bo'lmasa birinchi kirim sanasi. Ma'qulmi?
-6. **«Vitrinada yashirilgan»:** alohida belgi yo'q (vitrina qoidasi: arxiv, Direct Sale, qoldiqsiz, narxsiz). Yangi
-   «Vitrinada ko'rsatmaslik» belgisi kerakmi?
-7. **AI provayder:** bepul variant — Google Gemini (AI Studio kaliti). Boshqa provayder rejalashtirilganmi?
-8. **Filiallar:** reklama har filial do'koni uchun alohida (sozlama, kanal, tarix) — yoki faqat asosiy (Baza) do'kon?
+1. **Kanal:** hisobot boti (`tgBotToken`) yozadi. Sozlamada alohida «Reklama kanali» (filial bo'yicha); bo'sh bo'lsa —
+   `tgAnnounceChats` ning birinchisi. Yuborishdan oldin `getChatMember`: bot kanalda admin va post yoza oladimi — yo'q bo'lsa aniq xato.
+   Kanal ID — 4-bosqichdan oldin egasidan olinadi.
+2. **Tasdiqlash xabari:** hisobot boti orqali egasi guruhiga (`tgChatId`), panel havolasi bilan.
+3. **Musiqa:** brauzerda yaratiladigan kuy — kamida 3 kayfiyat (energik, yumshoq, premium), tempo animatsiyaga mos,
+   ovoz 0.3–0.5; «musiqasiz» ham tanlov. `assets/ai-reklama/musiqa/` ga trek + `LICENSE.txt` qo'shilsa — ro'yxatda avtomatik chiqadi.
+4. **Navbat:** `tg_outbox` KENGAYTIRILMAYDI. Xato — post `failed` + sabab, panelda «Qayta yuborish». Avtopilot foto-posti keyingi
+   cron soatida 1 marta qayta uriniladi, keyin `failed` + egasiga xabar. Video — faqat qo'lda qayta (fayl o'chirilgan, qayta yoziladi).
+5. **«Yangi»:** birinchi kirim sanasi (omborga birinchi kelgan kun), bo'lmasa — ID dagi vaqt; qayta kirim — yangi emas;
+   ikkalasi ham yo'q — «yangi»ga kirmaydi.
+6. **«Reklama qilmaslik»** — mahsulot kartasida (`p.noAds`), faqat AI-reklamaga ta'sir qiladi; vitrina qoidalari ham amal qiladi.
+7. **AI:** Gemini (AI Studio kaliti), model — `AI_MODEL` (eng arzon Flash). AI'ga FAQAT: mahsulot nomi, kategoriya, qisqa tavsif,
+   post turi. Narx, mijoz, ta'minotchi, tannarx, telefon, filial nomi — hech qachon (test bilan). Provayder — 1 faylda almashadi.
+8. **Filiallar:** har filial alohida (sozlama, kanal, avtopilot, tarix — `branch_id`); do'kon yoqilmagan filialda tab ko'rinmaydi.
+   AI oylik limiti — butun tizim uchun bitta.
+
+## 9. Bosqichlar holati
+| Bosqich | Holat | Tekshiruv |
+|---|---|---|
+| 1. Nomzodlar (server) | ✅ | `tests/p138-ai-reklama-nomzodlar.test.js` (PGlite + haqiqiy `ai-ads`) |
+| 2. Matn | — | |
+| 3. Canvas va video | — | |
+| 4. Telegram | — | kanal ID kerak |
+| 5. Avtopilot | — | |

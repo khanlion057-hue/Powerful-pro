@@ -80,7 +80,7 @@ async function testSchemaAppliesFromZero() {
     // v24.5: 35-migratsiya (v23.10.2 dagi 31 dan) — +7 funksiya (_dealer_json, _ledger_op_batch_ids, _dealer_lock,
     //   dealer_ship_atomic, dealer_return_atomic, dealer_sale_record_atomic, dealer_atomic_available); jadval/cheklov soni
     //   o'zgarmaydi (ledger_ops_kind_chk — almashtirildi, diller amallari qo'shildi).
-    assert.deepEqual(c, { tables:68, views:3, funcs:117, policies:19, cons:238, idx:164, rls:68, evt:1, bucket:1 });   // v25.2: +48 (ops: 4 jadval, 4 funksiya, 6 cheklov, 6 indeks); v25.1: +47 (sales: 3 ustun, 1 tekshiruv cheklovi); v24.6: +36 (2 jadval, 4 funksiya); v24.8: +37 (+5 funksiya, −2 eski record_dealer_sale); v24.9: +38 (3 jadval, 1 funksiya); v25: +40 (1 funksiya, 1 cheklov), +41 (1 funksiya), +42 (5 funksiya), +43 (2 jadval, 1 funksiya), +44 (1 funksiya), +45 (3 funksiya)
+    assert.deepEqual(c, { tables:71, views:3, funcs:119, policies:19, cons:248, idx:169, rls:71, evt:1, bucket:1 });   // v25.8: +58 (ai-reklama: 3 jadval, 2 funksiya, 10 cheklov, 5 indeks); v25.2: +48 (ops: 4 jadval, 4 funksiya, 6 cheklov, 6 indeks); v25.1: +47 (sales: 3 ustun, 1 tekshiruv cheklovi); v24.6: +36 (2 jadval, 4 funksiya); v24.8: +37 (+5 funksiya, −2 eski record_dealer_sale); v24.9: +38 (3 jadval, 1 funksiya); v25: +40 (1 funksiya, 1 cheklov), +41 (1 funksiya), +42 (5 funksiya), +43 (2 jadval, 1 funksiya), +44 (1 funksiya), +45 (3 funksiya)
     const s = await one(db, `select count(*)::int n, md5(string_agg(r.key||':'||p.key, ',' order by r.key collate "C", p.key collate "C")) h,
       (select md5(string_agg(key||'|'||module||'|'||label, ',' order by key collate "C")) from permissions) ph,
       (select md5(string_agg(key||'|'||name||'|'||coalesce(description,'')||'|'||is_system, ',' order by key collate "C")) from roles) rh
@@ -90,7 +90,8 @@ async function testSchemaAppliesFromZero() {
     // + 31-migratsiya: savdo.direct_sale — savdo qila oladigan rollarga (oddiy xodim va dillerdan tashqari) = 151
     // + 32-migratsiya: savdo.direct_sale — oddiy «Xodim» (employee) roliga ham (egasi qarori 2026-10-13) = 152
     // + 37-migratsiya: yangi ruxsat «tannarx.view» (permissions jadvalida; hech bir rolga berilmaydi — n o'zgarmaydi, ph o'zgaradi)
-    assert.deepEqual(s, { n:152, h:'5a214ced5f15d7ccfe7c524bbed68a95', ph:'fa49e5be6506a7f4da2361559fa6839f', rh:'8eaf9d0346e9b4fdced7bf8508286766' }, 'Rollar/ruxsatlar: production + Firma Kassa + hisobdan chiqarish/B2B + Direct Sale ruxsatlari');
+    // + 58-migratsiya (v25.8): reklama.view/create/publish/settings — permissions'da; hech bir rolga berilmaydi (n, h o'zgarmaydi, ph o'zgaradi)
+    assert.deepEqual(s, { n:152, h:'5a214ced5f15d7ccfe7c524bbed68a95', ph:'5bf0d90e05b7097d0738d0588e7c5045', rh:'8eaf9d0346e9b4fdced7bf8508286766' }, 'Rollar/ruxsatlar: production + Firma Kassa + hisobdan chiqarish/B2B + Direct Sale ruxsatlari');
     const ds = await one(db, `select string_agg(r.key, ',' order by r.key collate "C") k from role_permissions rp join roles r on r.id=rp.role_id join permissions p on p.id=rp.permission_id where p.key='savdo.direct_sale'`);
     assert.equal(ds.k, 'administrator,branch_manager,cashier,employee,owner,sales_manager', "Direct Sale: oddiy xodimga ham (32), dillerga — yo'q");
     const app = await one(db, `select data from app_data where id='main'`);

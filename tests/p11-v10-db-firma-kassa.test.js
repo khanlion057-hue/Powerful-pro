@@ -33,6 +33,7 @@ const MIG45 = fs.readFileSync(path.join(ROOT, 'supabase-migration-45-zaklad-valy
 const MIG46 = fs.readFileSync(path.join(ROOT, 'supabase-migration-46-mustaqil-narx.sql'), 'utf8');
 const MIG47 = fs.readFileSync(path.join(ROOT, 'supabase-migration-47-yaxlitlash.sql'), 'utf8');
 const MIG48 = fs.readFileSync(path.join(ROOT, 'supabase-migration-48-ops.sql'), 'utf8');
+const MIG58 = fs.readFileSync(path.join(ROOT, 'supabase-migration-58-ai-reklama.sql'), 'utf8');   // v25.8: schema.sql da 48 dan keyin (49–57 — alohida fayllar)
 const MARK = '-- 7. v10 (23-migratsiya)';
 
 async function db(sql) {
@@ -90,8 +91,9 @@ async function testProductionSliceAndMigrationEquality() {
     await a.exec(MIG46);
     await a.exec(MIG47);
     await a.exec(MIG48);
+    await a.exec(MIG58);
     const after = await one(a, COUNTS), full = await one(b, COUNTS);
-    assert.deepEqual(after, full, "production + 23 + 24 + 25 + 26 + 27 + 28 + 29 + 30 + 31 + 32 + 33 + 34 + 35 + 36 + 37 + 38 + 39 + 40 + 41 + 42 + 43 + 44 + 45 + 46 + 47 + 48-migratsiya = to'liq schema.sql (funksiya matnlari va ruxsatlari ham)");
+    assert.deepEqual(after, full, "production + 23 + 24 + 25 + 26 + 27 + 28 + 29 + 30 + 31 + 32 + 33 + 34 + 35 + 36 + 37 + 38 + 39 + 40 + 41 + 42 + 43 + 44 + 45 + 46 + 47 + 48 + 58-migratsiya = to'liq schema.sql (funksiya matnlari va ruxsatlari ham)");
     await a.exec(MIG23);
     await a.exec(MIG24);
     await a.exec(MIG25);
@@ -118,6 +120,7 @@ async function testProductionSliceAndMigrationEquality() {
     await a.exec(MIG46);
     await a.exec(MIG47);
     await a.exec(MIG48);
+    await a.exec(MIG58);
     assert.deepEqual(await one(a, COUNTS), full, 'migratsiyalar takroriy ishga tushirilsa ham o\'zgarmaydi');
     // revoke/grant — ruxsat bayonotlari (masalan "revoke ... truncate ...") ma'lumot o'chirmaydi;
     // ular alohida tekshiriladi: 25-migratsiya anon'ga hech narsa BERMAYDI.

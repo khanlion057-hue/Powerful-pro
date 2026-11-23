@@ -757,7 +757,9 @@ async function svCommitSale(ctx) {
   if (fwLedgerRemote()) {
     const sig = JSON.stringify({ items, d: ctx.discPct, p: ctx.paidUsd, custId, boxPayments, overpay, creditUseUzs });
     if (!S._svCk || S._svCk.sig !== sig) S._svCk = { sig, key: 'ck-' + uid(), saleId: uid() };
-    const _body = (ack) => ({
+    // v25.7: ziyon paroli — faqat xotirada; oflayn navbatga yozilmaydi
+    let lossPin = ctx.lossPin || '';
+    const _body = (ack) => ({ ...(ack && lossPin ? { lossPin } : {}),
       items, discPct: ctx.discPct, paidUsd: ctx.paidUsd, custId, boxPayments, inv, idemKey: S._svCk.key, filial: SV_BRANCH,
       saleLocalId: S._svCk.saleId, payType: ctx.payType, boxId: ctx.boxId || null, custName: cust?.name || 'Anonim', saleDate: td(),
       lossAck: !!ack, overpay, creditUseUzs, discountReason: ctx.discountReason || null, priceMode: ctx.mode === 'wholesale' ? 'wholesale' : 'retail', dueDate: ctx.dueDate || null, dueDays: ctx.dueDays || null, ...fwSaleRoundFields(ctx),
@@ -769,9 +771,12 @@ async function svCommitSale(ctx) {
       let res = await _send(!!ctx.lossAck);
       result = await res.json().catch(() => ({}));
       // Server (bazadagi haqiqiy FIFO tannarx) zarar aniqlasa — sotuvchidan tasdiq so'raladi (ikki marta yozilmaydi)
-      if (!res.ok && result.code === 'LOSS_ACK_REQUIRED') {
+      // v25.7: zarar — ziyon paroli (administrator beradi); noto'g'ri bo'lsa qayta so'raladi (3 martagacha)
+      for (let k = 0; k < 3 && !res.ok && (result.code === 'LOSS_ACK_REQUIRED' || result.code === 'LOSS_PIN_WRONG'); k++) {
         const lossTxt = (+result.lossUsd > 0) ? `${CUR.fmtUzs(Math.round(CUR.toUzs(+result.lossUsd)))} ziyon qilyapsiz` : 'zarar bilan sotyapsiz';
-        if (!confirm(`⚠️ Server: siz bu savdoda ${lossTxt} (narx minimal narxdan past). Administrator xabardor qilinadi.\n\nRozimisiz?`)) return false;
+        const pin = await fwAskLossPin(result.code === 'LOSS_PIN_WRONG' ? 'Server: ziyon paroli notoʻgʻri. Qayta kiriting.' : `Server: siz bu savdoda ${lossTxt} (narx tannarxdan past). Administrator xabardor qilinadi. Davom etish uchun ziyon parolini kiriting.`, { local: false });
+        if (!pin) return false;
+        lossPin = pin; if (typeof POS !== 'undefined') POS.lossPin = pin;
         res = await _send(true); result = await res.json().catch(() => ({}));
       }
       if (!res.ok) {
@@ -780,7 +785,7 @@ async function svCommitSale(ctx) {
       }
     } catch (e) {
       // v25: internet yo'q — savdo qurilmada saqlanadi, internet qaytishi bilan avtomatik yuboriladi (ikki marta yozilmaydi)
-      if (typeof fwIsNetErr === 'function' && fwIsNetErr(e)) return svQueueOffline(ctx, { inv, cust, custId, boxPayments, overpay, body: _body(!!ctx.lossAck) });
+      if (typeof fwIsNetErr === 'function' && fwIsNetErr(e)) { const qb = _body(!!ctx.lossAck); delete qb.lossPin; return svQueueOffline(ctx, { inv, cust, custId, boxPayments, overpay, body: qb }); }   // v25.7: parol navbatga tushmaydi
       toast("⛔ Server bilan aloqa yo'q — savat saqlanib qoldi, qayta urinib ko'ring (savdo ikki marta yozilmaydi)", 'error'); return false;
     }
     if (result.balances && Object.keys(result.balances).length) { fwApplyCashBalances(result.balances); fwCashSeq++; }

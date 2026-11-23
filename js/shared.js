@@ -2544,13 +2544,18 @@ async function fwqFlush() {
       let r;
       try {
         r = await _fwqSend(e);
-        // Zarar tasdig'i: sotuvchi savdoni oflaynda tasdiqlagan — server so'rasa, o'sha kalit bilan tasdiq yuboriladi
-        if (!r.res.ok && r.out.code === 'LOSS_ACK_REQUIRED' && !e.body.lossAck) {
-          e.body.lossAck = true; _fwqUpdate(e.id, { body: e.body }); r = await _fwqSend(e);
+        // v25.7: zarar — ziyon paroli kerak. Parol NAVBATGA (localStorage) YOZILMAYDI: shu seansdagi xotiradan
+        // (POS.lossPin) yoki qayta so'raladi va faqat shu so'rovga qo'shiladi
+        if (!r.res.ok && (r.out.code === 'LOSS_ACK_REQUIRED' || r.out.code === 'LOSS_PIN_WRONG')) {
+          let pin = r.out.code === 'LOSS_ACK_REQUIRED' && typeof POS !== 'undefined' && POS.lossPin ? POS.lossPin : '';
+          if (!pin && typeof fwAskLossPin === 'function') pin = await fwAskLossPin(`Oflayn savdo zarar bilan (${e.body && e.body.inv || ''}). Serverga yozish uchun ziyon parolini kiriting.`, { local: false });
+          if (!pin) { _fwqUpdate(e.id, { lastError: 'Ziyon paroli kerak' }); break; }
+          if (typeof POS !== 'undefined') POS.lossPin = pin;
+          r = await _fwqSend({ ...e, body: { ...e.body, lossAck: true, lossPin: pin } });
         }
       } catch (err) { break; }                                                    // internet yana yo'q — keyinroq
       const st = r.res.status;
-      if (st === 401 || st === 409 && r.out.code !== 'LOSS_ACK_REQUIRED' || st === 429 || st >= 500) { _fwqUpdate(e.id, { tries: (e.tries || 0) + 1, lastError: r.out.error || ('HTTP ' + st) }); break; }
+      if (st === 401 || st === 409 && r.out.code !== 'LOSS_ACK_REQUIRED' || st === 403 && /^LOSS_PIN_/.test(r.out.code || '') || st === 429 || st >= 500) { _fwqUpdate(e.id, { tries: (e.tries || 0) + 1, lastError: r.out.error || ('HTTP ' + st) }); break; }
       const h = FWQ.handlers[e.kind] || {};
       if (r.res.ok) { try { h.ok && h.ok(e, r.out); } catch (x) { console.error('oflayn navbat:', x); } _fwqUpdate(e.id, null); sent++; }
       else { try { h.fail && h.fail(e, r.out); } catch (x) { console.error('oflayn navbat:', x); } _fwqUpdate(e.id, { state: 'rejected', error: r.out.error || ('HTTP ' + st) }); rejected++; }
@@ -3121,8 +3126,11 @@ async function fwLossPinOk(pin) {
   pin = String(pin || '').trim(); if (!pin) return false;
   try { return (await fwSha256Hex(pin)) === fwLossPinHash(); } catch (_) { return false; }
 }
-// Parol oynasi → Promise<boolean>. msg — nima uchun so'ralayotgani (ziyon summasi va h.k.)
-function fwAskLossPin(msg) {
+// Parol oynasi → Promise<string|false>: to'g'ri bo'lsa — kiritilgan parol (faqat XOTIRADA ishlatiladi, serverga
+// savdo bilan yuboriladi; localStorage'ga yozilmaydi), bekor/xato — false. msg — nima uchun so'ralayotgani.
+// v25.7: opts.local === false — brauzerda tekshirilmaydi (diller portali: xeshni faqat server biladi; server javob beradi)
+function fwAskLossPin(msg, opts) {
+  const local = !(opts && opts.local === false);
   return new Promise(resolve => {
     const ov = document.createElement('div');
     ov.className = 'pos-ov sheet'; ov.style.zIndex = '1400'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true');
@@ -3139,7 +3147,9 @@ function fwAskLossPin(msg) {
     const done = (v) => { ov.remove(); resolve(v); };
     let tries = 0;
     const go = async () => {
-      if (await fwLossPinOk(inp.value)) return done(true);
+      const pin = String(inp.value || '').trim();
+      if (!local && pin) return done(pin);
+      if (local && await fwLossPinOk(pin)) return done(pin);
       tries++; inp.value = '';
       ov.querySelector('#fw-lp-err').textContent = tries >= 3 ? 'Parol 3 marta notoʻgʻri — bekor qilindi' : 'Parol notoʻgʻri';
       if (tries >= 3) setTimeout(() => done(false), 900); else inp.focus();

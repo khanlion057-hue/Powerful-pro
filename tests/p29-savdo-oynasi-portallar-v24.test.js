@@ -5,7 +5,7 @@
 //    Direct Sale — ruxsat bilan, ta'minotchi mahsulotdan; Chakana (so'm) / Optom ($) — savat saqlanadi.
 //  • Admin: «Saqlanmadi» — serverning haqiqiy sababi ko'rsatiladi, yopiq eski yo'lga (upsert) o'tilmaydi, yolg'on «Saqlandi» yo'q;
 //    tahrirlash muddati; rejim almashganda savat saqlanadi; kam to'lov chegirmasi — aniq matn bilan tasdiq; 🔔 oynasi.
-//  • Diller: optomdan ko'pi bilan 10% chegirma (brauzer ham to'xtatadi), reviziya — sanoq yuboriladi, 🔔 belgisi.
+//  • Diller: optomdan 10% gacha chegirma; v25.7 — undan past faqat ziyon paroli bilan (parol oynasi, «Bekor» — yuborilmaydi), reviziya — sanoq yuboriladi, 🔔 belgisi.
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
@@ -255,18 +255,22 @@ async function testDealer() {
       STOCK = [{ pid: 101, sku: 'A-101', name: 'Drel', qty: 8, avg_cost_usd: 15 }]; SALES = []; CATALOG = [{ id: 101, optim_price: 20, point_pct: 0 }]; MY_ORDERS = []; dlShowApp(); });
     await page.waitForTimeout(300);
     assert.equal(await page.evaluate(() => document.getElementById('dl-bell-n').textContent + '|' + document.getElementById('dl-bell-n').hidden), '1|false', '🔔 belgisi');
-    // v24.5: diller sotuvi — savatcha (Omborim «Sotish» → Sotuv bo'limi). 10%: 17.99 — brauzer to'xtatadi (server ham rad etadi — P28)
-    const f = await page.evaluate(async () => {
-      dlOpenSale(101); const tab = ACTIVE_TAB; dlSaleCartOpen(); dlSalePrice(101, '17.99');
-      const line = document.querySelector('#dlc-ov .pos-line-m').textContent;
-      let rpc = 0; const orig = db.rpc; db.rpc = async () => { rpc++; return { error: null }; };
-      window.__t = []; const ot = toast; toast = (m) => window.__t.push(m);
-      await dlSaleSubmit();
-      db.rpc = orig; toast = ot;
-      return { tab, line, rpc, t: window.__t.join('|') };
+    // v24.5: diller sotuvi — savatcha (Omborim «Sotish» → Sotuv bo'limi).
+    // v25.7 (egasi): 10% dan past (17.99) — rad emas, ZIYON PAROLI so'raladi; «Bekor» — serverga yuborilmaydi (server ham parolsiz rad — P126)
+    await page.evaluate(() => {
+      dlOpenSale(101); window.__tab = ACTIVE_TAB; dlSaleCartOpen(); dlSalePrice(101, '17.99');
+      window.__rpc = 0; window.__orig = db.rpc; db.rpc = async () => { __rpc++; return { error: null }; };
+      window.__t = []; window.__ot = toast; toast = (m) => window.__t.push(m);
+      window.__sub = dlSaleSubmit();
     });
-    assert.equal(f.tab, 'sale', 'Omborimdagi «Sotish» — Sotuv bo\'limiga'); assert.match(f.line, /eng kami \$18\.00 \(−10%\)/);
-    assert.equal(f.rpc, 0, 'past narx — serverga yuborilmadi'); assert.match(f.t, /narxi juda past: eng kami \$18\.00/);
+    await page.waitForSelector('#fw-lp-v'); await page.click('#fw-lp-no');
+    const f = await page.evaluate(async () => {
+      await __sub; const line = document.querySelector('#dlc-ov .pos-line-m').textContent;
+      db.rpc = __orig; toast = __ot;
+      return { tab: __tab, line, rpc: __rpc, t: __t.join('|') };
+    });
+    assert.equal(f.tab, 'sale', 'Omborimdagi «Sotish» — Sotuv bo\'limiga'); assert.match(f.line, /Optom: \$20\.00 · Ziyon: −\$2\.01 · −10% dan past \(eng kami \$18\.00\)/);
+    assert.equal(f.rpc, 0, 'parol berilmadi — serverga yuborilmadi'); assert.match(f.t, /Sotuv bekor qilindi/);
     // optomdan past, lekin 10% ichida — «ziyon qilishingiz mumkin, rozimisiz?»; rad etilsa serverga yuborilmaydi
     const dlg = []; let dAns = false; page.on('dialog', d => { dlg.push(d.message()); dAns ? d.accept() : d.dismiss(); });
     const w = await page.evaluate(async () => {

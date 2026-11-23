@@ -343,7 +343,7 @@ async function dlPaySend() {
 // Egasi talabi: savatcha va buyurtmalar tarqoq bo'lmasin; «Qarzingiz» — faqat «To'lov»da.
 // Savdo yozish qoidalari o'zgarmagan: har qator — record_dealer_sale (server qoldiq va −10% chegarani tekshiradi).
 // ════════════════════════════════════════════
-const DLC = { cart: {}, q: '', busy: false };      // sotuv savati: {pid: {qty, price}}
+const DLC = { cart: {}, q: '', busy: false, lossPin: '' };   // sotuv savati: {pid: {qty, price}}; v25.7: lossPin — faqat xotirada
 const DLO = { seg: 'new', q: '' };                  // buyurtma: 'new' | 'mine'
 const DLS = { q: '', f: 'all' };                    // omborim filtri: 'all' | 'low' | kategoriya
 const dlPriceOf = (pid) => { const r = STOCK.find(x => x.pid === pid), c = CATALOG.find(x => x.id === pid); return (c && +c.optim_price > 0) ? +c.optim_price : (+(r && r.avg_cost_usd) || 0); };
@@ -416,13 +416,19 @@ function dlSaleCartPaint() {
             <label class="pos-in-wrap dlc-pr"><span>$</span><input class="pos-in" type="number" inputmode="decimal" step="0.01" min="0" value="${x.price.toFixed(2)}" onchange="dlSalePrice(${x.pid},this.value)" aria-label="Dona narxi"></label>
             <button class="pos-tag red" onclick="delete DLC.cart[${x.pid}];dlSaleCartPaint()" aria-label="Oʻchirish">✕</button>
           </div>
-          <div class="pos-line-m${bad ? ' red' : ''}">Optom: ${fmtUsd(op)}${bad ? ` · eng kami ${fmtUsd(dlFloor(op))} (−10%)` : low ? ' · optomdan arzon — ziyon qilishingiz mumkin' : ''}</div>
+          ${dlLineEcon(x, op, low, bad)}
         </div>`; }).join('')}</div>
       <div class="pos-total">${t.pts > 0 ? `<div><span>Ball</span><b>+${t.pts}</b></div>` : ''}<div class="big"><span>Jami</span><b>${fmtUsd(t.total)}</b></div></div>
       <div class="dls-hint">Sotuv summasi qarzingizga optom narxda yoziladi; yuqori sotsangiz, farq sizda qoladi.</div>
     </div>
     <div class="pos-foot fixed"><button class="pos-btn ok" id="dlc-go" onclick="dlSaleSubmit()" ${DLC.busy ? 'disabled' : ''}>Sotuvni tasdiqlash · ${fmtUsd(t.total)}</button></div>
   </div>`;
+}
+// v25.7 (egasi): qatorda optom narx va ziyon; −10% dan past — qizil, faqat ziyon paroli bilan
+function dlLineEcon(x, op, low, bad) {
+  if (!(op > 0)) return '';
+  const loss = Math.round((op - x.price) * x.qty * 100) / 100;
+  return `<div class="pos-line-m${bad ? ' red' : ''}">Optom: ${fmtUsd(op)}${low ? ` · <b class="red">Ziyon: −${fmtUsd(loss)}</b>` : ''}${bad ? ` · −10% dan past (eng kami ${fmtUsd(dlFloor(op))}) — ziyon paroli bilan` : low ? ' · optomdan arzon' : ''}</div>`;
 }
 function dlSalePrice(pid, v) { const c = DLC.cart[pid]; if (!c) return; const n = Math.max(0, Math.round((parseFloat(v) || 0) * 100) / 100); c.price = n; dlSaleCartPaint(); }
 async function dlSaleSubmit() {
@@ -431,9 +437,17 @@ async function dlSaleSubmit() {
   for (const x of l) {
     const op = dlPriceOf(x.pid);
     if (x.qty > (+x.r.qty || 0)) { toast(`«${x.r.name}» — omborda ${x.r.qty} dona`, 'error'); return; }
-    if (op > 0 && x.price < dlFloor(op) - 0.005) { toast(`⛔ «${x.r.name}» narxi juda past: eng kami ${fmtUsd(dlFloor(op))}`, 'error'); return; }
   }
-  const cheap = l.filter(x => { const op = dlPriceOf(x.pid); return op > 0 && x.price < op - 0.005; });
+  // v25.7 (egasi): optomdan 10% dan past — rad emas, ziyon paroli so'raladi (server ham tekshiradi; parol faqat xotirada)
+  const below = l.filter(x => { const op = dlPriceOf(x.pid); return op > 0 && x.price < dlFloor(op) - 0.005; });
+  if (below.length) {
+    const loss = below.reduce((a, x) => a + (dlPriceOf(x.pid) - x.price) * x.qty, 0);
+    const pin = await fwAskLossPin(`${below.map(x => `«${x.r.name}»`).join(', ')} — optom narxidan 10% dan past (ziyon: −${fmtUsd(loss)}). Bunday sotish faqat administrator bergan ziyon paroli bilan.`, { local: false });
+    if (!pin) { toast('Sotuv bekor qilindi — narxni koʻtaring yoki administratordan parol soʻrang', 'warning'); return; }
+    DLC.lossPin = pin;
+  }
+  // optomdan arzon, lekin 10% ichida — tasdiq (10% dan pastlari yuqorida parol bilan tasdiqlandi — qayta so'ralmaydi)
+  const cheap = l.filter(x => { const op = dlPriceOf(x.pid); return op > 0 && x.price < op - 0.005 && x.price >= dlFloor(op) - 0.005; });
   if (cheap.length) {
     const diff = cheap.reduce((a, x) => a + (dlPriceOf(x.pid) - x.price) * x.qty, 0);
     if (!confirm(`Optom narxidan jami ${fmtUsd(diff)} arzon sotyapsiz. Ziyon qilishingiz mumkin. Sotuvga rozimisiz?`)) return;
@@ -445,12 +459,26 @@ async function dlSaleSubmit() {
     const p = dlCalcPoints(x.qty * x.price, (cat && cat.point_pct) || 0);
     // v25 (42): qarzga olingan tovar sotilganda qarz qayta yozilmaydi — _v42 bo'lsa shu, bo'lmasa avvalgidek
     const args = { p_pid: x.pid, p_qty: x.qty, p_sell_usd: x.price, p_sku: x.r.sku, p_name: x.r.name, p_points: p, p_optim_price: dlPriceOf(x.pid) };
-    let { error } = await db.rpc('record_dealer_sale_v42', args);
-    if (error && (error.code === 'PGRST202' || error.code === '42883' || /record_dealer_sale_v42/.test(String(error.message || '')))) ({ error } = await db.rpc('record_dealer_sale', args));
-    if (error) { err = `«${x.r.name}»: ${error.message || 'xato'}`; break; }
+    // v25.7 (57): −10% dan past qator — ziyon paroli bilan (server xesh bilan tekshiradi); noto'g'ri bo'lsa qayta so'raladi
+    const op = dlPriceOf(x.pid), needPin = op > 0 && x.price < dlFloor(op) - 0.005;
+    let error = null, data = null;
+    for (let k = 0; k < 3; k++) {
+      const a = needPin || DLC.lossPin && k ? { ...args, p_loss_pin: DLC.lossPin } : args;
+      ({ data, error } = await db.rpc('record_dealer_sale_v42', a));
+      if (error && (error.code === 'PGRST202' || error.code === '42883' || /record_dealer_sale_v42/.test(String(error.message || '')))) ({ data, error } = await db.rpc('record_dealer_sale', { ...args, p_loss_pin: undefined }));   // eski funksiyada p_loss_pin yo'q
+      const wrong = !error && data && data.ok === false && data.code === 'LOSS_PIN_WRONG';
+      const need = error && /LOSS_PIN_REQUIRED/.test(String(error.message || ''));   // server optomi boshqacha bo'lsa
+      if (!wrong && !need) break;
+      const pin = await fwAskLossPin(wrong ? 'Ziyon paroli notoʻgʻri. Qayta kiriting.' : `«${x.r.name}» — server: narx optomdan 10% dan past. Ziyon parolini kiriting.`, { local: false });
+      if (!pin) { error = { message: 'ziyon paroli kiritilmadi' }; data = null; break; }
+      DLC.lossPin = pin; error = null; data = null;
+      if (!needPin) { args.p_loss_pin = pin; }
+    }
+    if (!error && data && data.ok === false) error = { message: data.error || 'Ziyon paroli notoʻgʻri' };
+    if (error) { err = `«${x.r.name}»: ${String(error.message || 'xato').replace(/\s*\|LOSS_PIN_REQUIRED/, '')}`; break; }
     delete DLC.cart[x.pid]; done++; pts += p;
   }
-  DLC.busy = false;
+  DLC.busy = false; DLC.lossPin = '';   // v25.7: parol xotiradan ham o'chadi
   await dlRefreshData(); dlRenderSummary();
   if (err) { toast(`${done ? done + ' ta qator yozildi. ' : ''}⛔ ${err} — qolganlari savatda`, 'error'); dlSaleCartPaint(); return; }
   dlSaleCartClose();

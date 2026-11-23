@@ -3256,19 +3256,25 @@ async function _savdoCommitInner(ctx) {
       const idemKey = _checkoutIdemKey({ srvItems, d: ctx.discPct, p: ctx.paidUsd, custId, boxPayments, overpay, creditUseUzs });
       // v24: zarar bilan savdo tasdiqlangan bo'lsa — lossAck; server bazadagi FIFO bo'yicha zarar aniqlab
       // tasdiq so'rasa (LOSS_ACK_REQUIRED) — bir marta so'raladi va o'sha kalit bilan qayta yuboriladi
-      const _body = (ack) => ({ items: srvItems, discPct: ctx.discPct, paidUsd: ctx.paidUsd, custId, boxPayments, inv, idemKey, filial: S.branch,
+      // v25.7: ziyon paroli — faqat xotirada (ctx.lossPin / POS.lossPin); navbatga (localStorage) yozilmaydi
+      let lossPin = ctx.lossPin || '';
+      const _body = (ack) => ({ ...(ack && lossPin ? { lossPin } : {}), items: srvItems, discPct: ctx.discPct, paidUsd: ctx.paidUsd, custId, boxPayments, inv, idemKey, filial: S.branch,
           saleLocalId: saleId, payType: ctx.payType, boxId: ctx.boxId || null, custName: (S.customers.find(c => c.id === custId) || {}).name || 'Anonim', saleDate: (POS.saleDate || td()),
           lossAck: !!ack, overpay, creditUseUzs, discountReason: ctx.discountReason || null, priceMode: ctx.mode === 'wholesale' ? 'wholesale' : 'retail', dueDate: ctx.dueDate || null, dueDays: ctx.dueDays || null, ...fwSaleRoundFields(ctx),
           cur: ctx.cur || null, clientRate: +ctx.rate || +CUR.usdUzs || null });   // v25.6.10: server eskirgan kursni tuzatadi
       // v25: oflayn bo'lsa — savdo navbatga (internet qaytganda shu kalit bilan yuboriladi)
       offlineQ = { id: idemKey, kind: 'sale', url: '/.netlify/functions/sale-checkout-atomic', body: _body(!!ctx.lossAck || netUsd < -0.005), branch: S.branch };
+      delete offlineQ.body.lossPin;   // v25.7: parol navbatga tushmaydi
       if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new TypeError('Failed to fetch (oflayn)');
       const _send = (ack) => authFetch('/.netlify/functions/sale-checkout-atomic', { method: 'POST', body: JSON.stringify(_body(ack)) });
       let res = await _send(!!ctx.lossAck || netUsd < -0.005);
       let result = await res.json();
-      if (!res.ok && result.code === 'LOSS_ACK_REQUIRED') {
+      // v25.7: server zarar aniqlasa yoki parol noto'g'ri bo'lsa — ziyon paroli so'raladi (3 martagacha)
+      for (let k = 0; k < 3 && !res.ok && (result.code === 'LOSS_ACK_REQUIRED' || result.code === 'LOSS_PIN_WRONG'); k++) {
         const lossTxt = (+result.lossUsd > 0) ? ` Ziyon: ${CUR.fmtUzs(Math.round(CUR.toUzs(+result.lossUsd)))} (${CUR.fmtUsd(+result.lossUsd)}).` : '';
-        if (!confirm(`⚠️ Server: bu savdo tannarxdan past (zarar bilan).${lossTxt} Rozimisiz?`)) { toast('Savdo bekor qilindi — savat saqlanib qoldi', 'warning'); return false; }
+        const pin = await fwAskLossPin(result.code === 'LOSS_PIN_WRONG' ? 'Server: ziyon paroli notoʻgʻri. Qayta kiriting.' : `Server: bu savdo tannarxdan past (zarar bilan).${lossTxt} Davom etish uchun ziyon parolini kiriting.`, { local: false });
+        if (!pin) { toast('Savdo bekor qilindi — savat saqlanib qoldi', 'warning'); return false; }
+        lossPin = pin; if (typeof POS !== 'undefined') POS.lossPin = pin;
         res = await _send(true); result = await res.json();
       }
       if (!res.ok) {
@@ -13650,11 +13656,20 @@ function stEditLossPin() {
     foot:`<button class="bs-btn" onclick="stSaveLossPin()">Saqlash</button>`});
 }
 async function stSaveLossPin() {
-  const o = document.getElementById('st-lp-old').value, n = document.getElementById('st-lp-new').value.trim(), n2 = document.getElementById('st-lp-new2').value.trim();
-  if (!(await fwLossPinOk(o))) { toast('Hozirgi parol notoʻgʻri', 'error'); return; }
+  // v25.7: faqat administrator; serverga (57-migratsiya: fw_settings.loss_pin_hash) faqat XESHLAR yuboriladi
+  if (typeof fwServerAdmin === 'function' && !fwServerAdmin()) { toast('Ziyon parolini faqat administrator oʻzgartiradi', 'error'); return; }
+  const o = document.getElementById('st-lp-old').value.trim(), n = document.getElementById('st-lp-new').value.trim(), n2 = document.getElementById('st-lp-new2').value.trim();
   if (n.length < 4) { toast('Yangi parol kamida 4 belgi', 'error'); return; }
   if (n !== n2) { toast('Yangi parollar mos emas', 'error'); return; }
-  S.settings.lossPinHash = await fwSha256Hex(n); save();
+  const oldHash = await fwSha256Hex(o), newHash = await fwSha256Hex(n);
+  if (_cloudEnabled && typeof authFetch === 'function') {
+    let r, out = {};
+    try { r = await authFetch('/.netlify/functions/loss-pin', { method: 'POST', body: JSON.stringify({ oldHash, newHash }) }); out = await r.json().catch(() => ({})); }
+    catch (e) { toast('Internet yoʻq — ziyon paroli serverda ham oʻzgarishi kerak, keyinroq urinib koʻring', 'error'); return; }
+    if (!r.ok && out.code !== 'MIGRATION57_PENDING') { toast(out.error || 'Saqlanmadi', 'error'); return; }
+    if (!r.ok) { if (!(await fwLossPinOk(o))) { toast('Hozirgi parol notoʻgʻri', 'error'); return; } toast('Server hali eski (57-migratsiya yoʻq) — parol faqat ilovada oʻzgardi', 'warning'); }
+  } else if (!(await fwLossPinOk(o))) { toast('Hozirgi parol notoʻgʻri', 'error'); return; }
+  S.settings.lossPinHash = newHash; save();
   auditLog('Ziyon paroli oʻzgartirildi');
   closeSheet(); toast('Saqlandi'); pgSozlamalar();
 }

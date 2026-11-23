@@ -11,6 +11,7 @@ const { ledgerAuthorityOn } = require('./_lib/ledgerAuthority');
 const { v31On, v34On, roleClass } = require('./_lib/auditAuthority');
 const { discountViolation, dbFifoCostMap, redactLedgerResponse } = require('./_lib/pricing');
 const { versionOn } = require('./_lib/appDataVersion');
+const { checkLossPin, lossPinActor, LOSS_PIN_MSG } = require('./_lib/lossPin');
 
 const isNum = (v, min, max) => typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max;
 const isId = (v) => Number.isSafeInteger(v) && v > 0;
@@ -91,6 +92,9 @@ exports.handler = async (event) => {
     return json({ error: 'items majburiy (array)' }, 400);
   }
   const { items, discPct, custId, boxId, boxAmountNative, boxPayments, inv, idemKey } = body;
+  // v25.7: ziyon paroli — body'dan darhol olinadi (keyingi hech bir yozuv/logga tushmasin), faqat xotirada
+  const lossPin = typeof body.lossPin === 'string' ? body.lossPin.slice(0, 64) : '';
+  delete body.lossPin;
   let paidUsd = body.paidUsd;
 
   let admin;
@@ -189,7 +193,20 @@ exports.handler = async (event) => {
     // qarzi va kassa — SERVERDA, bitta tranzaksiyada; savdo hujjati bazada (qaytarish/tahrir shundan hisoblanadi).
     if (await ledgerAuthorityOn(admin)) {
       const opKey = 'ck:' + String(idemKey).replace(/[^A-Za-z0-9:_.-]/g, '').slice(0, 120);
-      const extra = guarded ? { p_role: role, p_loss_ack: body.lossAck === true } : {};
+      // v25.7 (57): zarar tasdig'i (p_loss_ack) — faqat ziyon paroli SERVERDA (xesh bilan) tekshirilganda.
+      // Parolsiz — tasdiqsiz yuboriladi: zarar bo'lsa baza LOSS_ACK_REQUIRED qaytaradi va brauzer parol so'raydi.
+      let lossAck = false;
+      if (guarded && body.lossAck === true) {
+        let lp;
+        try { lp = await checkLossPin(admin, lossPin, lossPinActor(auth)); }
+        catch (e) { await releaseIdempotent(admin, claim); return serverError(e, 'sale-checkout-atomic', 'Server xatosi'); }
+        if (lp.ok) lossAck = true;
+        else if (lp.status !== 'empty') {
+          await releaseIdempotent(admin, claim);
+          return json({ error: LOSS_PIN_MSG[lp.status] || LOSS_PIN_MSG.wrong, code: lp.status === 'locked' ? 'LOSS_PIN_LOCKED' : 'LOSS_PIN_WRONG' }, 403);
+        }
+      }
+      const extra = guarded ? { p_role: role, p_loss_ack: lossAck } : {};
       // v24.8 (S2, 37-migratsiya): chegirma chegarasi — bazadagi narxdan settings.maxDiscountPct (standart 10%) dan past
       // sotish admin bo'lmasa rad. 37 bo'lsa — sale_checkout_v37 (o'sha tranzaksiyada, bloklangan partiyalar bilan);
       // 37 yo'q bo'lsa — shu yerda, bazadagi partiyalar bo'yicha (o'sha qoida).
@@ -230,7 +247,7 @@ exports.handler = async (event) => {
         if (/LOSS_ACK_REQUIRED/.test(String(error.message || ''))) {
           // v24.2 (32-migratsiya): zarar summasi ($) — sotuvchiga ko'rsatiladi (egasi qarori); 31 da summa yo'q — null
           const lm = /\|loss=([0-9]+(?:\.[0-9]+)?)/.exec(String(error.message || ''));
-          return json({ error: "Savdo tannarxdan past (zarar) — tasdiqlang", code: 'LOSS_ACK_REQUIRED', lossUsd: lm ? Number(lm[1]) : null }, 409);
+          return json({ error: "Savdo tannarxdan past (zarar) — ziyon paroli kerak", code: 'LOSS_ACK_REQUIRED', lossPin: true, lossUsd: lm ? Number(lm[1]) : null }, 409);
         }
         const dl = /DISCOUNT_LIMIT\|max=([0-9.]+)\|pid=([0-9]+)\|floor=([0-9.]+)/.exec(String(error.message || ''));
         if (dl) {

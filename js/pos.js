@@ -33,6 +33,7 @@ const POS = {
   prompt: null,
   busy: false,
   lossPinUsd: 0,              // v25.7: parol bilan ruxsat berilgan ziyon ($); ko'proq bo'lsa — yana parol
+  lossPin: '',                // v25.7: tasdiqlangan ziyon paroli — FAQAT XOTIRADA (savdo bilan serverga; localStorage'ga yozilmaydi)
 };
 
 // ── Ikonkalar (inline, chiziqli) ──
@@ -225,7 +226,9 @@ function posApplyLinePrice(it, want) {
     const msg = posLossInfoOk()
       ? `Kiritilgan narx ${posFmtN(wantN)} tannarxdan past (ziyon ${posFmtN(posUsdToN((cost - want) * it.qty))}). Narx tannarxga qaytarildi: ${posFmtN(floorN)}. Shu narxda sotish uchun administrator parolini kiriting.`
       : `Kiritilgan narx ${posFmtN(wantN)} — ziyon. Narx ${posFmtN(floorN)} ga qaytarildi. Shu narxda sotish uchun administrator parolini kiriting.`;
-    if (await fwAskLossPin(msg)) {
+    const pin = await fwAskLossPin(msg);
+    if (pin) {
+      POS.lossPin = pin;
       it.sellUsd = want; it.lineUsd = it.qty * it.sellUsd; it.lossOk = true;
       POS.lossPinUsd = Math.max(POS.lossPinUsd, -posTotals().profitUsd);
       toast('Ziyonga sotishga ruxsat berildi', 'warning');
@@ -399,7 +402,7 @@ function posClear() {
   POS.a.setCart([]); posResetSale(); posCloseAll(); posRender();
 }
 function posResetSale() {
-  POS.note = ''; POS.lossPinUsd = 0; POS.disc = { type: 'sum', val: 0 }; POS.pay = { type: 'cash', amount: '', mix: [] }; POS.useCredit = false; POS.dueDays = ''; POS.chg = '';
+  POS.note = ''; POS.lossPinUsd = 0; POS.lossPin = ''; POS.disc = { type: 'sum', val: 0 }; POS.pay = { type: 'cash', amount: '', mix: [] }; POS.useCredit = false; POS.dueDays = ''; POS.chg = '';
   POS.a.setCustId(null);
 }
 
@@ -802,8 +805,11 @@ async function posFinish() {
     if (-ctx.profitUsd > POS.lossPinUsd + 0.005) {
       const ok = await fwAskLossPin(`Bu savdoda ${posFmtN(posUsdToN(-ctx.profitUsd))} ziyon — narx tannarxdan past.${POS.a.key === 'seller' ? ' Administrator xabardor qilinadi.' : ''} Davom etish uchun administrator parolini kiriting.`);
       if (!ok) return;
+      POS.lossPin = ok;
       POS.lossPinUsd = -ctx.profitUsd;
     }
+    // v25.7: server ham parolni xesh bilan tekshiradi — savdo bilan yuboriladi (xotiradan)
+    ctx.lossPin = POS.lossPin;
     ctx.lossAck = true;
   }
   POS.busy = true;

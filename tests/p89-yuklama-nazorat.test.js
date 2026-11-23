@@ -136,7 +136,7 @@ async function testMonitor() {
 
   // Barcha funksiyalar o'ralgan
   const files = fs.readdirSync(FN).filter((f) => f.endsWith('.js'));
-  assert.equal(files.length, 68);   // v25.6.9: + telegram-query, trial-reset
+  assert.equal(files.length, 69);   // v25.7: + loss-pin; v25.6.9: + telegram-query, trial-reset
   for (const f of files) assert.equal(require(path.join(FN, f)).handler._fwMonitored, f.slice(0, -3), `${f} kuzatuvchi bilan o'ralgan`);
 }
 

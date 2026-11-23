@@ -13165,6 +13165,7 @@ function pgSozlamalar() {
       ro({ic:'inbox', c:'sky', t:'Kirim va hisob valyutasi', sub: FW_ACC[fwAccMode()][1] + ' · savdo — soʻmda' + (fwAccLock().state === 'locked' ? ' · 🔒 qulflangan' : fwAccLock().state === 'pass' ? ` · 🔒 ${fwAccLock().left} kun parol bilan` : ''), val: FW_ACC[fwAccMode()][0], on:"fwAccSheet()"}),
       ro({ic:'percent', c:'amber', t:'Xitoy bank komissiyasi', sub:'CNY kirim uchun', val:`${(CUR.BANK_FEE*100).toFixed(2)}%`, on:"stEditBankFee()"}),
       ro({ic:'percent', c:'red', t:'Maksimal chegirma', sub:'Admin boʻlmagan xodim narxni shundan koʻp tushira olmaydi (chakana / optom narxdan)', val:`${stMaxDiscPct()}%`, on:"stEditMaxDisc()"}),
+      ro({ic:'lock', c:'red', t:'Ziyon paroli', sub:'Tannarxdan past sotish shu parol bilan', val: S.settings.lossPinHash ? 'Oʻrnatilgan' : 'Standart', on:"stEditLossPin()"}),
       ro({ic:'calc', c:'indigo', t:'Savdoda soʻm yaxlitlash', sub:`Narx ${fwNum(FWRound.steps({ ...st, roundingEnabled: true }).price)} soʻmga, jami summa ${fwNum(FWRound.steps({ ...st, roundingEnabled: true }).total)} soʻmga yaxlitlanadi (mijoz foydasiga)`, toggle:true, id:'st-rounding', checked: st.roundingEnabled!==false, on:"stSetRounding(this.checked)"}),
       ro({ic:'calc', c:'sky', t:'Yaxlitlash qadamlari', sub:'Narx — eng yaqin qadamga (yarmi tepaga); jami — har doim pastga', val:`${fwNum(FWRound.steps({ ...st, roundingEnabled: true }).price)} / ${fwNum(FWRound.steps({ ...st, roundingEnabled: true }).total)}`, on:"stRoundStepsSheet()"}),
       ro({ic:'warning', c:'amber', t:'\u00abOmborda kam\u00bb chegarasi', sub:'Yangi mahsulotlar uchun', val:`${n(st.lowStockDefault??1)} dona`, on:"stLowStockSheet()"}),
@@ -13638,6 +13639,23 @@ function stSaveMaxDisc() {
   if (isNaN(v) || v < 0 || v > 100) { toast("Foiz 0 dan 100 gacha boʻlishi kerak", 'error'); return; }
   S.settings.maxDiscountPct = Math.round(v * 100) / 100; save();
   auditLog(`Maksimal chegirma: ${S.settings.maxDiscountPct}%`);
+  closeSheet(); toast('Saqlandi'); pgSozlamalar();
+}
+// v25.7 (egasi): ziyon paroli — ochiq saqlanmaydi, faqat SHA-256 xeshi (S.settings.lossPinHash)
+function stEditLossPin() {
+  openSheet({ic:'lock', c:'red', title:'Ziyon paroli', sub:'Tannarxdan past narxda sotish uchun soʻraladi',
+    body:`<div class="bs-card"><label class="bs-lbl" for="st-lp-old">Hozirgi parol</label><input class="bs-in" id="st-lp-old" type="password" autocomplete="off"></div>
+      <div class="bs-card"><label class="bs-lbl" for="st-lp-new">Yangi parol (kamida 4 belgi)</label><input class="bs-in" id="st-lp-new" type="password" autocomplete="off"></div>
+      <div class="bs-card"><label class="bs-lbl" for="st-lp-new2">Yangi parol — qayta</label><input class="bs-in" id="st-lp-new2" type="password" autocomplete="off"></div>`,
+    foot:`<button class="bs-btn" onclick="stSaveLossPin()">Saqlash</button>`});
+}
+async function stSaveLossPin() {
+  const o = document.getElementById('st-lp-old').value, n = document.getElementById('st-lp-new').value.trim(), n2 = document.getElementById('st-lp-new2').value.trim();
+  if (!(await fwLossPinOk(o))) { toast('Hozirgi parol notoʻgʻri', 'error'); return; }
+  if (n.length < 4) { toast('Yangi parol kamida 4 belgi', 'error'); return; }
+  if (n !== n2) { toast('Yangi parollar mos emas', 'error'); return; }
+  S.settings.lossPinHash = await fwSha256Hex(n); save();
+  auditLog('Ziyon paroli oʻzgartirildi');
   closeSheet(); toast('Saqlandi'); pgSozlamalar();
 }
 function stEditBankFee() {
@@ -14221,7 +14239,7 @@ async function fwOwnerConfirm(message, opts) {
 //    zaxiraga olinadi. Bulut rejimida kassa, qarz, ombor va savdo summalari SERVER JURNALIDAN olinadi (fayldan
 //    o'zgartirib bo'lmaydi — himoya); fayldan katalog, mijoz/ta'minotchi ro'yxatlari, sozlamalar tiklanadi.
 // ════════════════════════════════════════════════════════════
-const FW_BACKUP_SECRET = ['tgBotToken', 'shopBotToken', 'appPin', 'branchPin'];
+const FW_BACKUP_SECRET = ['tgBotToken', 'shopBotToken', 'appPin', 'branchPin', 'lossPinHash'];
 // v25.6.10: server administrator deb biladigan foydalanuvchi (eski sana, filial buyurtmasini tasdiqlash — serverda faqat shu)
 function fwServerAdmin() { return !CURRENT_USER || CURRENT_USER.kind === 'owner' || !!CURRENT_USER.isAdmin; }
 function _fwIsOwner() { return !CURRENT_USER || CURRENT_USER.kind === 'owner' || hasPerm('rollar.manage'); }

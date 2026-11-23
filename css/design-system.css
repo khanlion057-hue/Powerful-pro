@@ -2754,6 +2754,9 @@ button.pc-tile{ cursor:pointer; }
 .pos-line-m{ font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:5px; }
 .pos-line-m.red{ color:var(--red); font-weight:600; }
 .pos-line-m svg{ width:15px; height:15px; }
+/* v25.7: qatorda / kechiktirilgan chekda foyda-ziyon */
+.pos-line-m b.red, .pos-held-m b.red{ color:var(--red); } .pos-line-m b.green, .pos-held-m b.green{ color:var(--emerald); }
+.pos-line-m{ flex-wrap:wrap; }
 .pos-line-c{ display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
 .pos-grow{ flex:1; }
 .pos-tag{ border:1px solid var(--border); background:var(--bg-secondary); border-radius:11px; padding:0 10px; min-height:40px; min-width:40px; font:inherit; font-size:13px; font-weight:700; color:var(--text-primary); cursor:pointer; display:inline-flex; align-items:center; justify-content:center; }

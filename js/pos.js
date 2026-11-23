@@ -32,6 +32,7 @@ const POS = {
   kp: { type: 'sum', s: '' }, // chegirma klaviaturasi holati
   prompt: null,
   busy: false,
+  lossPinUsd: 0,              // v25.7: parol bilan ruxsat berilgan ziyon ($); ko'proq bo'lsa — yana parol
 };
 
 // ── Ikonkalar (inline, chiziqli) ──
@@ -206,6 +207,32 @@ function _posApplyPct(unitUsd, pct) {
   const v = unitUsd * (1 - Math.max(0, Math.min(100, +pct || 0)) / 100);
   return POS.cur === 'UZS' ? posRound(v * posRate()) / posRate() : _r2p(v);
 }
+// v25.7 (egasi): tannarxdan past narx → avtomatik tannarxga (yaxlit qadamga TEPAGA, ziyon qolmasin);
+// pastroq sotish — faqat administrator paroli bilan
+function posCostFloorUsd(costUsd) {
+  if (POS.cur === 'USD') return Math.ceil(costUsd * 100 - 1e-6) / 100;
+  const st = posSteps().price || 1;
+  return Math.ceil(costUsd * posRate() / st - 1e-9) * st / posRate();
+}
+function posLossInfoOk() { return posCostVisible() || POS.a.showProfit(); }   // tannarx raqamini ko'rish huquqi
+// Narxni qo'llaydi: tannarxdan past bo'lsa — tannarxga qaytaradi va parol so'raydi (want — kiritilgan narx, $)
+function posApplyLinePrice(it, want) {
+  const cost = +it.costUsd || 0;
+  if (!(cost > 0) || want >= cost - 1e-9) { it.sellUsd = want; it.lineUsd = it.qty * it.sellUsd; return; }
+  it.sellUsd = posCostFloorUsd(cost); it.lineUsd = it.qty * it.sellUsd;
+  const wantN = posUsdToN(want), floorN = posUsdToN(it.sellUsd);
+  setTimeout(async () => {
+    const msg = posLossInfoOk()
+      ? `Kiritilgan narx ${posFmtN(wantN)} tannarxdan past (ziyon ${posFmtN(posUsdToN((cost - want) * it.qty))}). Narx tannarxga qaytarildi: ${posFmtN(floorN)}. Shu narxda sotish uchun administrator parolini kiriting.`
+      : `Kiritilgan narx ${posFmtN(wantN)} — ziyon. Narx ${posFmtN(floorN)} ga qaytarildi. Shu narxda sotish uchun administrator parolini kiriting.`;
+    if (await fwAskLossPin(msg)) {
+      it.sellUsd = want; it.lineUsd = it.qty * it.sellUsd; it.lossOk = true;
+      POS.lossPinUsd = Math.max(POS.lossPinUsd, -posTotals().profitUsd);
+      toast('Ziyonga sotishga ruxsat berildi', 'warning');
+    } else toast('Narx tannarxga qaytarildi: ' + posFmtN(floorN), 'warning');
+    posRefresh();
+  }, 80);
+}
 
 // ════════════════════════════════════════════════════════════
 // 1. MAHSULOTLAR EKRANI
@@ -372,7 +399,7 @@ function posClear() {
   POS.a.setCart([]); posResetSale(); posCloseAll(); posRender();
 }
 function posResetSale() {
-  POS.note = ''; POS.disc = { type: 'sum', val: 0 }; POS.pay = { type: 'cash', amount: '', mix: [] }; POS.useCredit = false; POS.dueDays = ''; POS.chg = '';
+  POS.note = ''; POS.lossPinUsd = 0; POS.disc = { type: 'sum', val: 0 }; POS.pay = { type: 'cash', amount: '', mix: [] }; POS.useCredit = false; POS.dueDays = ''; POS.chg = '';
   POS.a.setCustId(null);
 }
 
@@ -426,14 +453,14 @@ function posCartInner(side) {
   if (!cart.length) return side ? `<div class="pos-side-empty">${PI.search}<span>Savat boʻsh — mahsulotni bosing yoki skanerlang</span></div>` : '';
   const t = posTotals(), cust = posCust();
   const u = POS.cur === 'USD' ? ', $' : ', soʻm', nv = (n) => POS.cur === 'USD' ? fwUsd(n).replace('$', '') : fwNum(n);
-  const kpi = `<div class="pos-kpis"><div><span>Summa${u}</span><b>${nv(t.totN)}</b></div>${POS.a.showProfit() ? `<div><span>Foyda${u}</span><b class="${t.profitUsd < 0 ? 'red' : 'green'}">${nv(posUsdToN(t.profitUsd))}</b></div>` : ''}<div><span>Pozitsiya</span><b>${t.lines} · ${fmtQtyS(t.units)} dona</b></div></div>`;
+  const kpi = `<div class="pos-kpis"><div><span>Summa${u}</span><b>${nv(t.totN)}</b></div>${POS.a.showProfit() ? `<div><span>${t.profitUsd < 0 ? 'Ziyon' : 'Foyda'}${u}</span><b class="${t.profitUsd < 0 ? 'red' : 'green'}">${t.profitUsd < 0 ? '−' + nv(-posUsdToN(t.profitUsd)) : nv(posUsdToN(t.profitUsd))}</b></div>` : ''}<div><span>Pozitsiya</span><b>${t.lines} · ${fmtQtyS(t.units)} dona</b></div></div>`;
   const lines = cart.map(it => {
     const low = +it.costUsd > 0 && +it.sellUsd * (1 - t.discPct / 100) < +it.costUsd - 1e-9;
     const k = escJsAttr(it.key);
     return `<div class="pos-line${low ? ' low' : ''}">
       <div class="pos-line-t"><b>${esc(it.name)}</b><b>${posFmtN(it.qty * posLineUnitN(it))}</b></div>
       ${it.directSupply ? `<div class="pos-line-m">Taʼminotchidan${it.suppName ? ' · ' + esc(it.suppName) : ''}</div>` : ''}
-      ${low ? `<div class="pos-line-m red">${PI.warn} Narx minimal narxdan past — ziyon</div>` : ''}
+      ${posLineEcon(it, t, low)}
       <div class="pos-line-c">
         <span class="pos-step"><button onclick="posQty('${k}',-1)" aria-label="Kamaytirish">−</button><button class="pos-qv" onclick="posAskQty('${k}')" aria-label="Miqdorni kiritish">${fmtQtyS(it.qty)}</button><button onclick="posQty('${k}',1)" aria-label="Koʻpaytirish">+</button></span>
         ${posFull() ? `<button class="pos-tag" onclick="posAskPrice('${k}')" aria-label="Narxni oʻzgartirish">${posFmtN(posLineUnitN(it))}</button>
@@ -449,6 +476,16 @@ function posCartInner(side) {
   return `${kpi}<div class="pos-lines">${lines}</div>${posFull() ? custCard + noteCard + discCard : ''}
     <div class="pos-total">${t.discN > 0 ? `<div><span>Chegirmasiz</span><s>${posFmtN(t.subN)}</s></div>` : ''}${t.discN - t.roundN > 0 ? `<div><span>Chegirma</span><span>−${posFmtN(t.discN - t.roundN)}</span></div>` : ''}${t.roundN > 0 ? `<div><span>Yaxlitlash chegirmasi</span><span>−${posFmtN(t.roundN)}</span></div>` : ''}<div class="big"><span>Jami</span><b>${posFmtN(t.totN)}</b></div></div>
     <div class="pos-foot">${side ? `<button class="pos-btn ghost" onclick="posHold()">${PI.pause} Pauza</button>` : ''}<button class="pos-btn ok" onclick="posOpen('pay')">Toʻlash · ${posFmtN(t.totN)}</button></div>`;
+}
+// v25.7: qatorda tannarx va foyda/ziyon (faqat ko'rish huquqi bo'lsa raqam bilan)
+function posLineEcon(it, t, low) {
+  const cost = +it.costUsd || 0;
+  if (!cost || !posLossInfoOk()) return low ? `<div class="pos-line-m red">${PI.warn} Narx tannarxdan past — ziyon${it.lossOk ? ' (parol bilan)' : ''}</div>` : '';
+  const pr = (+it.sellUsd * (1 - t.discPct / 100) - cost) * (+it.qty || 0);
+  const prN = posUsdToN(pr);
+  return `<div class="pos-line-m${low ? ' red' : ''}">${low ? PI.warn + ' ' : ''}Tannarx: ${posFmtN(posUsdToN(cost * (+it.qty || 0)))} · ${pr < 0
+    ? `<b class="red">Ziyon: −${posFmtN(-prN)}</b>${it.lossOk ? ' (parol bilan)' : ''}`
+    : `<b class="green">Foyda: +${posFmtN(prN)}</b>`}</div>`;
 }
 function posCustSub(c) {
   const p = [c.phone || ''];
@@ -485,8 +522,9 @@ function posAskPrice(key) {
   const it = POS.a.cart().find(c => String(c.key) === String(key)); if (!it) return;
   if (POS.a.priceEditable && !POS.a.priceEditable()) { toast('Narxni oʻzgartirish huquqingiz yoʻq', 'error'); return; }
   posAsk({ title: 'Narx — ' + it.name, value: posLineUnitN(it), suffix: POS.cur === 'USD' ? '$' : 'soʻm',
-    hint: 'Bitta dona narxi. Minimal narxdan past boʻlsa, savdoda ziyon tasdiqlanadi.',
-    ok: v => { const n = posParse(v); if (!(n >= 0)) return false; it.sellUsd = posNToUsd(n); it.manual = true; it.pct = 0; it.lineUsd = it.qty * it.sellUsd; return true; } });
+    hint: 'Bitta dona narxi. Tannarxdan past boʻlsa — narx tannarxga qaytadi, pastroq sotish faqat administrator paroli bilan.',
+    ok: v => { const n = posParse(v); if (!(n > 0)) { toast('Narx 0 dan katta boʻlsin', 'error'); return false; }
+      it.manual = true; it.pct = 0; it.baseUsd = 0; it.lossOk = false; posApplyLinePrice(it, posNToUsd(n)); return true; } });
 }
 function posAskPct(key) {
   const it = POS.a.cart().find(c => String(c.key) === String(key)); if (!it) return;
@@ -497,7 +535,7 @@ function posAskPct(key) {
       const p = POS.a.products().find(x => x.id === it.pid);
       const base = it.directSupply || it.manual ? (it.baseUsd || it.sellUsd) : (p ? posUnitUsd(p) : it.sellUsd);
       if (!it.baseUsd) it.baseUsd = it.directSupply || it.manual ? it.sellUsd : base;
-      it.pct = pct; it.sellUsd = pct ? _posApplyPct(it.baseUsd, pct) : it.baseUsd; it.lineUsd = it.qty * it.sellUsd; return true;
+      it.pct = pct; it.lossOk = false; posApplyLinePrice(it, pct ? _posApplyPct(it.baseUsd, pct) : it.baseUsd); return true;
     } });
 }
 function posAskNote() {
@@ -760,7 +798,12 @@ async function posFinish() {
   if (POS.saleDate && typeof fwBackdateCheck === 'function' && !fwBackdateCheck(POS.saleDate)) return;   // v25.6.9: eski sana — tekshiruv
   // Zarar bilan savdo — summa ko'rsatilib tasdiqlanadi (server ham tekshiradi)
   if (ctx.profitUsd < -0.005) {
-    if (!confirm(`⚠️ Bu savdoda ${posFmtN(posUsdToN(-ctx.profitUsd))} ziyon — narx minimal narxdan past.${POS.a.key === 'seller' ? ' Administrator xabardor qilinadi.' : ''}\n\nRozimisiz?`)) return;
+    // v25.7 (egasi): ziyon — faqat administrator paroli bilan (narx/chegirmada allaqachon ruxsat berilgan summagacha qayta so'ralmaydi)
+    if (-ctx.profitUsd > POS.lossPinUsd + 0.005) {
+      const ok = await fwAskLossPin(`Bu savdoda ${posFmtN(posUsdToN(-ctx.profitUsd))} ziyon — narx tannarxdan past.${POS.a.key === 'seller' ? ' Administrator xabardor qilinadi.' : ''} Davom etish uchun administrator parolini kiriting.`);
+      if (!ok) return;
+      POS.lossPinUsd = -ctx.profitUsd;
+    }
     ctx.lossAck = true;
   }
   POS.busy = true;
@@ -807,10 +850,23 @@ function posHeldView() {
         <div class="pos-held-m">Mijoz: ${c ? `<b>${esc(c.name)}</b>` : '<i>tanlanmagan</i>'}</div>
         <div class="pos-held-m">${esc(h.items.slice(0, 3).map(i => `${i.name} ×${fmtQtyS(i.qty)}`).join(', '))}${h.items.length > 3 ? ` va yana ${h.items.length - 3}` : ''}</div>
         <div class="pos-held-t"><span>${h.items.length} pozitsiya</span><b>${posFmtN(h.cur === 'USD' ? _r2p(tot) : tot, h.cur)}</b></div>
+        ${posHeldEcon(h, tot)}
         <div class="pos-foot"><button class="pos-btn pri" onclick="posUnhold('${h.id}')">Kassaga qaytarish</button><button class="pos-ib red" onclick="posDropHeld('${h.id}')" aria-label="Chekni oʻchirish">${PI.trash}</button></div>
       </div>`;
     }).join('') : `<div class="pos-empty">Kechiktirilgan chek yoʻq. Savatda «Pauza»ni bossangiz, chek shu yerga tushadi.</div>`}</div>
   </div>`;
+}
+// v25.7: kechiktirilgan chekda — tannarx va foyda/ziyon (chekka chegirma hisobga olinadi)
+function posHeldEcon(h, tot) {
+  if (!posLossInfoOk()) return '';
+  const costUsd = h.items.reduce((s, i) => s + (+i.qty || 0) * (+i.costUsd || 0), 0);
+  if (!(costUsd > 0)) return '';
+  const d = h.disc || {}, dv = Math.max(0, +d.val || 0);
+  const discN = d.type === 'pct' ? tot * Math.min(100, dv) / 100 : Math.min(dv, tot);
+  const totUsd = h.cur === 'USD' ? tot - discN : (tot - discN) / posRate();
+  const pr = totUsd - costUsd;
+  const n = (usd) => posFmtN(h.cur === 'USD' ? _r2p(usd) : Math.round(usd * posRate()), h.cur);
+  return `<div class="pos-held-m">Tannarx: <b>${n(costUsd)}</b> · ${pr < -0.005 ? `<b class="red">Ziyon: −${n(-pr)}</b>` : `<b class="green">Foyda: +${n(pr)}</b>`}</div>`;
 }
 function posUnhold(id) {
   const a = posHeld(), h = a.find(x => x.id === id); if (!h) return;

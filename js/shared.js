@@ -3102,3 +3102,51 @@ if (typeof document !== 'undefined') document.addEventListener('input', (e) => {
 const FW_WARRANTY = [3, 6, 12];
 function fwWarranty(p) { const m = Math.round(+(p && p.warrantyM) || 0); return FW_WARRANTY.includes(m) ? m : 0; }
 const FW_WARRANTY_TEXT = 'Toʻliq texnik kafolat: nosozlik boʻlsa bepul taʼmirlanadi, kerakli ehtiyot qismlar (zapchastlar) ham kafolat ichida.';
+
+// ════════════════════════════════════════════════════════════════════════════
+// v25.7 (egasi, 2026-11-23): ZIYON PAROLI — tannarxdan past sotish faqat administrator bergan parol bilan.
+// Parol ochiq saqlanmaydi: SHA-256 xeshi S.settings.lossPinHash da (Sozlamalar → «Ziyon paroli»);
+// o'rnatilmagan bo'lsa — egasi bergan standart parol xeshi.
+// ════════════════════════════════════════════════════════════════════════════
+const FW_LOSS_PIN_HASH_DEFAULT = '53992ec21f2a2595759a1591d80836f9d1cf0c17ba7595cee7abe866e0943590';
+async function fwSha256Hex(s) {
+  const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(s)));
+  return Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, '0')).join('');
+}
+function fwLossPinHash() {
+  const st = (typeof S !== 'undefined' && S && S.settings) || {};
+  return st.lossPinHash || FW_LOSS_PIN_HASH_DEFAULT;
+}
+async function fwLossPinOk(pin) {
+  pin = String(pin || '').trim(); if (!pin) return false;
+  try { return (await fwSha256Hex(pin)) === fwLossPinHash(); } catch (_) { return false; }
+}
+// Parol oynasi → Promise<boolean>. msg — nima uchun so'ralayotgani (ziyon summasi va h.k.)
+function fwAskLossPin(msg) {
+  return new Promise(resolve => {
+    const ov = document.createElement('div');
+    ov.className = 'pos-ov sheet'; ov.style.zIndex = '1400'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true');
+    ov.innerHTML = `<div class="pos-sh-wrap"><div class="pos-sh">
+      <div class="pos-grip"></div>
+      <div class="pos-sh-hd"><b>Ziyonga sotish — parol</b></div>
+      <div class="pos-hint" style="color:var(--danger,#d6293e)">${esc(msg || 'Narx tannarxdan past.')}</div>
+      <label class="pos-in-wrap"><input class="pos-in big" id="fw-lp-v" type="password" autocomplete="off" autocapitalize="characters" placeholder="Administrator paroli"></label>
+      <div class="pos-hint" id="fw-lp-err" style="color:var(--danger,#d6293e);min-height:16px"></div>
+      <div class="pos-foot"><button class="pos-btn ghost" id="fw-lp-no">Bekor</button><button class="pos-btn pri" id="fw-lp-ok">Tasdiqlash</button></div>
+    </div></div>`;
+    document.body.appendChild(ov);
+    const inp = ov.querySelector('#fw-lp-v');
+    const done = (v) => { ov.remove(); resolve(v); };
+    let tries = 0;
+    const go = async () => {
+      if (await fwLossPinOk(inp.value)) return done(true);
+      tries++; inp.value = '';
+      ov.querySelector('#fw-lp-err').textContent = tries >= 3 ? 'Parol 3 marta notoʻgʻri — bekor qilindi' : 'Parol notoʻgʻri';
+      if (tries >= 3) setTimeout(() => done(false), 900); else inp.focus();
+    };
+    ov.querySelector('#fw-lp-ok').onclick = go;
+    ov.querySelector('#fw-lp-no').onclick = () => done(false);
+    inp.onkeydown = (e) => { if (e.key === 'Enter') go(); };
+    setTimeout(() => { try { inp.focus(); } catch (_) {} }, 60);
+  });
+}

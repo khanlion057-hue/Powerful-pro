@@ -41,7 +41,8 @@ async function loadLedger(admin, filial) {
     selectAll(() => admin.from('supplier_balances').select('supplier_local_id,debt,total_paid').eq('filial', filial), 'supplier_local_id'),
     // v25.6.9 (tezlik): tirik partiyalar — faqat kerakli ustunlar; o'chirilganlar — faqat ID (5 000+ «deleted» qator har yuklashda to'liq o'qilardi)
     selectAll(() => { const q = admin.from('batches').select('id,local_id,qty,sold,status,cost_usd,pid,bno,origin,from_branch,batch_date').eq('filial', filial); return typeof q.neq === 'function' ? q.neq('status', 'deleted') : q; }, 'id'),
-    selectAll(() => admin.from('sales').select('local_id,items,subtotal_usd,disc_pct,disc_usd,total_usd,paid_usd,debt_usd,profit_usd,status,edited_at').eq('filial', filial), 'id'),
+    // v25.8: + sale_date, created_at — AI-reklama (top / turib qolgan) savdo sanasini shu to'liq (sahifalangan) ro'yxatdan oladi
+    selectAll(() => admin.from('sales').select('local_id,items,subtotal_usd,disc_pct,disc_usd,total_usd,paid_usd,debt_usd,profit_usd,status,edited_at,sale_date,created_at').eq('filial', filial), 'id'),
     // v25.1 (47): savdoning yaxlitlash maydonlari — 47 qo'llangan bo'lsa ular ham (bo'lmasa — avvalgi ustunlar)
     selectAll(() => admin.from('sales').select('local_id,asl_jami_uzs,yaxlitlash_chegirmasi_uzs,tolangan_jami_uzs').eq('filial', filial), 'id'),
     // v23.6 (29): hisobdan chiqarish hujjatlari — bazadan (29 bo'lmasa — yo'q, JSON'dagi qoladi)
@@ -80,7 +81,8 @@ async function loadLedger(admin, filial) {
   if (bdel && !bdel.error) (bdel.data || []).forEach((r) => { const k = String(r.local_id); if (!batches.has(k)) batches.set(k, { qty: 0, sold: 0, status: 'deleted', costUsd: 0, pid: 0 }); });
   else if (bdel && bdel.error) throw bdel.error;
   const sales = new Map((slr.data || []).filter(r => r.local_id).map(r => [String(r.local_id), r]));
-  return { customers, suppliers, batches, sales, writeoffs, credits };
+  // v25.8: salesRows — barcha savdo qatorlari (local_id siz eski yozuvlar ham), AI-reklama statistikasi uchun
+  return { customers, suppliers, batches, sales, salesRows: slr.data || [], writeoffs, credits };
 }
 
 const _isList = (v) => Array.isArray(v);

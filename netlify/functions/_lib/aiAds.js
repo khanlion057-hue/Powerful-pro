@@ -78,11 +78,11 @@ async function loadBranch(admin, filial) {
   if (brow && brow.data) bs[filial] = brow.data;
   const data = { ...main, branchStore: bs };
   const raw = bs[filial] || {};
-  let view = raw;
+  let view = raw, ledgerData = null;
   const ledger = await ledgerAuthorityOn(admin);
-  if (ledger) view = overlayBranchLedger(raw, await loadLedger(admin, filial)).branch;
+  if (ledger) { ledgerData = await loadLedger(admin, filial); view = overlayBranchLedger(raw, ledgerData).branch; }
   const shop = raw.shop || {};
-  return { data, settings: main.settings || {}, raw, view, shop, ledger, shopOn: !!(shop.settings && shop.settings.enabled) };
+  return { data, settings: main.settings || {}, raw, view, ledgerData, shop, ledger, shopOn: !!(shop.settings && shop.settings.enabled) };
 }
 
 // Toshkent sanasi (YYYY-MM-DD) — n kun oldin
@@ -109,18 +109,26 @@ function idDate(id) {
 // «Qo'shilgan kun»: birinchi kirim, bo'lmasa — ID dagi vaqt; ikkalasi ham bo'lmasa — null («yangi»ga kirmaydi)
 function addedDate(p, firstKirim) { return firstKirim.get(String(p.id)) || idDate(p.id) || null; }
 
-// Savdo qatorlari: [{pid, qty, date}] — bazadagi savdo jurnali (o'chirilganlar hisobga olinmaydi);
-// jurnal yoqilmagan eski rejimda — filial ma'lumotidagi savdolar. sinceDate — Toshkent sanasi (YYYY-MM-DD).
-async function saleLines(admin, filial, view, ledger, sinceDate) {
+// Savdo qatorlari: [{pid, qty, date}] — date: Toshkent kuni (YYYY-MM-DD). ALOHIDA SO'ROV YO'Q:
+//   • jurnal rejimi — loadLedger() savdolari (selectAll bilan sahifalab TO'LIQ o'qilgan; PostgREST 1000 qatorda kesmaydi, P99);
+//     sana — sale_date (savdo kuni, Toshkent), bo'lmasa created_at Toshkent vaqtiga o'tkazilib;
+//   • eski rejim — filial ma'lumotidagi savdolar (s.date).
+// O'chirilgan savdo hisobga olinmaydi.
+const tzDay = (ts) => { const t = ts instanceof Date ? ts.getTime() : Date.parse(ts); return Number.isFinite(t) ? new Date(t + TZ_MS).toISOString().slice(0, 10) : ''; };
+// sale_date — sana ustuni (PostgREST: 'YYYY-MM-DD'; ba'zi drayverlar — Date obyekti, UTC yarim tun)
+const dayOf = (v) => { if (v instanceof Date) return Number.isFinite(v.getTime()) ? v.toISOString().slice(0, 10) : ''; const d = String(v || '').slice(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : ''; };
+function saleLines(L, sinceDate) {
   const out = [];
-  const add = (items, date) => { for (const it of Array.isArray(items) ? items : []) { if (!it || it.pid == null) continue; const q = Number(it.qty) || 0; if (q > 0) out.push({ pid: String(it.pid), qty: q, date }); } };
   const dead = (st) => st === 'void' || st === 'voided';
-  if (ledger) {
-    const { data, error } = await admin.from('sales').select('items,status,sale_date,created_at').eq('filial', filial).gte('created_at', sinceDate + 'T00:00:00Z').limit(5000);
-    if (error) throw error;
-    for (const s of data || []) if (!dead(s.status)) add(s.items, String(s.sale_date || s.created_at || '').slice(0, 10));
+  const add = (items, date) => {
+    if (!date || date < sinceDate) return;
+    for (const it of Array.isArray(items) ? items : []) { if (!it || it.pid == null) continue; const q = Number(it.qty) || 0; if (q > 0) out.push({ pid: String(it.pid), qty: q, date }); }
+  };
+  if (L.ledger && L.ledgerData && (L.ledgerData.salesRows || L.ledgerData.sales)) {
+    const rows = Array.isArray(L.ledgerData.salesRows) ? L.ledgerData.salesRows : [...L.ledgerData.sales.values()];
+    for (const r of rows) if (r && !dead(r.status)) add(r.items, dayOf(r.sale_date) || tzDay(r.created_at));
   } else {
-    for (const s of Array.isArray(view.sales) ? view.sales : []) if (s && !dead(s.status) && String(s.date || '') >= sinceDate) add(s.items, String(s.date).slice(0, 10));
+    for (const s of Array.isArray(L.view.sales) ? L.view.sales : []) if (s && !dead(s.status)) add(s.items, dayOf(s.date));
   }
   return out;
 }
@@ -194,10 +202,8 @@ async function candidates(admin, filial, settings, now = Date.now()) {
   if (!L.shopOn) return { shopOn: false, items: [] };
   const C = settings.criteria;
   const topSince = tzDate(now, C.topDays), stuckSince = tzDate(now, C.stuckDays);
-  const [lines, recent] = await Promise.all([
-    saleLines(admin, filial, L.view, L.ledger, topSince < stuckSince ? topSince : stuckSince),
-    recentAdsMap(admin, filial, new Date(now - C.repeatDays * DAY).toISOString()),
-  ]);
+  const lines = saleLines(L, topSince < stuckSince ? topSince : stuckSince);
+  const recent = await recentAdsMap(admin, filial, new Date(now - C.repeatDays * DAY).toISOString());
   const items = pickCandidates(L, { filial, settings, now, recent, soldTop: soldSince(lines, topSince), soldStuck: soldSince(lines, stuckSince) });
   return { shopOn: true, items, cur: items[0] ? items[0].cur : null };
 }

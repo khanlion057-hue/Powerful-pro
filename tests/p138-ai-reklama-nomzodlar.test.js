@@ -222,11 +222,67 @@ async function testNoAdsFlag() {
   } finally { await browser.close(); }
 }
 
+// PostgREST 1000 qator chegarasi (P99 dagi soxta mijoz): bir javobda ko'pi bilan CAP qator — .limit() ham, range'siz so'rov ham.
+// 30 kunda 1200 savdo: oxirgi 200 tasi boshqa tovarniki. Kesilgan o'qishda u «turib qolgan» chiqar, top esa noto'g'ri bo'lar edi.
+// Sana — Toshkent kuni: 30 kunlik oyna boshidan 1 soat keyin (UTC'da hali oldingi kun) bo'lgan savdo ham hisobga olinadi.
+function fakeRest(tables, CAP = 1000) {
+  const cmp = (a, b) => (a > b ? 1 : a < b ? -1 : 0);
+  return { from(t) {
+    const st = { f: [], ord: null, rng: null, one: false };
+    const q = {
+      select: () => q, eq(c, v) { st.f.push((r) => r[c] === v); return q; }, neq(c, v) { st.f.push((r) => r[c] !== v); return q; },
+      gte(c, v) { st.f.push((r) => r[c] != null && String(r[c]) >= String(v)); return q; }, lt(c, v) { st.f.push((r) => String(r[c]) < String(v)); return q; },
+      in(c, vs) { st.f.push((r) => vs.includes(r[c])); return q; }, not: () => q, is: () => q,
+      order(c, o) { st.ord = [c, !(o && o.ascending === false)]; return q; }, range(a, b) { st.rng = [a, b]; return q; }, limit: () => q,
+      maybeSingle() { st.one = true; return q; },
+      then(ok, bad) {
+        if (!(t in tables)) return Promise.resolve({ data: null, error: { code: '42P01', message: 'relation does not exist' } }).then(ok, bad);
+        let rows = tables[t].filter((r) => st.f.every((fn) => fn(r)));
+        if (st.ord) { const [c, asc] = st.ord; rows = rows.slice().sort((x, y) => cmp(x[c], y[c]) * (asc ? 1 : -1)); }
+        const [a, b] = st.rng || [0, CAP - 1];
+        rows = rows.slice(a, Math.min(b + 1, a + CAP));
+        return Promise.resolve({ data: st.one ? (rows[0] || null) : rows, error: null }).then(ok, bad);
+      } };
+    return q; } };
+}
+async function test1000Cap() {
+  const now = Date.now(), tzMid = (minus) => tz(minus) + 'T00:00:00+05:00';
+  const iso = (d) => new Date(d).toISOString();
+  const products = [1, 2, 3].map((id) => ({ id, sku: 'C' + id, name: 'Tovar ' + id, cat: 'Disklar', markupPct: 25, images: IMG }));
+  const jb = [[1, 1], [2, 2], [3, 3]].map(([id, pid]) => ({ id: 7000 + id, pid, qty: 5000, sold: 0, date: tz(100), costUsd: 5, status: 'active' }));
+  const sales = [];
+  let n = 0;
+  // 1000 ta eski (20–29 kun oldin) — tovar 2; keyin 200 ta yangi (oxirgi 2 kun) — tovar 1
+  for (let i = 0; i < 1000; i++) sales.push({ id: ++n, filial: 'baza', local_id: 's' + n, items: [{ pid: 2, qty: 1 }], status: 'done', sale_date: tz(20 + (i % 10)), created_at: iso(now - (20 + (i % 10)) * DAY) });
+  for (let i = 0; i < 200; i++) sales.push({ id: ++n, filial: 'baza', local_id: 's' + n, items: [{ pid: 1, qty: 1 }], status: 'done', sale_date: tz(i % 2), created_at: iso(now - (i % 2) * DAY) });
+  // Toshkent chegarasi: oyna boshlanishidan 1 soat keyin (UTC'da oldingi kun 20:00) — tovar 3; sale_date yo'q (eski yozuv) → created_at Toshkent vaqtida
+  sales.push({ id: ++n, filial: 'baza', local_id: 's' + n, items: [{ pid: 3, qty: 1 }], status: 'done', sale_date: null, created_at: iso(Date.parse(tzMid(30)) + 3600000) });
+  // o'chirilgan savdo — hisobga olinmaydi
+  sales.push({ id: ++n, filial: 'baza', local_id: 's' + n, items: [{ pid: 2, qty: 999 }], status: 'voided', sale_date: tz(1), created_at: iso(now - DAY) });
+  const tables = {
+    app_data: [{ id: 'main', data: { settings: { usdUzs: 12500 }, products } }],
+    app_data_branches: [{ branch_key: 'baza', data: { shop: { settings: { enabled: true, currency: 'UZS' }, discounts: [] }, batches: jb, sales: [] } }],
+    ledger_ops: [{ id: 1 }],
+    batches: jb.map((b, i) => ({ id: i + 1, filial: 'baza', local_id: String(b.id), pid: b.pid, qty: 5000, sold: 0, cost_usd: 5, status: 'active', batch_date: tz(100) })),
+    sales, customer_balances: [], supplier_balances: [], ai_ad_posts: [], ai_ad_settings: [],
+  };
+  require('../netlify/functions/_lib/ledgerAuthority')._resetLedgerAuthorityCache();
+  const r = await AA.candidates(fakeRest(tables), 'baza', AA.normalizeSettings({}), now);
+  require('../netlify/functions/_lib/ledgerAuthority')._resetLedgerAuthorityCache();
+  const by = Object.fromEntries(r.items.map((x) => [x.pid, x]));
+  assert.ok(by[1] && !by[1].reasons.includes('stuck'), "oxirgi savdolardagi tovar «turib qolgan» emas: " + JSON.stringify(by[1] && by[1].reasons));
+  assert.deepEqual(by[1].reasons, ['top']); assert.equal(by[1].sold, 200, 'top hisobi: 200 dona (kesilmagan)');
+  assert.equal(by[2].sold, 1000, "o'chirilgan savdo hisobga olinmadi");
+  assert.ok(!by[3] || !by[3].reasons.includes('stuck'), "Toshkent kuni bo'yicha oynaga kirgan savdo — turib qolgan emas");
+  assert.deepEqual(r.items.filter((x) => x.reasons.includes('top')).map((x) => x.pid), [2, 1, 3], 'top tartibi to\'g\'ri');
+}
+
 module.exports = {
   name: 'P138 — AI-reklama 1-bosqich: nomzodlar (server), sozlamalar, ruxsatlar, 58-migratsiya',
   cases: [
     { name: 'mezonlar: chegirma, yangi (birinchi kirim / ID vaqti), turib qolgan, top N; istisnolar; 7 kunlik takror pastga; narx serverda', run: testCriteria },
     { name: 'ruxsatlar (403), sozlama tekshiruvi, kanal zaxirasi, filial bo\'yicha, do\'kon o\'chiq — 409; brauzer rollari jadvalga kira olmaydi', run: testAccess },
+    { name: 'PostgREST 1000 qator chegarasi: 1200+ savdo to\'liq o\'qiladi (turib qolgan / top to\'g\'ri); sana — Toshkent kuni', run: test1000Cap },
     { name: '58 qo\'llanmagan — 409 MIGRATION58_PENDING', run: testNo58 },
     { name: 'mahsulot kartasi: «Reklama qilmaslik» belgisi saqlanadi va qayta ochilganda ko\'rinadi', run: testNoAdsFlag },
     { name: 'birliklar: ID sanasi, birinchi kirim, sozlama chegaralari, AI hisoblagichi atomik, 90 kunlik tozalash', run: testUnits },

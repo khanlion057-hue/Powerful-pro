@@ -22,6 +22,20 @@ function copy(src, dst) {
 // /h/* «1 yil, o'zgarmas» keshlanadi: fayl o'zgarsa nomi ham o'zgaradi, eski nusxa qolib ketmaydi. HTML va sw.js shu
 // nomlarga yo'naltiriladi. Asl js/ va css/ fayllar ham qoladi (no-cache — boshqa joydan havola bo'lsa ishlayveradi).
 // h/ — js/ va css/ bilan bir chuqurlikda: CSS ichidagi «../assets/…» havolalari o'zgarmay ishlaydi.
+// v25.8: AI-reklama kuylari — assets/ai-reklama/musiqa/ ichidagi treklar FAQAT shu papkada LICENSE.txt bo'lsa ro'yxatga kiradi
+// (manifest.json build'da yaratiladi; litsenziyasiz trek saytga chiqmaydi). Trek yo'q — bo'sh ro'yxat, brauzerdagi 3 kuy ishlaydi.
+function musicManifest() {
+  const dir = path.join(DIST, 'assets', 'ai-reklama', 'musiqa');
+  if (!fs.existsSync(dir)) return 0;
+  try { fs.unlinkSync(path.join(dir, 'README.md')); } catch (_) { /* yo'q */ }   // ichki yo'riqnoma — saytga chiqmaydi
+  const lic = fs.existsSync(path.join(dir, 'LICENSE.txt'));
+  const files = fs.readdirSync(dir).filter((f) => /^[\w.-]+\.(mp3|m4a|ogg|wav)$/i.test(f)).sort();
+  if (!lic) for (const f of files) fs.unlinkSync(path.join(dir, f));
+  const tracks = lic ? files.slice(0, 20).map((f) => ({ file: f, title: f.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').slice(0, 40) })) : [];
+  fs.writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify({ tracks }, null, 1));
+  return tracks.length;
+}
+
 function hashAssets() {
   const crypto = require('crypto');
   const PAGES = ['index.html', 'sotuvchi.html', 'diller.html', 'dokon.html'];
@@ -69,6 +83,7 @@ function build() {
   fs.rmSync(DIST, { recursive: true, force: true });
   fs.mkdirSync(DIST, { recursive: true });
   for (const f of SITE) copy(path.join(ROOT, f), path.join(DIST, f));
+  musicManifest();
   hashAssets();
 
   // HTML ichidagi lokal havolalar dist'da mavjudmi

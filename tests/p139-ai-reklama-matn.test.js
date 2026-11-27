@@ -157,10 +157,56 @@ async function testHandlerPrivacy() {
     // status: AI ulangan, bu oy 1/3
     const st = JSON.parse((await h(post({ action: 'status' }, 't-v'))).body).ai;
     assert.deepEqual([st.on, st.used, st.limit, st.left, st.exhausted], [true, 1, 3, 2, false]);
+    // v25.8 (3-bosqich): «Boshqa variant» — alts (shablon matnlar, raqamsiz; AI limiti sarflanmaydi)
+    const alts = JSON.parse(r.body).alts;
+    assert.ok(Array.isArray(alts) && alts.length >= 10, 'alts: 10+ variant');
+    assert.equal(new Set(alts.map((x) => x.variant)).size, alts.length, 'variantlar takrorlanmaydi');
+    for (const x of alts) assert.ok(!/\d/.test((x.title + x.body + x.tags.join(' ')).split('Drel 600W').join('')), 'alts — raqamsiz (nomdan tashqari)');
+    assert.equal(sink.length, 1, 'alts uchun AI chaqirilmadi');
   } finally {
     global.fetch = origFetch; for (const k of Object.keys(ENV)) { if (saved[k] == null) delete process.env[k]; else process.env[k] = saved[k]; }
     unloadFunctions(); await pg.close();
   }
+}
+
+// ── 5. Rasm proksisi (ai-ads:img): faqat shu mahsulotning https rasmi; SSRF himoyasi; hajm/tur/yo'naltirish ──
+async function testImgProxy() {
+  const AD = require('../netlify/functions/ai-ads.js');
+  const safe = AD._safeImgUrl;
+  assert.ok(safe('https://x.supabase.co/storage/v1/object/public/a.webp'));
+  for (const bad of ['http://x.uz/a.jpg', 'https://127.0.0.1/a.jpg', 'https://10.0.0.5/a.jpg', 'https://[::1]/a.jpg', 'https://localhost/a.jpg', 'https://intranet/a.jpg',
+    'https://db.internal/a.jpg', 'https://u:p@x.uz/a.jpg', 'https://x.uz:8443/a.jpg', 'ftp://x.uz/a', 'javascript:alert(1)', '', null]) assert.equal(safe(bad), null, `rad etiladi: ${bad}`);
+  const pg = await pglite();
+  const origFetch = global.fetch; const calls = [];
+  let mode = 'ok';
+  global.fetch = async (url, o) => { calls.push({ url, o });
+    const ct = mode === 'html' ? 'text/html' : 'image/webp', size = mode === 'big' ? 1600 * 1024 : 2048;
+    return { ok: true, status: 200, headers: { get: (k) => (k.toLowerCase() === 'content-type' ? ct : k.toLowerCase() === 'content-length' ? (mode === 'nolen' ? null : String(size)) : null) },
+      arrayBuffer: async () => new Uint8Array(mode === 'nolen' ? 1600 * 1024 : size).buffer }; };
+  try {
+    const IMG = ['https://x.supabase.co/storage/v1/object/public/product-images/p.webp'];
+    await pg.query(`update app_data set data = data || $1::jsonb where id='main'`, [JSON.stringify({ settings: { usdUzs: 12500 }, products: [
+      { id: 1, sku: 'D-1', name: 'Drel', cat: 'Drellar', markupPct: 25, images: IMG }, { id: 2, sku: 'N-2', name: 'Yopiq', cat: 'Drellar', markupPct: 25, images: IMG, noAds: true }] })]);
+    await pg.query(`insert into app_data_branches (branch_key, data) values ('baza', $1::jsonb)`, [JSON.stringify({ shop: { settings: { enabled: true, currency: 'UZS' }, discounts: [] },
+      batches: [{ id: 1, pid: 1, qty: 5, sold: 0, costUsd: 10, date: '2026-11-20', status: 'active' }, { id: 2, pid: 2, qty: 5, sold: 0, costUsd: 4, date: '2026-11-20', status: 'active' }], sales: [] })]);
+    const role = (rid, keys) => keys.map((k) => ({ role_id: rid, permission_id: k, permissions: { key: k } }));
+    const client = makePgSupabase(pg, { pgTables: ['app_data', 'app_data_branches', 'ai_ad_posts', 'ai_ad_settings', 'ai_usage'],
+      memTables: { staff: [{ id: 8, auth_user_id: 'u-v', role: 'sotuvchi', active: true, filial: 'baza', name: 'V', login: 'v' }, { id: 9, auth_user_id: 'u-c', role: 'sotuvchi', active: true, filial: 'baza', name: 'C', login: 'c' }],
+        staff_roles: [{ staff_id: 8, role_id: 'rv' }, { staff_id: 9, role_id: 'rc' }], role_permissions: [...role('rv', ['reklama.view']), ...role('rc', ['reklama.view', 'reklama.create'])], staff_audit_log: [], security_events: [] },
+      users: { 't-v': { id: 'u-v' }, 't-c': { id: 'u-c' } } });
+    require('../netlify/functions/_lib/ledgerAuthority')._resetLedgerAuthorityCache();
+    const h = loadFunction('ai-ads', client);
+    assert.equal((await h(post({ action: 'img', pid: 1 }, 't-v'))).statusCode, 403, 'reklama.create kerak');
+    assert.equal((await h(post({ action: 'img', pid: 2 }, 't-c'))).statusCode, 404, '«Reklama qilmaslik» — 404');
+    assert.equal((await h(post({ action: 'img', pid: 1, idx: 4 }, 't-c'))).statusCode, 400, 'mahsulotda yo\'q rasm — 400');
+    assert.equal(calls.length, 0, 'rad etilganda tashqi so\'rov yo\'q');
+    let r = await h(post({ action: 'img', pid: 1, url: 'https://evil.example/x.png' }, 't-c'));
+    assert.equal(r.statusCode, 200, r.body); assert.match(JSON.parse(r.body).dataUrl, /^data:image\/webp;base64,/);
+    assert.equal(calls[0].url, IMG[0], 'faqat mahsulotning o\'z rasmi (so\'rovdagi url e\'tiborsiz)');
+    assert.equal(calls[0].o.redirect, 'error', 'yo\'naltirish taqiqlangan');
+    assert.ok(calls[0].o.signal, 'vaqt chegarasi (AbortController)');
+    for (const m of ['html', 'big', 'nolen']) { mode = m; r = await h(post({ action: 'img', pid: 1 }, 't-c')); assert.equal(r.statusCode, 502, `${m} — 502`); assert.equal(JSON.parse(r.body).code, 'IMG_FAIL'); }
+  } finally { global.fetch = origFetch; unloadFunctions(); await pg.close(); }
 }
 
 module.exports = {
@@ -170,5 +216,6 @@ module.exports = {
     { name: 'tozalash: AI\'ga faqat 5 maydon (narx/telefon/havola yo\'q); javobdagi raqam/narx satrlari o\'chadi; yaroqsiz — null', run: testCleaning },
     { name: 'oylik limit atomik; tugasa — shablon; AI xatosi, yaroqsiz JSON, vaqt tugashi — hisobdan chiqmaydi', run: testLimit },
     { name: 'handler: AI\'ga narx, tannarx, mijoz, ta\'minotchi, telefon, filial nomi ketmaydi; kalit sarlavhada; ruxsat va mos bo\'lmagan mahsulot', run: testHandlerPrivacy },
+    { name: 'rasm proksisi: faqat mahsulotning https rasmi, IP/localhost/port yo\'q, redirect:error, ≤1.5 MB, faqat image/*', run: testImgProxy },
   ],
 };

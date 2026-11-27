@@ -6,7 +6,8 @@
 //   POST { action:'settings_get', filial? }              — filial sozlamalari                                       · reklama.view
 //   POST { action:'settings_save', filial?, settings }   — saqlash (tekshiriladi)                                   · reklama.settings
 //   POST { action:'text', filial?, pid, kind?, variant?, template? } — sarlavha, matn, heshteglar (AI yoki shablon) · reklama.create
-//   (keyingi bosqichlar: img, upload_url, publish, drafts, draft_action, history)
+//   POST { action:'img', filial?, pid, idx? }           — mahsulot rasmi (CORS'siz saytdan) → dataUrl; faqat shu mahsulotning https rasmi · reklama.create
+//   (keyingi bosqichlar: upload_url, publish, drafts, draft_action, history)
 //
 // Qoidalar: deny-by-default (ruxsatsiz — 403); do'kon yoqilmagan filialda — 409 SHOP_OFF; 58 yo'q — 409 MIGRATION58_PENDING.
 // Bot tokeni va AI kaliti javobga hech qachon qo'shilmaydi. Tana 1 MB dan katta bo'lsa — 413.
@@ -19,7 +20,32 @@ const SP = require('./_lib/shopPublic');
 
 const ENDPOINT = 'ai-ads';
 const MAX_BODY = 1024 * 1024;
-const PERM = { status: 'reklama.view', candidates: 'reklama.view', settings_get: 'reklama.view', settings_save: 'reklama.settings', text: 'reklama.create' };
+const PERM = { status: 'reklama.view', candidates: 'reklama.view', settings_get: 'reklama.view', settings_save: 'reklama.settings', text: 'reklama.create', img: 'reklama.create' };
+const IMG_MAX = 1536 * 1024, IMG_TIMEOUT = 7000;
+// Rasm proksisi: SSRF himoyasi — faqat https, standart port, nom (IP emas), ichki/maxfiy nomlar yo'q; yo'naltirish taqiqlangan
+function safeImgUrl(u) {
+  let x; try { x = new URL(String(u || '')); } catch (_) { return null; }
+  if (x.protocol !== 'https:' || x.username || x.password || (x.port && x.port !== '443')) return null;
+  const h = x.hostname.toLowerCase();
+  if (!h.includes('.') || /^[\d.]+$/.test(h) || h.includes(':') || h.startsWith('[') || /(^|\.)(localhost|local|internal|lan|home|corp|intranet)$/.test(h)) return null;
+  return x.toString();
+}
+async function proxyImage(url, fetchImpl = fetch) {
+  const ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), IMG_TIMEOUT);
+  try {
+    const r = await fetchImpl(url, { redirect: 'error', signal: ctrl.signal, headers: { Accept: 'image/*' } });
+    if (!r.ok) return { error: 'Rasm sayti ' + r.status + ' qaytardi' };
+    const mime = String((r.headers && r.headers.get && r.headers.get('content-type')) || '').split(';')[0].trim().toLowerCase();
+    if (!/^image\/(jpeg|png|webp|gif|avif)$/.test(mime)) return { error: 'Bu rasm emas' };
+    const len = Number(r.headers.get('content-length') || 0);
+    if (len > IMG_MAX) return { error: 'Rasm 1.5 MB dan katta' };
+    const buf = Buffer.from(await r.arrayBuffer());
+    if (buf.length > IMG_MAX) return { error: 'Rasm 1.5 MB dan katta' };
+    return { dataUrl: 'data:' + mime + ';base64,' + buf.toString('base64') };
+  } catch (e) {
+    return { error: e && e.name === 'AbortError' ? 'Rasm sayti javob bermadi' : 'Rasm yuklanmadi' };
+  } finally { clearTimeout(t); }
+}
 const missing58 = (e) => !!e && (e.code === '42P01' || e.code === 'PGRST205' || /ai_ad_|ai_usage/.test(String(e.message || '')) && /does not exist|could not find|schema cache/i.test(String(e.message || '')));
 
 // AI holati — kalit javobga chiqmaydi
@@ -69,7 +95,7 @@ exports.handler = async (event) => {
         lang: settings.lang }, 200);
     }
 
-    if (body.action === 'text') {
+    if (body.action === 'text' || body.action === 'img') {
       if (!(Number.isSafeInteger(body.pid) && body.pid > 0)) return json({ error: "Mahsulot noto'g'ri" }, 400);
       const L = await AA.loadBranch(admin, filial);
       if (!L.shopOn) return json({ error: "Bu filialda onlayn-do'kon yoqilmagan", code: 'SHOP_OFF' }, 409);
@@ -77,12 +103,24 @@ exports.handler = async (event) => {
       // faqat vitrinada ko'rinadigan va «Reklama qilmaslik» belgisi yo'q mahsulot
       const pub = p && !p.noAds ? SP.publicProduct(p, SP.catalogCtx(L.data, filial, L.view)) : null;
       if (!pub) return json({ error: "Mahsulot reklama uchun mos emas (vitrinada yo'q yoki «Reklama qilmaslik» belgilangan)", code: 'NOT_ELIGIBLE' }, 404);
+      if (body.action === 'img') {
+        const idx = Number.isInteger(body.idx) && body.idx >= 0 && body.idx < 6 ? body.idx : 0;
+        const url = safeImgUrl((pub.img || [])[idx]);
+        if (!url) return json({ error: 'Rasm havolasi ruxsat etilmagan', code: 'BAD_IMG' }, 400);
+        const out = await proxyImage(url, exports._fetch);
+        if (out.error) return json({ error: out.error, code: 'IMG_FAIL' }, 502);
+        return json({ ok: true, dataUrl: out.dataUrl }, 200);
+      }
       const kind = ['discount', 'new', 'top', 'stuck'].includes(body.kind) ? body.kind : 'new';
       const variant = Number.isInteger(body.variant) && body.variant >= 0 && body.variant < 100 ? body.variant : undefined;
       const out = await AT.generateText({ admin, product: { name: pub.name, cat: pub.cat, desc: pub.desc }, pid: body.pid, kind, lang: settings.lang,
         variant, template: body.template === true });
+      // «Boshqa variant» darhol (serverga qayta so'rovsiz): shu turdagi barcha shablon matnlar — raqam/narx yo'q
+      const alts = [];
+      for (let i = 0; i < 12; i++) { const a = AT.templateText({ product: { name: pub.name, cat: pub.cat }, pid: body.pid, kind, lang: settings.lang, variant: i });
+        if (i > 0 && a.variant === alts[0].variant) break; alts.push({ title: a.title, body: a.body, tags: a.tags, variant: a.variant }); }
       return json({ ok: true, text: { title: out.title, body: out.body, tags: out.tags, source: out.source, note: out.note, variant: out.variant, count: out.count, lang: settings.lang, kind },
-        ai: out.ai }, 200);
+        alts, ai: out.ai }, 200);
     }
 
     // candidates
@@ -96,4 +134,5 @@ exports.handler = async (event) => {
 };
 
 // v25.2: kuzatuv — so'rovlar cheklovi, xato va sekinlik haqida egasiga xabar (_lib/monitor.js)
+exports._safeImgUrl = safeImgUrl;
 exports.handler = require('./_lib/monitor').wrap(ENDPOINT, exports.handler);

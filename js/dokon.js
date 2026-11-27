@@ -190,6 +190,9 @@ function pgDokon() {
   const tile = (ic, cls, lbl, on) => `<button class="dk-tool" style="--c:var(--${cls})" onclick="${on}"><span class="dk-tool-ic">${ICONF[ic]}</span><span>${lbl}</span></button>`;
   const host = location.host || 'example.uz';
   // v25: «Filial» turidagi filial — Baza onlayn-do'konidan foydalanadi (filial sozlamalari: Filial va dillerlar → Filiallar)
+  // v25.8: AI-reklama — do'kon yoqilgan filialda, reklama.view ruxsati (yoki admin) bo'lsa
+  const aiOk = !!c.enabled && typeof airRender === 'function' && (hasPerm('reklama.view') || (typeof fwServerAdmin === 'function' && fwServerAdmin()));
+  if (S.dkTab === 'ai' && !aiOk) S.dkTab = 'orders';
   const flMode = S.branch !== 'baza' && typeof flCfg === 'function' ? flCfg(S.branch).type : null;
   el.innerHTML = `
   ${flMode === 'filial' ? `<div class="dk-mode">${ICONF.store || ICONF.globe}<div><b>Bu filial Baza onlayn-doʻkonidan foydalanadi</b><small>Xaridor Baza vitrinasida shu filialni tanlaydi — buyurtmalar shu roʻyxatga tushadi. Oʻz alohida doʻkoni kerak boʻlsa — filial sozlamalarida «Mustaqil»ni tanlang.</small></div></div>` : ''}
@@ -233,9 +236,10 @@ function pgDokon() {
   <div class="dk-seg" role="tablist">
     <button role="tab" class="${S.dkTab === 'orders' ? 'on' : ''}" onclick="S.dkTab='orders';pgDokon()">${ICONF.receipt}<span>Cheklar</span></button>
     <button role="tab" class="${S.dkTab === 'reviews' ? 'on' : ''}" onclick="S.dkTab='reviews';pgDokon()">${ICONF.starO}<span>Sharhlar${sh.reviews.length ? ` · ${sh.reviews.length}` : ''}</span></button>
+    ${aiOk ? `<button role="tab" class="dk-seg-ai ${S.dkTab === 'ai' ? 'on' : ''}" onclick="S.dkTab='ai';pgDokon()">${ICONF.sparkle}<span>AI-reklama</span></button>` : ''}
   </div>
   <div id="dk-body"></div>`;
-  if (S.dkTab === 'reviews') dkRenderReviews(); else dkRenderOrdersShell();
+  if (S.dkTab === 'reviews') dkRenderReviews(); else if (S.dkTab === 'ai' && aiOk) airRender(); else dkRenderOrdersShell();
 }
 
 function dkRenderOrdersShell() {

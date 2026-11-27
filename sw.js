@@ -4,12 +4,12 @@
    • CDN kutubxonalari (versiyasi qat'iy, SRI bilan) va shriftlar — keshdan darhol (tez ochilish); yo'q bo'lsa tarmoqdan.
    • Server funksiyalari (/.netlify/functions), Supabase va boshqa so'rovlar — HECH QACHON keshlanmaydi (pul va qoldiq
      ma'lumoti faqat serverdan; oflayn savdolar ilovaning o'z navbatida turadi va internet qaytganda yuboriladi). */
-const CACHE = 'powerful-v25-26';
+const CACHE = 'powerful-v25-27';
 const SHELL = [
   './', './index.html', './sotuvchi.html', './diller.html', './dokon.html', './manifest.json',
   './css/style.css', './css/design-system.css', './css/vitrina.css',
   './js/config.js', './js/brand.js', './js/fw-err.js', './js/fw-particle-loader.js', './js/fw-boot-loader.js', './js/fw-round.js', './js/shared.js', './js/pos.js', './js/main.js', './js/sotuvchi.js', './js/diller.js',
-  './js/firma-kassa.js', './js/dokon.js', './js/writeoff.js', './js/dealer-pay.js', './js/notifications.js', './js/zaklad.js', './js/shell.js', './js/vitrina.js',
+  './js/firma-kassa.js', './js/dokon.js', './js/ai-reklama-shablonlar.js', './js/ai-reklama.js', './js/writeoff.js', './js/dealer-pay.js', './js/notifications.js', './js/zaklad.js', './js/shell.js', './js/vitrina.js',
   './assets/brand-logo.png', './assets/logo.png', './assets/brand-logo-dark.png', './assets/brand-mark.png', './assets/chek/pg-mark.png', './assets/chek/pg-mark-bw.png', './assets/chek/banner-top.jpg', './assets/chek/banner-bottom.jpg', './assets/saw-blade.svg', './assets/tile-pattern.svg', './icon-192.png', './icon-180.png',
 ];
 const CDN_HOSTS = ['cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com'];

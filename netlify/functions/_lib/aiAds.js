@@ -189,6 +189,7 @@ function pickCandidates(L, opts) {
       pid: p.id, name: pub.name, sku: pub.sku, brand: pub.brand, cat: pub.cat, desc: pub.desc || '', img: pub.img.slice(0, 4),
       reasons, reasonLabels: reasons.map((r) => REASON_LABEL[r]), price: pub.price, old: pub.old || null, cur: ctx.cur,
       line: priceLine(pub.price, ctx.cur), oldLine: pub.old ? priceLine(pub.old, ctx.cur) : '', stock: pub.stock,
+      pct: pub.old > pub.price ? Math.round((1 - pub.price / pub.old) * 100) : 0,   // chegirma foizi — serverda (brauzer hisoblamaydi)
       sold: soldTop.get(k) || 0, addedAt: added, recentAt: recent.get(k) || null, score,
     });
   }

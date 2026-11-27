@@ -114,4 +114,10 @@ async function generateText(opts) {
   return { ...out, source: 'ai', note: null, variant: null, ai };
 }
 
-module.exports = { PROVIDERS, TIMEOUT_MS, aiConfig, safeInput, scrub, parseJson, cleanOutput, generateText, monthOf };
+// Faqat shablon matn (AI chaqirilmaydi, limit sarflanmaydi) — «Boshqa variant» ro'yxati uchun
+function templateText(opts) {
+  const input = safeInput(opts.product, opts.kind, opts.lang);
+  return pickTemplate({ lang: input.lang, kind: input.kind, name: input.name, cat: input.cat, pid: opts.pid, variant: opts.variant, now: opts.now || Date.now() });
+}
+
+module.exports = { templateText, PROVIDERS, TIMEOUT_MS, aiConfig, safeInput, scrub, parseJson, cleanOutput, generateText, monthOf };

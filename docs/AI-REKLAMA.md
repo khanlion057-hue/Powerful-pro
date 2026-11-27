@@ -208,6 +208,17 @@ Hech bir rolga avtomatik berilmaydi (deny-by-default) — admin hammasini ko'rad
 |---|---|---|
 | 1. Nomzodlar (server) | ✅ | `tests/p138-ai-reklama-nomzodlar.test.js` (PGlite + haqiqiy `ai-ads`; 1000 qator chegarasi) |
 | 2. Matn | ✅ | `tests/p139-ai-reklama-matn.test.js` (shablonlar, AI'ga ketgan haqiqiy so'rov tanasi, limit, tozalash) |
-| 3. Canvas va video | — | |
-| 4. Telegram | — | kanal ID kerak |
+| 3. Canvas, video, UI | ✅ | `tests/p140-ai-reklama-canvas-video-ui.test.js` (canvas, MediaRecorder mock, 360 px), `p139` (rasm proksisi, alts); evidence: `tests/evidence/ai-reklama-*.png` (`node scripts/ai-reklama-evidence.js`) |
+| 4. Telegram | — | kanal: -1002193336308 |
 | 5. Avtopilot | — | |
+
+## 10. 3-bosqich eslatmalari
+- **Shablonlar** (`js/ai-reklama-shablonlar.js`): 8 ta — Chegirma, Yangi, Top, Minimal, Katta narx, Kollaj, Maxsus taklif, Brend.
+  Nishon mahsulot sababiga qarab (−N% doira / YANGI / XIT / MAXSUS TAKLIF). Shrift — Inter (OFL, `assets/ai-reklama/fonts`), chizishdan oldin to'liq yuklanadi.
+- **Video**: 720×1280, 30 kadr/s, ~4 Mbit/s, faqat MP4. Tur `MediaRecorder.isTypeSupported` bilan tanlanadi va «Format va musiqa» qadamida ko'rsatiladi.
+  Tartib: H.264+AAC → H.264+Opus → faqat video. Mahalliy Chromium 153 (test muhiti): AAC **yo'q**, Opus **bor** → `avc1.42E01E,opus`
+  (haqiqiy yozuv: h264 720×1280, opus, ffprobe bilan tekshirildi). **Android Chrome'dagi natija — telefonda tekshiriladi** (holat qatorida chiqadi).
+- Yozish paytida Wake Lock; boshqa ilovaga o'tilsa — yozish to'xtaydi, fayl berilmaydi, «Qayta urinish».
+- **Rasm**: avval CORS bilan to'g'ridan (Supabase Storage — CORS bor), bo'lmasa `ai-ads:img` proksisi (faqat shu mahsulotning https rasmi, IP/localhost yo'q,
+  yo'naltirish taqiqlangan, ≤1.5 MB, faqat image/*, 7 s).
+- **Kuy**: brauzerda yaratiladi (Energik 120, Yumshoq 84, Premium 96 BPM; ovoz 0.4). O'z treklari — `assets/ai-reklama/musiqa/README.md`.

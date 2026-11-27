@@ -177,18 +177,37 @@ function _cta(ctx, cx, y, tpl, L, t, dur) {
   ctx.fillStyle = tpl.ctaInk || (tpl.id === 'brend' ? '#1f1300' : '#ffffff');
   ctx.textAlign = 'center'; ctx.fillText(txt, 0, 16); ctx.textAlign = 'left'; ctx.restore();
 }
-function _header(ctx, d, tpl, Wn, center) {
-  ctx.fillStyle = tpl.sub; ctx.font = AIR_FF(700, 30); ctx.textAlign = center ? 'center' : 'left';
-  const name = String(d.shopName || '').toUpperCase().slice(0, 32);
-  if (!center) ctx.fillText(name, 64, 92);
-  ctx.textAlign = 'left';
-  // Rangli fonda (logoPlate) logo oq tagliqda — har qanday fonda o'qiladi
+// v25.8: reklamada do'kon nomi — faqat asosiy so'z: «Powerful Group» → «POWERFUL» (vitrina va sozlamalardagi nom o'zgarmaydi)
+function airAdBrand(name) {
+  const s = String(name || '').replace(/\s+/g, ' ').trim();
+  const b = s.replace(/[\s,.-]*(group|grup|gruppa|групп?а?|гр)[\s.]*$/i, '').trim();
+  return (b || s).slice(0, 24);
+}
+// Logo faylining pastida «GROUP» qatori bor — reklamada kesib chiziladi (faqat belgi va «POWERFUL»).
+// assets/brand-logo*.png: belgi 43–378, «POWERFUL» 456–549, «GROUP» 587–631 (balandlik 674 px).
+const AIR_LOGO_CROP = [30 / 674, 570 / 674];
+function _logoBox(logo, h) { const sh = logo.naturalHeight * (AIR_LOGO_CROP[1] - AIR_LOGO_CROP[0]); return { w: logo.naturalWidth * h / sh, sh }; }
+function _drawLogo(ctx, logo, x, y, w, h) {
+  const sy = logo.naturalHeight * AIR_LOGO_CROP[0], sh = logo.naturalHeight * (AIR_LOGO_CROP[1] - AIR_LOGO_CROP[0]);
+  ctx.drawImage(logo, 0, sy, logo.naturalWidth, sh, x, y, w, h);
+}
+// Nom yozuvi: katta harf, harflar orasi ochiq (0.18em). Faqat logo bo'lmaganda chiziladi — nom bir marta chiqadi
+function _brandText(ctx, d, x, y, size, color, align) {
+  const t = airAdBrand(d.shopName).toUpperCase(); if (!t) return;
+  ctx.save(); ctx.font = AIR_FF(800, size); ctx.fillStyle = color; ctx.textBaseline = 'alphabetic';
+  const sp = size * 0.18, ws = [...t].map((ch) => ctx.measureText(ch).width), total = ws.reduce((a, b) => a + b, 0) + sp * (t.length - 1);
+  let cx = align === 'center' ? x - total / 2 : align === 'right' ? x - total : x;
+  ctx.textAlign = 'left'; [...t].forEach((ch, i) => { ctx.fillText(ch, cx, y); cx += ws[i] + sp; });
+  ctx.restore();
+}
+function _header(ctx, d, tpl, Wn) {
+  // Rangli fonda (logoPlate) logo oq tagliqda — har qanday fonda o'qiladi. Logo bor — nom yozuvi takrorlanmaydi
   const logo = tpl.logoPlate ? d.logo : tpl.dark ? (d.logoDark || d.logo) : d.logo;
-  if (logo && logo.naturalWidth && !center) {
-    const h = 70, w = Math.min(260, logo.naturalWidth * h / logo.naturalHeight), x = Wn - 64 - w;
-    if (tpl.logoPlate) { ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.15)'; ctx.shadowBlur = 16; _rr(ctx, x - 18, 30, w + 36, h + 20, 24); ctx.fillStyle = '#ffffff'; ctx.fill(); ctx.restore(); }
-    ctx.drawImage(logo, x, 40, w, h);
-  }
+  if (logo && logo.naturalWidth) {
+    const h = 64, w = Math.min(240, _logoBox(logo, h).w), x = Wn - 64 - w;
+    if (tpl.logoPlate) { ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.15)'; ctx.shadowBlur = 16; _rr(ctx, x - 18, 30, w + 36, h + 26, 24); ctx.fillStyle = '#ffffff'; ctx.fill(); ctx.restore(); }
+    _drawLogo(ctx, logo, x, 43, w, h);
+  } else _brandText(ctx, d, 64, 92, 30, tpl.sub, 'left');
 }
 
 // To'rt qirrali yulduzcha (✦) — shriftga bog'liq emas
@@ -245,7 +264,8 @@ function _fresh(ctx, Wn, Hn, tall, tpl, d, L, t, dur, beat, nameBlock, priceA) {
     ctx.fillStyle = '#ffffff'; _star(ctx, x + fs * 0.95, y + h / 2, fs * 0.42);
     ctx.textBaseline = 'middle'; ctx.fillText(txt, x + fs * 1.65, y + h / 2 + 1); ctx.restore();
   }
-  if (d.logo && d.logo.naturalWidth) { const h = tall ? 76 : 64, w = Math.min(240, d.logo.naturalWidth * h / d.logo.naturalHeight); ctx.drawImage(d.logo, R - w, tall ? 108 : 62, w, h); }
+  if (d.logo && d.logo.naturalWidth) { const h = tall ? 72 : 60, w = Math.min(240, _logoBox(d.logo, h).w); _drawLogo(ctx, d.logo, R - w, tall ? 112 : 64, w, h); }
+  else _brandText(ctx, d, R, tall ? 166 : 108, tall ? 34 : 28, '#6b7280', 'right');   // logo yo'q — nom bir marta
   // 5) nom, narx (eng katta, to'q siyoh, kuy zarbasida «pop»)
   const nameY = tall ? 1250 : 676;
   nameBlock(X, nameY, R - X, tall ? [46, 42, 38] : [36, 33, 30], tpl.sub, 'left', 1.22);
@@ -261,7 +281,6 @@ function _fresh(ctx, Wn, Hn, tall, tpl, d, L, t, dur, beat, nameBlock, priceA) {
   const la = _A(t, 1.0, 0.8), lineY = tall ? 1580 : 900;
   if (la > 0) { ctx.fillStyle = _grad(ctx, X, 0, R, 0, ['#ec4899', '#8b5cf6']); ctx.save(); ctx.globalAlpha = 0.9; ctx.fillRect(X, lineY, (R - X) * la, 4); ctx.restore(); }
   _cta(ctx, Wn / 2, tall ? 1720 : 990, tpl, L, t, dur);
-  if (tall && d.shopName) { ctx.save(); ctx.fillStyle = '#9ca3af'; ctx.font = AIR_FF(700, 28); ctx.textAlign = 'center'; ctx.fillText(String(d.shopName).toUpperCase().slice(0, 32), Wn / 2, 1850); ctx.restore(); }
 }
 
 // Asosiy chizish. d: { name, title, priceLine, oldLine, pct, reason, shopName, lang, imgs:[Image], logo, logoDark }
@@ -338,8 +357,8 @@ function airDraw(ctx, W, H, tpl, d, t = null, dur = 10, bpm = 110) {
   } else {   // frame (brend)
     ctx.save(); ctx.strokeStyle = tpl.frame; ctx.lineWidth = 6; _rr(ctx, 34, 34, Wn - 68, Hn - 68, 44); ctx.stroke(); ctx.restore();
     const logo = d.logoDark || d.logo;
-    if (logo && logo.naturalWidth) { const h = tall ? 130 : 96, w = Math.min(480, logo.naturalWidth * h / logo.naturalHeight); ctx.drawImage(logo, (Wn - w) / 2, tall ? 100 : 66, w, h); }
-    else txt(String(d.shopName || '').toUpperCase(), 540, tall ? 180 : 130, 44, 800, tpl.accent[0], 1, 'center', 900);
+    if (logo && logo.naturalWidth) { const h = tall ? 120 : 88, w = Math.min(480, _logoBox(logo, h).w); _drawLogo(ctx, logo, (Wn - w) / 2, tall ? 110 : 72, w, h); }
+    else _brandText(ctx, d, 540, tall ? 180 : 130, 44, tpl.accent[0], 'center');
     const card = tall ? { x: 110, y: 300, w: 860, h: 860, r: 56 } : { x: 170, y: 200, w: 740, h: 520, r: 48 };
     _card(ctx, card, img0, tpl, t, dur);
     badgeAt(card);

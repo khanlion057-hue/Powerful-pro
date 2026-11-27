@@ -56,13 +56,26 @@ function cleanUserText(t) {
   return { title: PRICE_LINE_RE.test(title) || MONEY_LINE_RE.test(title) ? '' : title, body: kept.join('\n'), tags, dropped: lines.length - kept.length };
 }
 
-// Izoh (HTML): sarlavha, matn, NARX (serverdan), heshteglar. ≤1024 belgi (Telegram chegarasi)
-function buildCaption(text, price, lang) {
+// Reklamada do'kon nomi — faqat asosiy so'z: «Powerful Group» → «Powerful» (js/ai-reklama.js airAdBrand bilan bir xil;
+// vitrina va sozlamalardagi nom o'zgarmaydi)
+function adBrand(name) {
+  const s = String(name || '').replace(/\s+/g, ' ').trim();
+  const b = s.replace(/[\s,.-]*(group|grup|gruppa|групп?а?|гр)[\s.]*$/i, '').trim();
+  const r = (b || s).slice(0, 24);
+  // izohda oddiy yozuv: «POWERFUL» → «Powerful» (katta harf faqat rasmda)
+  return r && r === r.toUpperCase() && /\p{Lu}/u.test(r) ? r.toLowerCase().replace(/(^|[\s-])(\p{L})/gu, (m, a, c) => a + c.toUpperCase()) : r;
+}
+const DEFAULT_BRAND = 'POWERFUL GROUP';   // js/brand.js → name (do'kon nomi kiritilmagan bo'lsa)
+
+// Izoh (HTML): sarlavha, matn, NARX (serverdan), do'kon nomi, heshteglar. ≤1024 belgi (Telegram chegarasi)
+function buildCaption(text, price, lang, brand) {
   const L = lang === 'ru' ? { price: 'Цена', old: 'было' } : { price: 'Narxi', old: 'oldin' };
   const parts = [];
   if (text.title) parts.push(`<b>${escHtml(text.title)}</b>`);
   if (text.body) parts.push(escHtml(text.body));
   if (price && price.line) parts.push(`💰 ${L.price}: <b>${escHtml(price.line)}</b>` + (price.oldLine ? ` (<s>${escHtml(price.oldLine)}</s>)` : ''));
+  const shop = adBrand(brand);
+  if (shop) parts.push(`🏬 <b>${escHtml(shop)}</b>`);
   if (text.tags.length) parts.push(text.tags.map((g) => '#' + g).join(' '));
   let cap = parts.join('\n\n');
   if (cap.length > CAPTION_MAX) {   // matn qisqartiriladi — narx va heshteg doim qoladi
@@ -90,4 +103,4 @@ function messageUrl(chat, msgId) {
   return null;
 }
 
-module.exports = { tgCall, tgErr, botIdOf, checkChannel, cleanUserText, buildCaption, productLink, messageUrl, escHtml, CAPTION_MAX };
+module.exports = { DEFAULT_BRAND, adBrand, tgCall, tgErr, botIdOf, checkChannel, cleanUserText, buildCaption, productLink, messageUrl, escHtml, CAPTION_MAX };

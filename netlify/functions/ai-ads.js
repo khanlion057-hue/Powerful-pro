@@ -222,7 +222,7 @@ async function publish(admin, auth, filial, settings, body, left) {
   const token = String(st.tgBotToken || '').trim(), chat = AA.channelOf(settings, st);
   if (!TOKEN_RE.test(token)) return fail('NO_BOT', 'Hisobot boti ulanmagan — Sozlamalar → Telegram');
   if (!chat) return fail('NO_CHANNEL', 'Reklama kanali koʻrsatilmagan — AI-reklama → Sozlamalar');
-  const caption = AP.buildCaption(text, price, settings.lang);
+  const caption = AP.buildCaption(text, price, settings.lang, (L.shop && L.shop.settings && L.shop.settings.name) || AP.DEFAULT_BRAND);   // izohda: «Powerful»
   const meta = { at: new Date().toISOString(), name: String(pub.name || '').slice(0, 140), title: text.title, body: text.body.slice(0, 700), tags: text.tags, reason: ['discount', 'new', 'top', 'stuck'].includes(body.reason) ? body.reason : null, lang: settings.lang };
 
   // Takror yo'q: (filial, kalit) — bitta post. Yuborilgan — qayta yuborilmaydi; xato/qotgan — qayta urinish

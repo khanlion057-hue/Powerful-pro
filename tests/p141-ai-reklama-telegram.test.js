@@ -93,6 +93,7 @@ async function testPhoto() {
     assert.match(sp.caption, /^<b>Chegirma &lt;b&gt;boshlandi&lt;\/b&gt;<\/b>/, 'HTML ekranlangan');
     assert.ok(sp.caption.includes(`Narxi: <b>${line}</b>`), 'narx — serverdan'); assert.ok(!sp.caption.includes('999 000'), 'foydalanuvchi yozgan narx olib tashlandi');
     assert.match(sp.caption, /Kuchli arra 1800W\nTez oling/); assert.match(sp.caption, /#arra #usta$/);
+    assert.ok(sp.caption.includes('🏬 <b>Powerful</b>') && !/group/i.test(sp.caption), 'izohda «Powerful» (Group yoʻq)');
     assert.equal(JSON.parse(sp.reply_markup).inline_keyboard[0][0].url, 'https://powerful.example.uz/dokon?s=powerful#p=1', 'tugma — vitrinadagi mahsulot');
     const row = (await T.pg.query(`select status, tg_message_id, tries, tg_chat, template, meta, price_snapshot from ai_ad_posts`)).rows;
     assert.equal(row.length, 1); assert.equal(row[0].status, 'sent'); assert.equal(Number(row[0].tg_message_id), 101); assert.equal(row[0].tries, 1);
@@ -186,6 +187,8 @@ async function testLib() {
   assert.ok(cap.length <= 1024); assert.match(cap, /Narxi: <b>1 000 000 soʻm<\/b>/); assert.match(cap, /#arra$/);
   assert.equal(AP.messageUrl('@powerful_uz', 7), 'https://t.me/powerful_uz/7'); assert.equal(AP.messageUrl('12345', 7), null);
   assert.equal(AP.cleanUserText({ title: '$99 arzon', body: 'a' }).title, '', 'sarlavhada narx — olib tashlanadi');
+  // reklamadagi do'kon nomi: «Group» olib tashlanadi, izohda oddiy yozuv
+  assert.deepEqual(['Powerful Group', 'POWERFUL GROUP', 'Powerful group.', 'Alteco Груп', 'Arra Shop'].map(AP.adBrand), ['Powerful', 'Powerful', 'Powerful', 'Alteco', 'Arra Shop']);
 }
 
 module.exports = {

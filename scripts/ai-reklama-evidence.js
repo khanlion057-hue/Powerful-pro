@@ -16,7 +16,7 @@ const H = require('../tests/helpers/air-render');
       const logo = await airGetImage('assets/brand-logo.png').catch(() => null), logoDark = await airGetImage('assets/brand-logo-dark.png').catch(() => null);
       const imgs = {}; for (const p of [...products, ...newProducts]) imgs[p.img] = await airGetImage(p.img);
       const res = [];
-      for (const tpl of AIR_TEMPLATES.filter((x) => !only.length || only.includes(x.id))) {
+      for (const tpl of AIR_TEMPLATES.filter((x) => !only.length || only.includes(x.id))) {   // shopName: 'Powerful Group' — rasmda «POWERFUL»
         const list = tpl.id === 'yangioq' ? newProducts : products;
         const cw = 420, gap = 24, pad = 32, head = 86, ph = cw, sh = cw * 16 / 9, lab = 34;
         const W = pad * 2 + cw * 3 + gap * 2, Ht = head + lab + ph + gap + lab + sh + pad;
@@ -35,6 +35,26 @@ const H = require('../tests/helpers/air-render');
           c.save(); c.shadowColor = 'rgba(0,0,0,.15)'; c.shadowBlur = 16; c.drawImage(one(p, 'story'), x, head + lab * 2 + ph + gap, cw, sh); c.restore();
         });
         res.push({ id: tpl.id, png: cv.toDataURL('image/png').split(',')[1] });
+      }
+      // Logo yuklanmasa — nom yozuvi («POWERFUL», harflar orasi ochiq), har shablonda 1 marta
+      if (!only.length || only.includes('nom')) {
+        const cw = 300, gap = 20, pad = 32, head = 86, lab = 30, sh = cw * 16 / 9, n = AIR_TEMPLATES.length;
+        const W = pad * 2 + cw * n + gap * (n - 1), Ht = head + lab + cw + gap + sh + pad;
+        const cv = document.createElement('canvas'); cv.width = W * 1.5; cv.height = Ht * 1.5;
+        const c = cv.getContext('2d'); c.scale(1.5, 1.5); c.fillStyle = '#eef0f4'; c.fillRect(0, 0, W, Ht);
+        c.fillStyle = '#111827'; c.font = `800 30px ${AIR_FONT}`; c.fillText('Logo yoʻq holati: nom yozuvi', pad, 56);
+        const p = newProducts[0];
+        AIR_TEMPLATES.forEach((tpl, i) => {
+          const x = pad + i * (cw + gap);
+          c.fillStyle = '#374151'; c.font = `700 17px ${AIR_FONT}`; c.fillText(tpl.name, x, head + 20);
+          for (const [h, y] of [[1080, head + lab], [1920, head + lab + cw + gap]]) {
+            const k = document.createElement('canvas'); k.width = 1080; k.height = h;
+            airDraw(k.getContext('2d'), 1080, h, tpl, { ...p, reason: tpl.id === 'chegirma' ? 'discount' : 'new', pct: tpl.id === 'chegirma' ? 15 : 0, oldLine: tpl.id === 'chegirma' ? '2 180 000 soʻm' : '',
+              lang: 'uz', shopName: 'Powerful Group', imgs: [imgs[p.img]] }, null);
+            c.drawImage(k, x, y, cw, cw * h / 1080);
+          }
+        });
+        res.push({ id: 'nom-yozuvi', png: cv.toDataURL('image/png').split(',')[1] });
       }
       return res;
     }, { products: H.PRODUCTS, newProducts: H.NEW_PRODUCTS, only });

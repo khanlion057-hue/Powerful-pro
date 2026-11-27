@@ -236,3 +236,6 @@ Hech bir rolga avtomatik berilmaydi (deny-by-default) — admin hammasini ko'rad
 - **Video:** brauzer bir martalik havola bilan `ai-ads-tmp` (yopiq) ga yuklaydi → server imzolangan havolani Telegram'ga beradi (`sendVideo`) →
   fayl darhol o'chiriladi (xato bo'lsa ham); yuborilmay qolgan fayllar 1 soatdan keyin keyingi yuklashda tozalanadi.
 - **Tarix:** oxirgi 50 ta post — holat, xato, «Kanalda ochish» (t.me/c/...).
+- **Do'kon nomi reklamada:** faqat asosiy so'z — «Powerful Group» → rasmda «POWERFUL» (katta harf, ochiq harf oralig'i), izohda «Powerful».
+  Har shablonda nom bir marta: logo bo'lsa — faqat logo («GROUP» qatori kesib chiziladi), logo yuklanmasa — nom yozuvi.
+  Vitrina va do'kon sozlamalaridagi nom o'zgarmaydi.

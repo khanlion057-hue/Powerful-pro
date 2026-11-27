@@ -247,6 +247,40 @@ async function testYangiOq() {
   });
 }
 
+// ── 6. Reklamada nom: «POWERFUL» (Group yo'q), har shablonda 1 marta; logo bor — nom yozuvi yo'q, logo «GROUP» qatorisiz ──
+async function testBrandOnce() {
+  await withAir(async (page) => {
+    const r = await page.evaluate(async () => {
+      await airLoadFonts();
+      const img = await airGetImage('tests/fixtures/ai-reklama/tortsovka.webp');
+      const logo = await airGetImage('assets/brand-logo.png'), logoDark = await airGetImage('assets/brand-logo-dark.png');
+      const orig = _brandText; let brandCalls = 0; _brandText = function (...a) { brandCalls++; return orig.apply(this, a); };   // eslint-disable-line no-global-assign
+      const out = [];
+      for (const tpl of AIR_TEMPLATES) for (const [W, H] of [[1080, 1080], [1080, 1920]]) for (const withLogo of [true, false]) {
+        const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const ctx = cv.getContext('2d');
+        const texts = [], logos = []; const ft = ctx.fillText.bind(ctx), di = ctx.drawImage.bind(ctx);
+        ctx.fillText = (t, ...a) => { texts.push(String(t)); return ft(t, ...a); };
+        ctx.drawImage = (im, ...a) => { if (im === logo || im === logoDark) logos.push(a.length === 8 ? a[3] / im.naturalHeight : 1); return di(im, ...a); };
+        brandCalls = 0;
+        airDraw(ctx, W, H, tpl, { name: 'Arra', title: 'Sarlavha', priceLine: '1 000 soʻm', oldLine: '', pct: 0, reason: 'new', lang: 'uz', shopName: 'Powerful Group', imgs: [img], ...(withLogo ? { logo, logoDark } : {}) }, null);
+        const joined = texts.join('');
+        out.push({ tpl: tpl.id, H, withLogo, brandCalls, logos, group: /group/i.test(texts.join(' ')), powerful: joined.includes('POWERFUL') });
+      }
+      _brandText = orig;   // eslint-disable-line no-global-assign
+      return { out, brand: [airAdBrand('Powerful Group'), airAdBrand('POWERFUL GROUP'), airAdBrand('Arra Shop')] };
+    });
+    assert.deepEqual(r.brand, ['Powerful', 'POWERFUL', 'Arra Shop']);
+    for (const x of r.out) {
+      const k = `${x.tpl} ${x.H} ${x.withLogo ? 'logo' : 'logosiz'}`;
+      assert.equal(x.group, false, k + ': «Group» yoʻq');
+      if (x.withLogo) {
+        assert.equal(x.logos.length, 1, k + ': logo 1 marta'); assert.equal(x.brandCalls, 0, k + ': logo bor — nom yozuvi yoʻq');
+        assert.ok(x.logos[0] < 0.85, k + ': logo «GROUP» qatorisiz kesilgan');
+      } else { assert.equal(x.brandCalls, 1, k + ': nom 1 marta'); assert.equal(x.logos.length, 0); assert.ok(x.powerful, k + ': «POWERFUL» harflari'); }
+    }
+  });
+}
+
 module.exports = {
   _withAir: withAir, _MOCK: MOCK,
   name: 'P140 — AI-reklama 3-bosqich: canvas, video (MediaRecorder mock), UI 360 px',
@@ -256,5 +290,6 @@ module.exports = {
     { name: 'UI 360 px: nomzod kartochkasi, «Boshqa variant» darhol, shablon almashtirish, tugmalar ≥44 px, 9:16 sigʻadi, qayta urinish', run: testUi360 },
     { name: 'shablon rejimi: «Shablon rejimi» holati, «AI yozsin» yoʻq', run: testTemplateMode },
     { name: '«Yangi (oq)»: oq fon, ramka yoʻq, rasm foni singadi; yangi mahsulotga sukut; 4 ta shablon', run: testYangiOq },
+    { name: 'nom: «POWERFUL» (Group yoʻq), har shablonda 1 marta; logo bor — yozuv yoʻq, logo «GROUP» qatorisiz', run: testBrandOnce },
   ],
 };

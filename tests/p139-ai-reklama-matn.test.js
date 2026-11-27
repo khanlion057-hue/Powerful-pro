@@ -18,7 +18,7 @@ const SCHEMA = fs.readFileSync(path.join(ROOT, 'supabase', 'schema.sql'), 'utf8'
 const ENV = { AI_PROVIDER: 'gemini', AI_API_KEY: 'test-key-1234567890', AI_MODEL: 'gemini-flash-test', AI_MONTHLY_LIMIT: '3' };
 const SECRET = { price: '987 654 soʻm', cost: 'COSTMARK', supp: 'TaminotchiXYZ', phone: '+998 90 777 66 55', cust: 'MijozAbdulla', filial: 'SergeliFilialiNomi' };
 const okFetch = (payload, sink) => async (url, o) => { if (sink) sink.push({ url, o }); return { ok: true, status: 200, json: async () => ({ candidates: [{ content: { parts: [{ text: typeof payload === 'string' ? payload : JSON.stringify(payload) }] } }] }) }; };
-const GOOD = { title: 'Yangi drel keldi', body: 'Kuchli va ishonchli.\nUstalar uchun ayni muddao.', tags: ['yangi', 'drel', 'usta'] };
+const GOOD = { title: 'Yangi arra keldi', body: 'Kuchli va ishonchli.\nUstalar uchun ayni muddao.', tags: ['yangi', 'arra', 'usta'] };
 
 async function pglite() {
   const { PGlite } = await import('@electric-sql/pglite');
@@ -50,9 +50,9 @@ async function testTemplates() {
   assert.equal(TPL.pickTemplate({ lang: 'ru', kind: 'top', name: 'X', pid: 1, variant: 12 }).variant, 12 % TPL.TEMPLATES.ru.top.length);
   // shablon rejimi (kalit yo'q) — to'liq ishlaydi, AI chaqirilmaydi
   let called = 0;
-  const r = await AT.generateText({ admin: { rpc: async () => { called++; return {}; } }, product: { name: 'Drel', cat: 'Drellar' }, kind: 'new', lang: 'uz', env: {}, fetchImpl: async () => { called++; } });
+  const r = await AT.generateText({ admin: { rpc: async () => { called++; return {}; } }, product: { name: 'Elektroarra', cat: 'Arralar' }, kind: 'new', lang: 'uz', env: {}, fetchImpl: async () => { called++; } });
   assert.equal(r.source, 'template'); assert.equal(called, 0); assert.equal(r.ai.on, false);
-  assert.match(r.body, /Drel/);
+  assert.match(r.body, /Elektroarra/);
 }
 
 // ── 2. Kirish tozalash va AI javobini tozalash ──
@@ -79,9 +79,9 @@ async function testLimit() {
   const pg = await pglite();
   try {
     const admin = rpcClient(pg), now = Date.parse('2026-11-23T10:00:00Z'), M = '2026-11';
-    const gen = (fetchImpl, extra = {}) => AT.generateText({ admin, product: { name: 'Drel', cat: 'Drellar' }, kind: 'new', lang: 'uz', env: ENV, fetchImpl, now, ...extra });
+    const gen = (fetchImpl, extra = {}) => AT.generateText({ admin, product: { name: 'Elektroarra', cat: 'Arralar' }, kind: 'new', lang: 'uz', env: ENV, fetchImpl, now, ...extra });
     let r = await gen(okFetch(GOOD));
-    assert.equal(r.source, 'ai'); assert.deepEqual([r.title, r.ai.used], ['Yangi drel keldi', 1]);
+    assert.equal(r.source, 'ai'); assert.deepEqual([r.title, r.ai.used], ['Yangi arra keldi', 1]);
     // AI xatosi (500) — shablon, hisob o'zgarmaydi
     r = await gen(async () => ({ ok: false, status: 500, json: async () => ({}) }));
     assert.equal(r.source, 'template'); assert.match(r.note, /AI javobi 500/); assert.equal(await count(pg, M), 1);
@@ -103,7 +103,7 @@ async function testLimit() {
     assert.equal(await count(pg, M), 3);
     // atomiklik: bir vaqtda 6 ta so'rov, limit 4 (yangi oy) — aynan 4 tasi AI
     const env4 = { ...ENV, AI_MONTHLY_LIMIT: '4' }, may = Date.parse('2026-12-02T10:00:00Z');
-    const rs = await Promise.all(Array.from({ length: 6 }, () => AT.generateText({ admin, product: { name: 'Drel', cat: 'Drellar' }, kind: 'top', lang: 'uz', env: env4, fetchImpl: okFetch(GOOD), now: may })));
+    const rs = await Promise.all(Array.from({ length: 6 }, () => AT.generateText({ admin, product: { name: 'Elektroarra', cat: 'Arralar' }, kind: 'top', lang: 'uz', env: env4, fetchImpl: okFetch(GOOD), now: may })));
     assert.equal(rs.filter((x) => x.source === 'ai').length, 4); assert.equal(await count(pg, '2026-12'), 4);
   } finally { await pg.close(); }
 }
@@ -113,12 +113,12 @@ async function testHandlerPrivacy() {
   const pg = await pglite();
   const saved = {}; for (const k of Object.keys(ENV)) { saved[k] = process.env[k]; process.env[k] = ENV[k]; }
   const origFetch = global.fetch; const sink = [];
-  global.fetch = okFetch({ title: 'Kuchli drel', body: 'Ishonchli asbob.\nUstalar uchun.', tags: ['drel', 'usta', 'yangi'] }, sink);
+  global.fetch = okFetch({ title: 'Kuchli arra', body: 'Ishonchli asbob.\nUstalar uchun.', tags: ['arra', 'usta', 'yangi'] }, sink);
   try {
     const IMG = ['https://x.supabase.co/storage/v1/object/public/product-images/p.webp'];
     const products = [
-      { id: 1, sku: 'D-1', name: 'Drel 600W', cat: 'Drellar', markupPct: 25, images: IMG, desc: `Kuchli drel. Narxi ${SECRET.price}, tel ${SECRET.phone}`, supplier: SECRET.supp, dsCostUsd: 7, note: SECRET.cust },
-      { id: 2, sku: 'N-2', name: 'Reklamasiz', cat: 'Drellar', markupPct: 25, images: IMG, noAds: true },
+      { id: 1, sku: 'D-1', name: 'Elektroarra 1900W', cat: 'Arralar', markupPct: 25, images: IMG, desc: `Kuchli arra. Narxi ${SECRET.price}, tel ${SECRET.phone}`, supplier: SECRET.supp, dsCostUsd: 7, note: SECRET.cust },
+      { id: 2, sku: 'N-2', name: 'Reklamasiz', cat: 'Arralar', markupPct: 25, images: IMG, noAds: true },
     ];
     await pg.query(`update app_data set data = data || $1::jsonb where id='main'`, [JSON.stringify({ settings: { usdUzs: 12500, branchNames: { baza: SECRET.filial } }, products,
       suppliers: [{ id: 9, name: SECRET.supp }], customers: [{ id: 3, name: SECRET.cust, phone: SECRET.phone }] })]);
@@ -141,14 +141,14 @@ async function testHandlerPrivacy() {
     r = await h(post({ action: 'text', pid: 1, kind: 'discount' }, 't-c'));
     assert.equal(r.statusCode, 200, r.body);
     const out = JSON.parse(r.body);
-    assert.equal(out.text.source, 'ai'); assert.equal(out.text.title, 'Kuchli drel'); assert.equal(out.ai.used, 1);
+    assert.equal(out.text.source, 'ai'); assert.equal(out.text.title, 'Kuchli arra'); assert.equal(out.ai.used, 1);
     assert.ok(!r.body.includes(ENV.AI_API_KEY), 'AI kaliti javobda yo\'q');
     // AI'ga ketgan haqiqiy so'rov
     assert.equal(sink.length, 1);
     const req = sink[0], sent = req.o.body;
     assert.ok(!String(req.url).includes(ENV.AI_API_KEY), 'kalit URL\'da emas (sarlavhada)');
     assert.equal(req.o.headers['x-goog-api-key'], ENV.AI_API_KEY);
-    assert.match(sent, /Drel 600W/); assert.match(sent, /Drellar/); assert.match(sent, /Kuchli drel/); assert.match(sent, /chegirma/);
+    assert.match(sent, /Elektroarra 1900W/); assert.match(sent, /Arralar/); assert.match(sent, /Kuchli arra/); assert.match(sent, /chegirma/);
     for (const [k, v] of Object.entries(SECRET)) assert.ok(!sent.includes(v) && !sent.includes(v.replace(/\s/g, '')), `AI'ga ${k} ketmadi`);
     for (const bad of ['987', '654', '777', '12500', '33.33', 'markup', 'cost', 'price', 'narx:', 'Narxi 9']) assert.ok(!sent.includes(bad), `AI'ga «${bad}» ketmadi`);
     // majburan shablon («boshqa variant») — AI chaqirilmaydi
@@ -161,7 +161,7 @@ async function testHandlerPrivacy() {
     const alts = JSON.parse(r.body).alts;
     assert.ok(Array.isArray(alts) && alts.length >= 10, 'alts: 10+ variant');
     assert.equal(new Set(alts.map((x) => x.variant)).size, alts.length, 'variantlar takrorlanmaydi');
-    for (const x of alts) assert.ok(!/\d/.test((x.title + x.body + x.tags.join(' ')).split('Drel 600W').join('')), 'alts — raqamsiz (nomdan tashqari)');
+    for (const x of alts) assert.ok(!/\d/.test((x.title + x.body + x.tags.join(' ')).split('Elektroarra 1900W').join('')), 'alts — raqamsiz (nomdan tashqari)');
     assert.equal(sink.length, 1, 'alts uchun AI chaqirilmadi');
   } finally {
     global.fetch = origFetch; for (const k of Object.keys(ENV)) { if (saved[k] == null) delete process.env[k]; else process.env[k] = saved[k]; }
@@ -186,7 +186,7 @@ async function testImgProxy() {
   try {
     const IMG = ['https://x.supabase.co/storage/v1/object/public/product-images/p.webp'];
     await pg.query(`update app_data set data = data || $1::jsonb where id='main'`, [JSON.stringify({ settings: { usdUzs: 12500 }, products: [
-      { id: 1, sku: 'D-1', name: 'Drel', cat: 'Drellar', markupPct: 25, images: IMG }, { id: 2, sku: 'N-2', name: 'Yopiq', cat: 'Drellar', markupPct: 25, images: IMG, noAds: true }] })]);
+      { id: 1, sku: 'D-1', name: 'Elektroarra', cat: 'Arralar', markupPct: 25, images: IMG }, { id: 2, sku: 'N-2', name: 'Yopiq', cat: 'Arralar', markupPct: 25, images: IMG, noAds: true }] })]);
     await pg.query(`insert into app_data_branches (branch_key, data) values ('baza', $1::jsonb)`, [JSON.stringify({ shop: { settings: { enabled: true, currency: 'UZS' }, discounts: [] },
       batches: [{ id: 1, pid: 1, qty: 5, sold: 0, costUsd: 10, date: '2026-11-20', status: 'active' }, { id: 2, pid: 2, qty: 5, sold: 0, costUsd: 4, date: '2026-11-20', status: 'active' }], sales: [] })]);
     const role = (rid, keys) => keys.map((k) => ({ role_id: rid, permission_id: k, permissions: { key: k } }));

@@ -26,7 +26,7 @@ const P11 = uidAt(3);   // ID ichidagi vaqt — 3 kun oldin
 
 const PRODUCTS = [
   { id: 1, sku: 'D-1', name: 'Disk chegirmada', cat: 'Disklar', markupPct: 25, images: IMG },
-  { id: 2, sku: 'Y-2', name: 'Yangi drel', cat: 'Drellar', markupPct: 25, images: IMG, desc: 'Kuchli drel' },
+  { id: 2, sku: 'Y-2', name: 'Yangi elektroarra', cat: 'Arralar', markupPct: 25, images: IMG, desc: 'Kuchli arra' },
   { id: 3, sku: 'E-3', name: 'Eski arra', cat: 'Arralar', markupPct: 25, images: IMG },
   { id: 4, sku: 'T-4', name: 'Top mahsulot', cat: 'Disklar', markupPct: 25, images: IMG },
   { id: 5, sku: 'R-5', name: 'Rasmsiz yangi', cat: 'Disklar', markupPct: 25 },
@@ -208,7 +208,7 @@ async function testNoAdsFlag() {
   try {
     const r = await page.evaluate(async () => {
       save = async () => true; fwSaveToast = async () => true;
-      S.products = [{ id: 1, sku: 'A1', name: 'Drel', markupPct: 25 }];
+      S.products = [{ id: 1, sku: 'A1', name: 'Elektroarra', markupPct: 25 }];
       editProduct(1); const before = document.getElementById('ep-no-ads').checked;
       document.getElementById('ep-no-ads').checked = true; await pmfSave();
       const on = S.products[0].noAds;

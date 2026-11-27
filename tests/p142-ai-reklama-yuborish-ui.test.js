@@ -78,7 +78,7 @@ async function testVideoUpload() {
 async function testHistoryAndPerms() {
   const HIST = [
     { id: 'h1', pid: 11, format: 'photo', template: 'kattanarx', status: 'failed', error: 'Bot kanalda administrator emas', tries: 1, by: 'Admin', at: '2026-11-26T10:00:00Z', name: 'Tortsovochnaya pila', title: 'Eski sarlavha', body: 'Eski matn', tags: ['arra'], reason: 'discount', idemKey: 'old-key-123' },
-    { id: 'h2', pid: 12, format: 'video', template: 'yangioq', status: 'sent', tries: 1, by: 'Admin', at: '2026-11-26T09:00:00Z', sentAt: '2026-11-26T09:00:05Z', url: 'https://t.me/c/2193336308/5', name: 'Drel', title: 'Yangi', reason: 'new' },
+    { id: 'h2', pid: 12, format: 'video', template: 'yangioq', status: 'sent', tries: 1, by: 'Admin', at: '2026-11-26T09:00:00Z', sentAt: '2026-11-26T09:00:05Z', url: 'https://t.me/c/2193336308/5', name: 'Zanjirli elektroarra', title: 'Yangi', reason: 'new' },
   ];
   await withAir(async (page, calls) => {
     await page.evaluate(() => { document.body.insertAdjacentHTML('beforeend', '<div id="bs-ov" hidden></div>'); AIR.sub = 'hist'; airRender(); });

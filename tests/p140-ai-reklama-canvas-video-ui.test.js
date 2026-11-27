@@ -14,7 +14,7 @@ const EVID = path.join(ROOT, 'tests', 'evidence');
 const FIX = 'tests/fixtures/ai-reklama/';
 const CANDS = [
   { pid: 11, name: 'Tortsovochnaya pila MS 1900-255 L', img: [FIX + 'tortsovka.webp'], reasons: ['discount'], line: '1 854 000 soʻm', oldLine: '2 180 000 soʻm', pct: 15, price: 1854000, cur: 'UZS' },
-  { pid: 12, name: 'Burchakli silliqlash mashinasi AGH 3000-230 S HEAVY DUTY — oʻtkir gʻildirak, taʼmirlanadigan korpus', img: [FIX + 'drel-fon.jpg'], reasons: ['new'], line: '891 000 soʻm', oldLine: '', pct: 0, price: 891000, cur: 'UZS' },
+  { pid: 12, name: 'Zanjirli elektroarra ECS 1900-40 — 40 sm shina, avtomatik moylash, tez taranglash, ikki qoʻl bilan xavfsiz ushlash', img: [FIX + 'arra-fon.jpg'], reasons: ['new'], line: '891 000 soʻm', oldLine: '', pct: 0, price: 891000, cur: 'UZS' },
   { pid: 13, name: 'Цепная электропила ECS 1900-40 (Ўзбекистон)', img: [FIX + 'pila-tik.jpg', FIX + 'elektropila.webp'], reasons: ['top'], line: '542 000 soʻm', oldLine: '', pct: 0, price: 542000, cur: 'UZS' },
 ];
 const ALTS = Array.from({ length: 11 }, (_, i) => ({ title: `Variant sarlavha ${'ABCDEFGHIJK'[i]}`, body: `Matn ${'ABCDEFGHIJK'[i]}\nIkkinchi qator`, tags: ['arra', 'usta', 'chegirma'], variant: i }));
@@ -54,7 +54,7 @@ async function testCanvas() {
       // Zaxira shrift bilan solishtirish: Inter yuklangan bo'lsa kengliklar farq qiladi
       ctx.font = AIR_FF(700, 40); const wInter = ctx.measureText('Oʻzbekiston gʻildirak taʼmir Ўзбекистон').width;
       ctx.font = '700 40px monospace'; const wMono = ctx.measureText('Oʻzbekiston gʻildirak taʼmir Ўзбекистон').width;
-      const long = 'Burchakli silliqlash mashinasi AGH 3000-230 S HEAVY DUTY — oʻtkir gʻildirak, taʼmirlanadigan korpus, qoʻshimcha choʻtka toʻplami bilan';
+      const long = 'Zanjirli elektroarra ECS 1900-40 — 40 sm shina, avtomatik moylash, tez taranglash, ikki qoʻl bilan xavfsiz ushlash, qoʻshimcha zanjir toʻplami bilan';
       const f2 = airFitLines(ctx, long, 600, 2, [40, 36, 32], 700);
       const fShort = airFitLines(ctx, 'Arra tigʻi', 600, 2, [40, 36, 32], 700);
       const okW = f2.lines.every((l) => { ctx.font = AIR_FF(700, f2.size); return ctx.measureText(l).width <= 600 + 0.5; });

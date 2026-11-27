@@ -18,8 +18,8 @@ function server() {
   });
 }
 const PRODUCTS = [
-  { key: 'uzun-nom', name: 'Burchakli silliqlash mashinasi AGH 3000-230 S HEAVY DUTY — oʻtkir gʻildirak, taʼmirlanadigan korpus', title: 'Ustalar uchun kuchli tanlov',
-    priceLine: '891 000 soʻm', oldLine: '', pct: 0, reason: 'new', img: 'tests/fixtures/ai-reklama/drel-fon.jpg' },
+  { key: 'uzun-nom', name: 'Zanjirli elektroarra ECS 1900-40 — 40 sm shina, avtomatik moylash, tez taranglash, ikki qoʻl bilan xavfsiz ushlash', title: 'Bogʻ uchun kuchli tanlov',
+    priceLine: '891 000 soʻm', oldLine: '', pct: 0, reason: 'new', img: 'tests/fixtures/ai-reklama/elektropila.webp' },
   { key: 'chegirma', name: 'Tortsovochnaya pila MS 1900-255 L', title: 'Chegirma boshlandi!',
     priceLine: '1 854 000 soʻm', oldLine: '2 180 000 soʻm', pct: 15, reason: 'discount', img: 'tests/fixtures/ai-reklama/tortsovka.webp' },
   { key: 'tik-rasm', name: 'Цепная электропила ECS 1900-40 (Ўзбекистон)', title: 'Хит продаж', lang: 'ru',
@@ -31,8 +31,8 @@ const NEW_PRODUCTS = [
     priceLine: '1 854 000 soʻm', oldLine: '', pct: 0, reason: 'new', img: 'tests/fixtures/ai-reklama/tortsovka.webp' },
   { key: 'tik-rasm', name: 'Zanjirli elektroarra ECS 1900-40', title: 'Bogʻ uchun yangi yordamchi',
     priceLine: '542 000 soʻm', oldLine: '', pct: 0, reason: 'new', img: 'tests/fixtures/ai-reklama/pila-tik.jpg' },
-  { key: 'rangli-fon', name: 'Drel AGH 600 Vt (rasm rangli fonda)', title: 'Ustalar uchun kuchli tanlov',
-    priceLine: '891 000 soʻm', oldLine: '', pct: 0, reason: 'new', img: 'tests/fixtures/ai-reklama/drel-fon.jpg' },
+  { key: 'rangli-fon', name: 'Elektroarra ECS 2000-45 (rasm rangli fonda)', title: 'Ustalar uchun kuchli tanlov',
+    priceLine: '891 000 soʻm', oldLine: '', pct: 0, reason: 'new', img: 'tests/fixtures/ai-reklama/arra-fon.jpg' },
 ];
 async function openAir() {
   const srv = await server(), port = srv.address().port;

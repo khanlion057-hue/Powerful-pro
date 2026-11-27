@@ -15,18 +15,7 @@ const { execFileSync } = require('child_process');
 const { chromium } = require('playwright');
 const { ROOT } = require('./helpers/load-app');
 
-const PKGS = { '@supabase/supabase-js': '2.117.2', qrcode: '1.4.4', 'html5-qrcode': '2.3.8', exceljs: '4.4.0', leaflet: '1.9.4' };
-function cdnDir() {
-  const dir = process.env.FW_CDN_DIR || path.join(os.tmpdir(), 'fw-cdn-cache');
-  for (const [n, v] of Object.entries(PKGS)) {
-    const d = path.join(dir, `${n.replace(/^@/, '').replace('/', '-')}@${v}`);
-    if (fs.existsSync(path.join(d, 'package', 'package.json'))) continue;
-    fs.mkdirSync(d, { recursive: true });
-    const tgz = execFileSync('npm', ['pack', `${n}@${v}`, '--silent'], { cwd: d, encoding: 'utf8' }).trim().split('\n').pop();
-    execFileSync('tar', ['xzf', tgz, '-C', d], { cwd: d }); // npm pack faylni d ichiga yozadi — nisbiy nom shu yerdan o'qiladi
-  }
-  return dir;
-}
+const { cdnDir } = require('./helpers/cdn-cache');   // CDN paketlari keshi (umumiy — p46, p131 ham ishlatadi)
 // netlify.toml → "/*" sarlavhalari (TOML'ning shu qismi uchun oddiy o'quvchi)
 function netlifyHeaders() {
   const t = fs.readFileSync(path.join(ROOT, 'netlify.toml'), 'utf8');

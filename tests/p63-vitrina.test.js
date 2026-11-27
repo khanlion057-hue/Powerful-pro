@@ -1,5 +1,6 @@
 // P63 — v24.7: zamonaviy vitrina (marketplace uslubi): bo'limlar, saralash, sevimlilar, mahsulot sahifasi, savat → sinov buyurtmasi; XSS.
 const assert = require('node:assert/strict');
+const { CHROMIUM_PATH } = require('./helpers/chromium-path');   // CI'da Playwright'ning o'z Chromium'i
 const path = require('path');
 const http = require('http');
 const fs = require('fs');
@@ -67,7 +68,7 @@ function supabaseStub({ loggedIn, tables }) {
 const ROLES=[{id:'r1',key:'owner',name:'Korxona egasi'},{id:'r2',key:'administrator',name:'Administrator'},{id:'r3',key:'cashier',name:'Kassir'},{id:'r4',key:'employee',name:'Sotuvchi'},{id:'r5',key:'warehouse_manager',name:'Omborchi'},{id:'r6',key:'accountant',name:'Buxgalter'},{id:'r7',key:'dealer',name:'Diller'}];
 async function openPage(file,{width,height,mobile,admin,staff,loggedIn,tables,perms}){
   const port=await server();
-  const browser=await chromium.launch({executablePath:'/opt/pw-browsers/chromium',args:['--no-sandbox']});
+  const browser=await chromium.launch({executablePath:CHROMIUM_PATH,args:['--no-sandbox']});
   const ctx=await browser.newContext({viewport:{width,height},isMobile:!!mobile,hasTouch:!!mobile});
   await ctx.addInitScript((v)=>{try{localStorage.setItem('fw_text_scale',v)}catch(e){}},'100');
   if(admin) await ctx.addInitScript(({data,today,staff})=>{sessionStorage.setItem('bp_auth_ok','1');sessionStorage.setItem('bp_branch_ok','baza');if(staff)sessionStorage.setItem('bp_staff_id','7');localStorage.setItem('bp_data',JSON.stringify(data));localStorage.setItem('bp_cur',JSON.stringify({usdUzs:12650,usdCny:7.1,lastRateDate:today}));},{data:BP_DATA,today,staff});

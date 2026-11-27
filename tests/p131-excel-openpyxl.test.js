@@ -5,16 +5,13 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
 const { loadApp } = require('./helpers/load-app');
-const XLJS = [process.env.FW_CDN_DIR && path.join(process.env.FW_CDN_DIR, 'exceljs@4.4.0', 'package', 'dist', 'exceljs.min.js'),
-  path.join(require('os').tmpdir(), 'fw-cdn-cache', 'exceljs@4.4.0', 'package', 'dist', 'exceljs.min.js'),
-  path.join(__dirname, '..', 'node_modules', 'exceljs', 'dist', 'exceljs.min.js')].filter(Boolean).find(p => fs.existsSync(p));
+const xlJs = () => require('./helpers/cdn-cache').excelJsPath();   // kesh yo'q bo'lsa — yuklab oladi (testlar tartibiga bog'liq emas)
 const FIX = fs.readFileSync(path.join(__dirname, 'fixtures', 'openpyxl-rasmli-kirim.xlsx')).toString('base64');
 
 async function run() {
-  if (!XLJS) throw new Error('exceljs topilmadi (p42 testi keshni yaratadi)');
   const { browser, page, consoleErrors } = await loadApp({});
   try {
-    await page.addScriptTag({ path: XLJS });
+    await page.addScriptTag({ path: xlJs() });
     const r = await page.evaluate(async (b64) => {
       document.body.insertAdjacentHTML('beforeend', '<div id="modal-ov"></div>');
       save = () => {}; pgKirim = () => {}; _cloudEnabled = true; FWL.on = true; localStorage.removeItem('fw_xl_import_prog');
@@ -52,7 +49,7 @@ async function run() {
 async function somSupplier() {
   const { browser, page, consoleErrors } = await loadApp({});
   try {
-    await page.addScriptTag({ path: XLJS });
+    await page.addScriptTag({ path: xlJs() });
     const r = await page.evaluate(async (b64) => {
       document.body.insertAdjacentHTML('beforeend', '<div id="modal-ov"></div>');
       save = () => {}; pgKirim = () => {}; _cloudEnabled = true; FWL.on = true; localStorage.removeItem('fw_xl_import_prog');

@@ -4103,3 +4103,30 @@ body .dl-wrap{ min-height:calc(100vh / var(--fw-z, 1)); }
 .air-note{ font-size:12.5px; color:var(--text-secondary); line-height:1.45; }
 .air-how-l{ padding-left:20px; display:flex; flex-direction:column; gap:10px; font-size:14px; line-height:1.45; }
 @media (prefers-reduced-motion:reduce){ .air-skel i{ animation:none; } }
+/* v25.8 (4-bosqich): Telegram'ga yuborish, tarix */
+a.air-btn{ text-decoration:none; }
+.air-btn.tg:not(:disabled){ color:#fff; border-color:transparent; background:#229ed9; }
+.air-tgl{ display:flex; align-items:center; gap:7px; font-size:12.5px; color:var(--text-secondary); margin:10px 0 0; }
+.air-tgl svg{ width:16px; height:16px; color:#229ed9; flex:none; }
+.air-done a{ margin-left:auto; color:#229ed9; font-weight:700; text-decoration:none; min-height:var(--air-tap); display:inline-flex; align-items:center; }
+.air-ask{ display:flex; flex-direction:column; gap:8px; }
+.air-ask p{ display:flex; justify-content:space-between; gap:12px; margin:0; font-size:14px; }
+.air-ask p span{ color:var(--text-secondary); flex:none; }
+.air-ask p b{ text-align:right; min-width:0; overflow-wrap:anywhere; }
+.air-ask p s{ color:var(--text-muted); font-weight:500; font-size:12px; }
+.air-ask small{ color:var(--text-secondary); line-height:1.45; }
+.air-hist{ display:flex; flex-direction:column; gap:10px; }
+.air-hi{ display:flex; flex-direction:column; gap:6px; padding:12px 14px; border-radius:16px; background:var(--bg-card); border:1px solid var(--border); min-width:0; }
+.air-hi-h{ display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text-secondary); }
+.air-hi-h time{ margin-left:auto; white-space:nowrap; }
+.air-hi > b{ font-size:14.5px; font-weight:700; overflow-wrap:anywhere; }
+.air-hi-t{ font-size:13px; color:var(--text-secondary); }
+.air-hi-e{ display:flex; gap:6px; align-items:flex-start; margin:0; font-size:12.5px; color:var(--red); overflow-wrap:anywhere; }
+.air-hi-e svg{ width:16px; height:16px; flex:none; }
+.air-hi small{ font-size:11.5px; color:var(--text-muted); }
+.air-st{ font-style:normal; font-size:11.5px; font-weight:800; padding:3px 9px; border-radius:10px; }
+.air-st.ok{ color:var(--emerald); background:color-mix(in srgb,var(--emerald) 14%,transparent); }
+.air-st.bad{ color:var(--red); background:color-mix(in srgb,var(--red) 14%,transparent); }
+.air-st.wait{ color:var(--amber); background:color-mix(in srgb,var(--amber) 16%,transparent); }
+.air-st.mute{ color:var(--text-secondary); background:var(--bg-hover); }
+.air-ok{ color:var(--emerald); } .air-bad{ color:var(--red); }

@@ -46,6 +46,16 @@ create table if not exists public.ai_ad_posts (
 );
 create index if not exists ai_ad_posts_branch_pid on public.ai_ad_posts (branch_id, product_id, created_at desc);
 create index if not exists ai_ad_posts_status_at on public.ai_ad_posts (status, created_at);
+-- 4-bosqich: takroriy yuborishdan himoya (bir xil kalit -- bitta post) va qayta chizish uchun matn/shablon (narx emas)
+alter table public.ai_ad_posts add column if not exists idem_key text;
+alter table public.ai_ad_posts add column if not exists meta jsonb;
+create unique index if not exists ai_ad_posts_idem on public.ai_ad_posts (branch_id, idem_key) where idem_key is not null;
+do $m$ begin
+  if not exists (select 1 from pg_constraint where conname = 'ai_ad_posts_idem_chk') then
+    alter table public.ai_ad_posts add constraint ai_ad_posts_idem_chk
+      check ((idem_key is null or idem_key ~ '^[A-Za-z0-9-]{8,64}$') and (meta is null or pg_column_size(meta) <= 4096));
+  end if;
+end $m$;
 
 -- -- 2) AI oylik hisoblagichi --------------------------------------------------
 create table if not exists public.ai_usage (

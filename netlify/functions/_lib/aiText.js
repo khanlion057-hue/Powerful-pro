@@ -120,4 +120,4 @@ function templateText(opts) {
   return pickTemplate({ lang: input.lang, kind: input.kind, name: input.name, cat: input.cat, pid: opts.pid, variant: opts.variant, now: opts.now || Date.now() });
 }
 
-module.exports = { templateText, PROVIDERS, TIMEOUT_MS, aiConfig, safeInput, scrub, parseJson, cleanOutput, generateText, monthOf };
+module.exports = { PRICE_RE_SRC: PRICE_RE.source, MONEY_SIGN_RE_SRC: MONEY_SIGN_RE.source, templateText, PROVIDERS, TIMEOUT_MS, aiConfig, safeInput, scrub, parseJson, cleanOutput, generateText, monthOf };

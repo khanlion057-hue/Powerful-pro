@@ -559,7 +559,8 @@ function airRender() {
   if (!AIR.st) airLoadStatus();
   if (AIR.sub === 'new') airRenderNew();
   else if (AIR.sub === 'set') airRenderSettings();
-  else document.getElementById('air-body').innerHTML = `<div class="air-empty">${_airIc('hourglass')}<b>${AIR.sub === 'queue' ? 'Navbat' : 'Tarix'}</b><span>Telegram'ga yuborish qoʻshilgach (keyingi bosqich) shu yerda koʻrinadi.</span></div>`;
+  else if (AIR.sub === 'hist') airRenderHistory();
+  else document.getElementById('air-body').innerHTML = `<div class="air-empty">${_airIc('hourglass')}<b>Navbat</b><span>Avtopilot tayyorlagan qoralamalar (tasdiqlash uchun) shu yerda koʻrinadi — keyingi bosqich.</span></div>`;
 }
 async function airLoadStatus() {
   const r = await airApi('status');
@@ -610,7 +611,7 @@ async function airLoadCands() {
 }
 async function airPick(pid) {
   const c = (AIR.cands || []).find((x) => x.pid === pid); if (!c) return;
-  AIR.sel = c; AIR.text = null; AIR.alts = []; AIR.altI = 0; AIR.out = null; AIR.err = null; AIR.imgs = [];
+  AIR.sel = c; AIR.text = null; AIR.alts = []; AIR.altI = 0; AIR.out = null; AIR.err = null; AIR.imgs = []; AIR.sent = null; AIR.sendErr = null; AIR.pendingKey = null;
   if (!AIR._tplTouched) AIR.tpl = { discount: 'chegirma', new: 'yangioq', top: 'kattanarx', stuck: 'kattanarx' }[c.reasons[0]] || 'chegirma';
   airRenderNew();
   const ed = document.getElementById('air-editor'); if (ed) ed.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -658,6 +659,7 @@ const _airBpm = () => (AIR_MOODS.find((m) => m.id === AIR.mood) || AIR_MOODS[0])
 
 function airRenderEditor() {
   const el = document.getElementById('air-editor'); if (!el || !AIR.sel) return;
+  if ((AIR.sent || AIR.sendErr) && AIR.doneSig && AIR.doneSig !== _airSig() && !AIR.busy) { AIR.sent = null; AIR.sendErr = null; }   // kontent o'zgardi — eski natija ko'rinmaydi
   cancelAnimationFrame(AIR.raf);
   const t = AIR.text, mp4 = airMp4Info(), busy = AIR.busy, video = AIR.fmt === 'video';
   const tplBtn = (x) => `<button class="air-tpl${AIR.tpl === x.id ? ' on' : ''}" onclick="AIR.tpl='${x.id}';AIR._tplTouched=1;airRenderEditor()" aria-label="${_airE(x.name)}"><canvas width="216" height="216" data-tpl="${x.id}"></canvas><span>${_airE(x.name)}</span></button>`;
@@ -689,14 +691,17 @@ function airRenderEditor() {
       <div class="air-step"><span class="air-n">5</span><div><b>Tayyor</b><small>Oldindan koʻrish</small></div></div>
       <div class="air-stage ${video ? 'tall' : ''}">${ready ? `<canvas id="air-cv"></canvas>` : `<div class="air-skel air-skel-pv"><i></i></div>`}
         ${AIR.err ? `<p class="air-stage-err">${_airE(AIR.err)}</p>` : ''}</div>
-      ${busy ? `<div class="air-prog"><i style="width:${Math.round(AIR.prog * 100)}%"></i><span>${busy === 'video' ? 'Video yozilmoqda… ' + Math.round(AIR.prog * 100) + '% — ilovadan chiqmang' : 'Tayyorlanmoqda…'}</span>
-        <button class="air-btn" onclick="airCancel()">${_airIc('close')}Bekor qilish</button></div>`
+      ${busy ? `<div class="air-prog"><i style="width:${Math.round(AIR.prog * 100)}%"></i><span>${busy === 'video' ? 'Video yozilmoqda… ' + Math.round(AIR.prog * 100) + '% — ilovadan chiqmang' : busy === 'send' ? _airE(AIR.sendStep || 'Kanalga yuborilmoqda…') : 'Tayyorlanmoqda…'}</span>
+        ${busy === 'send' ? '' : `<button class="air-btn" onclick="airCancel()">${_airIc('close')}Bekor qilish</button>`}</div>`
+      : AIR.sendErr ? `<div class="air-prog bad"><span>${_airE(AIR.sendErr)}</span><button class="air-btn" onclick="airSend()">${_airIc('refresh')}Qayta yuborish</button></div>`
       : AIR.out && AIR.out.err ? `<div class="air-prog bad"><span>${_airE(AIR.out.err)}</span><button class="air-btn" onclick="airMake()">${_airIc('refresh')}Qayta urinish</button></div>` : ''}
       <div class="air-acts">
         <button class="air-btn pri" onclick="airMake()" ${!ready || busy || (video && !mp4.ok) ? 'disabled' : ''}>${_airIc('download')}${video ? 'Videoni yaratish' : 'Rasmni saqlash'}</button>
         <button class="air-btn" onclick="airShare()" ${!(AIR.out && AIR.out.blob) || busy ? 'disabled' : ''}>${_airIc('share')}Ulashish</button>
-        <button class="air-btn" disabled title="Keyingi bosqichda">${_airIc('send')}Telegram'ga</button>
+        ${_airCan('reklama.publish') ? `<button class="air-btn tg" onclick="airSendAsk()" ${airSendBlock() ? 'disabled' : ''} title="${_airE(airSendBlock() || '')}">${_airIc('send')}Telegram'ga</button>` : ''}
       </div>
+      ${_airCan('reklama.publish') ? airTgLine() : ''}
+      ${AIR.sent ? `<p class="air-done">${_airIc('check')}<span>Kanalga yuborildi${AIR.sent.duplicate ? ' (avval yuborilgan)' : ''}</span>${AIR.sent.url ? `<a href="${_airE(AIR.sent.url)}" target="_blank" rel="noopener">Kanalda ochish</a>` : ''}</p>` : ''}
       ${AIR.out && AIR.out.blob ? `<p class="air-done">${_airIc('check')}<span>Tayyor: ${AIR.out.blob.type === 'video/mp4' ? 'MP4' : 'JPEG'}, ${Math.max(1, Math.round(AIR.out.blob.size / 1024))} KB</span></p>` : ''}
     </div>
   </div>`;
@@ -776,7 +781,10 @@ async function airRenderSettings() {
   const num = (k, l, lo, hi) => `<label class="air-f air-f-n"><span>${l}</span><input type="number" inputmode="numeric" min="${lo}" max="${hi}" value="${c[k]}" onchange="AIR.settings.criteria.${k}=+this.value"></label>`;
   el.innerHTML = `
   <section class="air-card">
-    <label class="air-f"><span>Reklama kanali (@username yoki -100… ID)</span><input id="air-ch" value="${_airE(s.channel)}" placeholder="Boʻsh — doʻkon eʼlonlar kanali" oninput="AIR.settings.channel=this.value.trim()"></label>
+    <label class="air-f"><span>Reklama kanali (@username yoki -100… ID)</span><input id="air-ch" value="${_airE(s.channel)}" placeholder="Masalan: -1002193336308 (boʻsh — doʻkon eʼlonlar kanali)" oninput="AIR.settings.channel=this.value.trim()"></label>
+    <p class="air-note">Hisobot boti kanalda <b>administrator</b> boʻlishi va «Xabar yuborish» huquqi boʻlishi kerak. Avval «Saqlash», keyin «Kanalni tekshirish».</p>
+    <div class="air-row"><button class="air-btn" onclick="airTgCheck()">${_airIc('send')}Kanalni tekshirish</button></div>
+    <p id="air-tgck" class="air-note"></p>
     <div class="air-seg">${['uz', 'ru'].map((l) => `<button class="${s.lang === l ? 'on' : ''}" onclick="AIR.settings.lang='${l}';airRenderSettings()">${l === 'uz' ? 'Oʻzbekcha (lotin)' : 'Ruscha'}</button>`).join('')}</div>
   </section>
   <section class="air-card"><b class="air-h">Nomzodlar</b>
@@ -791,4 +799,121 @@ async function airSaveSettings() {
   const r = await airApi('settings_save', { settings: AIR.settings });
   if (r.ok) { AIR.settings = r.data.settings; AIR.cands = null; AIR.st = null; _airToast('Saqlandi'); airRenderSettings(); }
   else _airToast((r.data && r.data.error) || 'Saqlanmadi');
+}
+
+// ════════════════════════════════════════════════════════════
+// 6. TELEGRAM KANALGA YUBORISH (4-bosqich). Narx va qoldiq — yuborishda serverda QAYTA tekshiriladi.
+//    Bir xil kontent — bitta kalit (idemKey): ikki marta bosish yoki tarmoq uzilishi takroriy post bermaydi.
+// ════════════════════════════════════════════════════════════
+const _airUuid = () => (crypto && crypto.randomUUID ? crypto.randomUUID() : 'k' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12));
+const _airSig = () => { const c = AIR.sel, t = AIR.text || {};
+  return [c && c.pid, AIR.tpl, AIR.fmt, t.title, t.body, (t.tags || []).join(','), c && c.line, c && c.oldLine, AIR.fmt === 'video' && AIR.out && AIR.out.blob ? AIR.out.blob.size : ''].join('|'); };
+// Yuborib bo'lmasa — sabab (tugma o'chiq, sabab sarlavhada)
+function airSendBlock() {
+  if (AIR.busy) return 'Kuting…';
+  if (!AIR.sel || !AIR.imgs.length || !AIR.text) return 'Avval mahsulot va matnni tayyorlang';
+  const tg = AIR.st && AIR.st.telegram;
+  if (!tg) return 'Telegram holati tekshirilmoqda';
+  if (!tg.bot) return 'Hisobot boti ulanmagan — Sozlamalar → Telegram';
+  if (!tg.channel) return 'Reklama kanali koʻrsatilmagan — AI-reklama → Sozlamalar';
+  if (AIR.fmt === 'video' && !(AIR.out && AIR.out.blob && AIR.out.blob.type === 'video/mp4')) return 'Avval «Videoni yaratish»';
+  return '';
+}
+function airTgLine() {
+  const tg = AIR.st && AIR.st.telegram; if (!tg) return '';
+  if (!tg.bot || !tg.channel) return `<p class="air-mp4 bad">${_airIc('warning')}<span>${!tg.bot ? 'Hisobot boti ulanmagan (Sozlamalar → Telegram)' : 'Reklama kanali koʻrsatilmagan (AI-reklama → Sozlamalar)'}</span></p>`;
+  return `<p class="air-tgl">${_airIc('send')}<span>Kanal: <b>${_airE(tg.channel)}</b> · hisobot boti</span></p>`;
+}
+function airSendAsk() {
+  const why = airSendBlock(); if (why) { _airToast(why); return; }
+  const c = AIR.sel, tg = AIR.st.telegram, video = AIR.fmt === 'video';
+  openSheet({ ic: 'send', c: 'pink', title: 'Kanalga yuborilsinmi?', body: `<div class="air-ask">
+      <p><span>Kanal</span><b>${_airE(tg.channel)}</b></p>
+      <p><span>Format</span><b>${video ? 'Video 9:16, ' + AIR.dur + ' s' : 'Rasm 1:1'}</b></p>
+      <p><span>Mahsulot</span><b>${_airE(c.name)}</b></p>
+      <p><span>Narx</span><b>${_airE(c.line)}${c.oldLine ? ` <s>${_airE(c.oldLine)}</s>` : ''}</b></p>
+      <small>Narx va qoldiq yuborishdan oldin serverda qayta tekshiriladi. Narx oʻzgargan boʻlsa — post yuborilmaydi, rasm yangi narx bilan qayta chiziladi.</small></div>`,
+    foot: `<button class="air-btn" onclick="closeSheet()">Bekor qilish</button><button class="air-btn pri" onclick="closeSheet();airSend()">${_airIc('send')}Yuborish</button>` });
+}
+const _airB64 = (blob) => new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1] || ''); fr.onerror = () => rej(new Error('fayl oʻqilmadi')); fr.readAsDataURL(blob); });
+function _airStep(msg) { AIR.sendStep = msg; const s = document.querySelector('.air-prog span'); if (s) s.textContent = msg; }
+async function airSend() {
+  if (AIR.busy) return;
+  const why = airSendBlock(); if (why) { _airToast(why); return; }
+  const sig = _airSig();
+  if (AIR.pendingKey) { AIR.sendKey = AIR.pendingKey; AIR.sendSig = sig; AIR.pendingKey = null; }   // tarixdan «Qayta yuborish» — o'sha post
+  if (AIR.sendSig !== sig || !AIR.sendKey) { AIR.sendKey = _airUuid(); AIR.sendSig = sig; }
+  const c = AIR.sel, tpl = _airTpl(), video = AIR.fmt === 'video';
+  AIR.busy = 'send'; AIR.sendErr = null; AIR.sent = null; AIR.sendStep = video ? 'Video yuklanmoqda…' : 'Rasm tayyorlanmoqda…'; airRenderEditor();
+  const payload = { pid: c.pid, template: tpl.id, reason: c.reasons[0], priceLine: c.line, oldLine: c.oldLine || '', idemKey: AIR.sendKey,
+    text: { title: AIR.text.title || '', body: AIR.text.body || '', tags: AIR.text.tags || [] } };
+  let r;
+  try {
+    if (!video) {
+      const cv = document.createElement('canvas'); cv.width = 1080; cv.height = 1080; airDraw(cv.getContext('2d'), 1080, 1080, tpl, airDrawData(), null);
+      payload.format = 'photo'; payload.photo = await _airB64(await airExportJpeg(cv, 300));
+    } else {
+      const up = await airApi('upload_url', { idemKey: AIR.sendKey });
+      if (!up.ok || !up.data.signedUrl) throw new Error((up.data && up.data.error) || 'Yuklash havolasi olinmadi');
+      const fd = new FormData(); fd.append('cacheControl', '60'); fd.append('', AIR.out.blob, 'video.mp4');
+      const put = await fetch(up.data.signedUrl, { method: 'PUT', headers: { 'x-upsert': 'true' }, body: fd }).catch(() => null);
+      if (!put || !put.ok) throw new Error('Video yuklanmadi — internetni tekshirib, qayta yuboring');
+      payload.format = 'video'; payload.videoPath = up.data.path; payload.dur = AIR.dur;
+    }
+    _airStep('Kanalga yuborilmoqda…');
+    r = await airApi('publish', payload);
+  } catch (e) { r = { ok: false, data: { error: e.message } }; }
+  AIR.busy = null; AIR.doneSig = _airSig();
+  if (r.ok && r.data.ok) {
+    AIR.sent = { url: r.data.url, duplicate: r.data.duplicate }; AIR.hist = null;
+    _airToast(r.data.duplicate ? 'Bu post avval yuborilgan' : 'Kanalga yuborildi');
+  } else if (r.data && r.data.code === 'PRICE_CHANGED' && r.data.price) {
+    Object.assign(c, { line: r.data.price.line, oldLine: r.data.price.oldLine || '', pct: r.data.price.pct || 0 });
+    if (video) AIR.out = null;
+    AIR.doneSig = _airSig();
+    AIR.sendErr = `Narx oʻzgardi: endi ${r.data.price.line}. ${video ? 'Videoni qayta yarating' : 'Rasm yangilandi — tekshirib'}, keyin qayta yuboring.`;
+  } else AIR.sendErr = r.offline ? 'Internet yoʻq — ulanib, qayta yuboring' : (r.data && r.data.error) || 'Yuborilmadi';
+  airRenderEditor();
+}
+async function airTgCheck() {
+  const el = document.getElementById('air-tgck'); if (el) el.textContent = 'Tekshirilmoqda…';
+  const r = await airApi('tg_check');
+  if (el) el.innerHTML = r.ok && r.data.ok ? `<b class="air-ok">✓ Bot ${_airE(r.data.channel)} kanaliga yoza oladi</b>` : `<b class="air-bad">${_airE((r.data && r.data.error) || 'Tekshirib boʻlmadi')}</b>`;
+}
+
+// ── Tarix ──
+const AIR_ST = { sent: ['Yuborildi', 'ok'], failed: ['Xato', 'bad'], sending: ['Yuborilmoqda', 'wait'], draft: ['Qoralama', 'wait'], skipped: ['Oʻtkazildi', 'mute'], expired: ['Muddati oʻtdi', 'mute'] };
+async function airRenderHistory() {
+  const el = document.getElementById('air-body'); if (!el) return;
+  if (!AIR.hist) {
+    el.innerHTML = `<div class="air-skel air-skel-t">${'<i></i>'.repeat(3)}</div>`;
+    const r = await airApi('history');
+    if (!r.ok) { el.innerHTML = airErrBox({ ...(r.data || {}), status: r.status, offline: r.offline }, 'AIR.hist=null;airRenderHistory()'); return; }
+    AIR.hist = r.data.items || [];
+  }
+  if (!AIR.hist.length) { el.innerHTML = `<div class="air-empty">${_airIc('history')}<b>Hali post yuborilmagan</b><span>«Yangi post» boʻlimida tayyorlang va «Telegram'ga» tugmasini bosing.</span></div>`; return; }
+  const fmtAt = (s) => { try { return new Date(s).toLocaleString('uz-UZ', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); } catch (_) { return ''; } };
+  el.innerHTML = `<div class="air-hist">${AIR.hist.map((h) => { const [lbl, cls] = AIR_ST[h.status] || [h.status, 'mute'];
+    return `<article class="air-hi">
+      <div class="air-hi-h"><em class="air-st ${cls}">${lbl}</em><span>${h.format === 'video' ? 'Video' : 'Rasm'}${h.source === 'autopilot' ? ' · avtopilot' : ''}</span><time>${_airE(fmtAt(h.sentAt || h.at))}</time></div>
+      <b>${_airE(h.name || ('#' + h.pid))}</b>${h.title ? `<span class="air-hi-t">${_airE(h.title)}</span>` : ''}
+      ${h.status === 'failed' && h.error ? `<p class="air-hi-e">${_airIc('warning')}<span>${_airE(h.error)}</span></p>` : ''}
+      <div class="air-row">${h.url ? `<a class="air-btn" href="${_airE(h.url)}" target="_blank" rel="noopener">${_airIc('launch')}Kanalda ochish</a>` : ''}
+        ${h.status === 'failed' && _airCan('reklama.publish') ? `<button class="air-btn" onclick="airRetryFromHistory('${_airE(h.id)}')">${_airIc('refresh')}${h.format === 'video' ? 'Qayta tayyorlash' : 'Qayta yuborish'}</button>` : ''}</div>
+      <small>${_airE(h.by || '')}${h.tries > 1 ? ` · ${h.tries} urinish` : ''}</small></article>`; }).join('')}</div>`;
+}
+// Xato bo'lgan post: mahsulot, matn va shablon tiklanadi; foto — o'sha kalit bilan (o'sha post qayta yuboriladi),
+// video — qayta yozib yuboriladi (video saqlanmaydi)
+async function airRetryFromHistory(id) {
+  const h = (AIR.hist || []).find((x) => x.id === id); if (!h) return;
+  const r = await airApi('product', { pid: h.pid });
+  if (!r.ok) { _airToast((r.data && r.data.error) || 'Mahsulot topilmadi'); return; }
+  AIR.sel = { ...r.data.item, reasons: [h.reason || 'stuck'] };
+  AIR.text = { title: h.title || '', body: h.body || '', tags: h.tags || [], source: 'manual' }; AIR.alts = []; AIR.altI = 0;
+  if ((window.AIR_TEMPLATES || []).some((t) => t.id === h.template)) { AIR.tpl = h.template; AIR._tplTouched = 1; }
+  AIR.fmt = h.format === 'video' ? 'video' : 'post';
+  AIR.out = null; AIR.sent = null; AIR.sendErr = null; AIR.imgs = []; AIR.pendingKey = h.idemKey || null;
+  AIR.sub = 'new'; airRender();
+  airLoadAssets(AIR.sel).then(() => { const ed = document.getElementById('air-editor'); if (ed) ed.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    _airToast(h.format === 'video' ? 'Videoni qayta yarating, keyin «Telegram\'ga»' : 'Tekshirib, «Telegram\'ga» tugmasini bosing'); });
 }

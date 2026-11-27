@@ -209,11 +209,11 @@ Hech bir rolga avtomatik berilmaydi (deny-by-default) — admin hammasini ko'rad
 | 1. Nomzodlar (server) | ✅ | `tests/p138-ai-reklama-nomzodlar.test.js` (PGlite + haqiqiy `ai-ads`; 1000 qator chegarasi) |
 | 2. Matn | ✅ | `tests/p139-ai-reklama-matn.test.js` (shablonlar, AI'ga ketgan haqiqiy so'rov tanasi, limit, tozalash) |
 | 3. Canvas, video, UI | ✅ | `tests/p140-ai-reklama-canvas-video-ui.test.js` (canvas, MediaRecorder mock, 360 px), `p139` (rasm proksisi, alts); evidence: `tests/evidence/ai-reklama-*.png` (`node scripts/ai-reklama-evidence.js`) |
-| 4. Telegram | — | kanal: -1002193336308 |
+| 4. Telegram | ✅ | `tests/p141-ai-reklama-telegram.test.js` (server: getChatMember, narx qayta tekshiruvi, takrorsiz, xato/qayta yuborish, video), `tests/p142-ai-reklama-yuborish-ui.test.js` (brauzer) |
 | 5. Avtopilot | — | |
 
 ## 10. 3-bosqich eslatmalari
-- **Shablonlar** (`js/ai-reklama-shablonlar.js`): 8 ta — Chegirma, Yangi, Top, Minimal, Katta narx, Kollaj, Maxsus taklif, Brend.
+- **Shablonlar** (`js/ai-reklama-shablonlar.js`), egasi tanlovi: Chegirma, Yangi (oq), Katta narx, Brend. Yangi kelgan mahsulotga sukut — «Yangi (oq)».
   Nishon mahsulot sababiga qarab (−N% doira / YANGI / XIT / MAXSUS TAKLIF). Shrift — Inter (OFL, `assets/ai-reklama/fonts`), chizishdan oldin to'liq yuklanadi.
 - **Video**: 720×1280, 30 kadr/s, ~4 Mbit/s, faqat MP4. Tur `MediaRecorder.isTypeSupported` bilan tanlanadi va «Format va musiqa» qadamida ko'rsatiladi.
   Tartib: H.264+AAC → H.264+Opus → faqat video. Mahalliy Chromium 153 (test muhiti): AAC **yo'q**, Opus **bor** → `avc1.42E01E,opus`
@@ -222,3 +222,17 @@ Hech bir rolga avtomatik berilmaydi (deny-by-default) — admin hammasini ko'rad
 - **Rasm**: avval CORS bilan to'g'ridan (Supabase Storage — CORS bor), bo'lmasa `ai-ads:img` proksisi (faqat shu mahsulotning https rasmi, IP/localhost yo'q,
   yo'naltirish taqiqlangan, ≤1.5 MB, faqat image/*, 7 s).
 - **Kuy**: brauzerda yaratiladi (Energik 120, Yumshoq 84, Premium 96 BPM; ovoz 0.4). O'z treklari — `assets/ai-reklama/musiqa/README.md`.
+
+## 11. 4-bosqich: Telegram kanalga yuborish
+- **Kim:** `reklama.publish` ruxsati (yoki administrator). Tugma — 5-qadamda «Telegram'ga», tasdiqlash oynasi bilan.
+- **Kanal:** AI-reklama → Sozlamalar → «Reklama kanali» (masalan `-1002193336308`); bo'sh bo'lsa — do'kon e'lonlar kanallarining birinchisi.
+  Yuborish **hisobot boti** orqali (Sozlamalar → Telegram, token faqat serverda). Bot kanalda administrator va «Xabar yuborish» huquqi bilan bo'lishi kerak —
+  har yuborishdan oldin `getChatMember` bilan tekshiriladi; Sozlamalarda «Kanalni tekshirish» tugmasi bor.
+- **Narx:** yuborishda serverda QAYTA hisoblanadi. Rasmdagi narx bilan farq qilsa — post yuborilmaydi, rasm yangi narx bilan qayta chiziladi.
+  Izohdagi narx — faqat serverdan (foydalanuvchi matnidagi narxga o'xshash qator olib tashlanadi). Qoldiq 0 — yuborilmaydi.
+- **Takror yo'q:** har tayyor post — bitta kalit (`ai_ad_posts.idem_key`). Ikki marta bosish yoki uzilish takroriy post bermaydi.
+- **Xato:** status `failed`, sababi saqlanadi; «Qayta yuborish» (5-qadamda yoki Tarixda). Foto — o'sha post qayta yuboriladi; video — qayta yoziladi
+  (video saqlanmaydi). Telegram javob bermasa (vaqt tugadi) — post chiqqan bo'lishi mumkin: avval kanalni tekshiring.
+- **Video:** brauzer bir martalik havola bilan `ai-ads-tmp` (yopiq) ga yuklaydi → server imzolangan havolani Telegram'ga beradi (`sendVideo`) →
+  fayl darhol o'chiriladi (xato bo'lsa ham); yuborilmay qolgan fayllar 1 soatdan keyin keyingi yuklashda tozalanadi.
+- **Tarix:** oxirgi 50 ta post — holat, xato, «Kanalda ochish» (t.me/c/...).

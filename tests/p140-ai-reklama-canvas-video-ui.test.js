@@ -19,12 +19,13 @@ const CANDS = [
 ];
 const ALTS = Array.from({ length: 11 }, (_, i) => ({ title: `Variant sarlavha ${'ABCDEFGHIJK'[i]}`, body: `Matn ${'ABCDEFGHIJK'[i]}\nIkkinchi qator`, tags: ['arra', 'usta', 'chegirma'], variant: i }));
 
-async function withAir(fn, { width = 360, height = 780, aiOn = true } = {}) {
+async function withAir(fn, { width = 360, height = 780, aiOn = true, handle = null, telegram = { bot: true, channel: '-1002193336308', ownerGroup: true }, routes = [] } = {}) {
   const calls = [];
-  const { browser, page, consoleErrors } = await loadApp({ mockRoutes: [{ url: '**/.netlify/functions/ai-ads', handler: async (route) => {
+  const { browser, page, consoleErrors } = await loadApp({ mockRoutes: [...routes, { url: '**/.netlify/functions/ai-ads', handler: async (route) => {
     const b = JSON.parse(route.request().postData() || '{}'); calls.push(b);
     const J = (o, s = 200) => route.fulfill({ status: s, contentType: 'application/json', body: JSON.stringify(o) });
-    if (b.action === 'status') return J({ ok: true, shopOn: true, lang: 'uz', ai: aiOn ? { on: true, used: 12, limit: 300, left: 288, exhausted: false } : { on: false, used: 0, limit: 300 } });
+    const own = handle && handle(b, calls); if (own) return J(own[1], own[0]);
+    if (b.action === 'status') return J({ ok: true, shopOn: true, lang: 'uz', telegram, ai: aiOn ? { on: true, used: 12, limit: 300, left: 288, exhausted: false } : { on: false, used: 0, limit: 300 } });
     if (b.action === 'candidates') return J({ ok: true, items: CANDS, total: CANDS.length, cur: 'UZS' });
     if (b.action === 'text') return J({ ok: true, text: { title: 'Chegirma boshlandi!', body: 'Ustalar uchun.\nShoshiling.', tags: ['chegirma', 'arra', 'usta'], source: aiOn ? 'ai' : 'template', variant: aiOn ? null : 0 }, alts: ALTS, ai: { on: aiOn, used: 13, limit: 300 } });
     if (b.action === 'settings_get') return J({ ok: true, settings: { channel: '', lang: 'uz', criteria: { discount: true, new: true, stuck: true, top: true, newDays: 14, stuckDays: 30, topDays: 30, topN: 10, repeatDays: 7 }, autopilot: {} } });
@@ -247,6 +248,7 @@ async function testYangiOq() {
 }
 
 module.exports = {
+  _withAir: withAir, _MOCK: MOCK,
   name: 'P140 — AI-reklama 3-bosqich: canvas, video (MediaRecorder mock), UI 360 px',
   cases: [
     { name: 'canvas: Inter yuklanadi; oʻ/gʻ/ʼ, kirill; 2 qatorga sigʻmagan nom — «…»; chegirma doirasi', run: testCanvas },

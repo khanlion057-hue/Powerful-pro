@@ -13,7 +13,9 @@
 //                                                       — kanalga yuborish (narx va qoldiq QAYTA tekshiriladi)           · reklama.publish
 //   POST { action:'history', filial? }                  — oxirgi 50 ta post (holat, xato, havola)                         · reklama.view
 //   POST { action:'tg_check', filial? }                 — bot kanalga yoza oladimi (getChatMember)                       · reklama.settings
-//   (5-bosqich: drafts, draft_action, ai-ads-cron)
+//   POST { action:'drafts', filial? }                   — avtopilot qoralamalari (Navbat)                                 · reklama.view
+//   POST { action:'draft_action', filial?, id, op:'approve'|'skip' } — tasdiqlash (kanalga, mahsulot rasmi bilan) / o'tkazish · reklama.publish
+//   Avtopilot — ai-ads-cron (jadval, :20).
 //
 // Qoidalar: deny-by-default (ruxsatsiz — 403); do'kon yoqilmagan filialda — 409 SHOP_OFF; 58 yo'q — 409 MIGRATION58_PENDING.
 // Bot tokeni va AI kaliti javobga hech qachon qo'shilmaydi. Tana 1 MB dan katta bo'lsa — 413.
@@ -27,7 +29,10 @@ const SP = require('./_lib/shopPublic');
 const ENDPOINT = 'ai-ads';
 const MAX_BODY = 1024 * 1024;
 const PERM = { status: 'reklama.view', candidates: 'reklama.view', settings_get: 'reklama.view', settings_save: 'reklama.settings', text: 'reklama.create', img: 'reklama.create',
-  product: 'reklama.view', upload_url: 'reklama.publish', publish: 'reklama.publish', history: 'reklama.view', tg_check: 'reklama.settings' };
+  product: 'reklama.view', upload_url: 'reklama.publish', publish: 'reklama.publish', history: 'reklama.view', tg_check: 'reklama.settings',
+  drafts: 'reklama.view', draft_action: 'reklama.publish' };
+const AU = require('./_lib/aiAutopilot');
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const AP = require('./_lib/aiPublish');
 const TEMPLATES = ['chegirma', 'yangioq', 'kattanarx', 'brend'];   // js/ai-reklama-shablonlar.js bilan bir xil
 const BUCKET = 'ai-ads-tmp';
@@ -92,6 +97,11 @@ exports.handler = async (event) => {
       const bad = AA.validateSettingsInput(body.settings);
       if (bad) return json({ error: bad }, 400);
       const next = AA.normalizeSettings(body.settings);
+      if (next.autopilot.enabled) {   // avtopilot — bot va kanalsiz yoqilmaydi
+        const L0 = await AA.loadBranch(admin, filial), st0 = L0.settings || {};
+        if (!TOKEN_RE.test(String(st0.tgBotToken || '').trim())) return json({ error: 'Avtopilot yoqilmadi: hisobot boti ulanmagan (Sozlamalar → Telegram)', code: 'NO_BOT' }, 400);
+        if (!AA.channelOf(next, st0)) return json({ error: 'Avtopilot yoqilmadi: reklama kanali koʻrsatilmagan', code: 'NO_CHANNEL' }, 400);
+      }
       const { error } = await admin.from('ai_ad_settings').upsert({ branch_id: filial, data: next, updated_at: new Date().toISOString(),
         updated_by: String((auth.staff && auth.staff.name) || 'Admin').slice(0, 80) }, { onConflict: 'branch_id' });
       if (error) throw error;
@@ -110,6 +120,35 @@ exports.handler = async (event) => {
         lang: settings.lang }, 200);
     }
 
+    if (body.action === 'drafts') {
+      const { data, error } = await admin.from('ai_ad_posts').select('id,product_id,status,created_at,expires_at,price_snapshot,meta,idem_key,error,tries')
+        .eq('branch_id', filial).eq('status', 'draft').order('created_at', { ascending: false }).limit(30);
+      if (error) throw error;
+      return json({ ok: true, autopilot: settings.autopilot, items: (data || []).map((r) => ({ id: r.id, pid: Number(r.product_id), at: r.created_at, expiresAt: r.expires_at,
+        price: r.price_snapshot || null, name: r.meta && r.meta.name, title: r.meta && r.meta.title, body: r.meta && r.meta.body, tags: (r.meta && r.meta.tags) || [],
+        reason: r.meta && r.meta.reason, img: r.meta && r.meta.img, aiText: !!(r.meta && r.meta.source === 'ai'), idemKey: r.idem_key })) }, 200);
+    }
+
+    if (body.action === 'draft_action') {
+      if (!UUID_RE.test(String(body.id || '')) || !['approve', 'skip'].includes(body.op)) return json({ error: "Noto'g'ri so'rov" }, 400);
+      const { data: row, error } = await admin.from('ai_ad_posts').select('*').eq('id', body.id).eq('branch_id', filial).maybeSingle();
+      if (error) throw error;
+      if (!row) return json({ error: 'Qoralama topilmadi', code: 'NOT_FOUND' }, 404);
+      if (row.status !== 'draft') return json({ error: row.status === 'expired' ? 'Qoralama muddati oʻtgan' : 'Bu qoralama allaqachon koʻrib chiqilgan', code: 'NOT_DRAFT', status: row.status }, 409);
+      if (body.op === 'skip') {
+        const { data: up, error: e2 } = await admin.from('ai_ad_posts').update({ status: 'skipped', error: null }).eq('id', row.id).eq('status', 'draft').select('id');
+        if (e2) throw e2;
+        return up && up.length ? json({ ok: true, status: 'skipped' }, 200) : json({ error: 'Bu qoralama allaqachon koʻrib chiqilgan', code: 'NOT_DRAFT' }, 409);
+      }
+      const who = String((auth.staff && auth.staff.name) || 'Admin').slice(0, 80);
+      const locked = await AU.lockRow(admin, row, 'draft', { meta: { ...(row.meta || {}), approvedBy: who, at: new Date().toISOString() } });
+      if (!locked) return json({ error: 'Bu qoralama allaqachon koʻrib chiqilgan', code: 'NOT_DRAFT' }, 409);
+      const L = await AA.loadBranch(admin, filial);
+      if (!L.shopOn) { await admin.from('ai_ad_posts').update({ status: 'failed', error: "Onlayn-do'kon yoqilmagan" }).eq('id', row.id); return json({ error: "Bu filialda onlayn-do'kon yoqilmagan", code: 'SHOP_OFF' }, 409); }
+      const r = await AU.sendAutophoto({ admin, L, filial, settings, row: locked, left, fetchImpl: exports._fetch });
+      return r.ok ? json({ ok: true, status: 'sent', url: r.url }, 200) : json({ ok: false, code: r.code, error: r.error, id: row.id }, r.code === 'SEND_FAILED' || r.code === 'CHANNEL' ? 502 : 409);
+    }
+
     if (body.action === 'history') {
       const { data, error } = await admin.from('ai_ad_posts').select('id,product_id,format,template,status,error,tries,source,created_by,created_at,sent_at,tg_chat,tg_message_id,meta,idem_key')
         .eq('branch_id', filial).order('created_at', { ascending: false }).limit(50);
@@ -117,7 +156,7 @@ exports.handler = async (event) => {
       return json({ ok: true, items: (data || []).map((r) => ({ id: r.id, pid: Number(r.product_id), format: r.format, template: r.template, status: r.status, error: r.error, tries: r.tries,
         source: r.source, by: r.created_by, at: r.created_at, sentAt: r.sent_at, url: AP.messageUrl(r.tg_chat, r.tg_message_id),
         name: r.meta && r.meta.name, title: r.meta && r.meta.title, body: r.meta && r.meta.body, tags: (r.meta && r.meta.tags) || [], reason: r.meta && r.meta.reason,
-        idemKey: r.status === 'failed' && r.format === 'photo' ? r.idem_key : undefined })) }, 200);   // foto — o'sha kalit bilan qayta yuboriladi
+        idemKey: r.status === 'failed' && (r.format === 'photo' || r.format === 'autophoto') ? r.idem_key : undefined })) }, 200);   // foto — o'sha kalit bilan qayta yuboriladi
     }
 
     if (body.action === 'tg_check') {
@@ -233,9 +272,10 @@ async function publish(admin, auth, filial, settings, body, left) {
     const { data: ex, error: e1 } = await admin.from('ai_ad_posts').select('*').eq('branch_id', filial).eq('idem_key', idem).maybeSingle();
     if (e1) throw e1;
     if (ex) {
+      if (Number(ex.product_id) !== body.pid) return fail('BAD', "So'rov kaliti boshqa mahsulotga tegishli", 400);
       if (ex.status === 'sent') return done(ex, true);
       if (ex.status === 'sending' && Date.now() - Date.parse((ex.meta && ex.meta.at) || ex.created_at) < SENDING_STALE_MS) return fail('IN_PROGRESS', 'Bu post hozir yuborilmoqda');
-      const { data: up, error: e2 } = await admin.from('ai_ad_posts').update({ status: 'sending', tries: (ex.tries || 0) + 1, error: null, caption, price_snapshot: price, meta, template, tg_chat: chat })
+      const { data: up, error: e2 } = await admin.from('ai_ad_posts').update({ status: 'sending', tries: (ex.tries || 0) + 1, error: null, caption, price_snapshot: price, meta: { ...meta, ...(ex.source === 'autopilot' ? { slot: ex.meta && ex.meta.slot, fromDraft: true } : {}) }, template, tg_chat: chat, format: fmt })
         .eq('id', ex.id).eq('status', ex.status).select('*');
       if (e2) throw e2;
       if (!up || !up.length) return fail('IN_PROGRESS', 'Bu post hozir yuborilmoqda');

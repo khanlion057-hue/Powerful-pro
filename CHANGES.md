@@ -1,3 +1,18 @@
+# POWERFUL GROUP — v25.8: AI-reklama — onlayn-do'kon mahsulotidan Telegram post va Reels (58-migratsiya) (2026-11-27)
+- **58-migratsiya (yangi, QO'LLANMAGAN — deploy bilan birga, 48 dan keyin):** `ai_ad_posts` (postlar, holat, xato, takrorsiz kalit), `ai_usage` (AI oylik limiti, atomik),
+  `ai_ad_settings` (filial sozlamasi), `reklama.view/create/publish/settings` ruxsatlari (rolga berilmaydi), yopiq bucket `ai-ads-tmp`. `DEPLOY.md`.
+- **Onlayn-do'kon → «AI-reklama»** (do'kon yoqilgan filialda, `reklama.view` yoki admin): 5 qadam — mahsulot (tizim taklif qiladi: chegirma, yangi, ko'p sotilgan,
+  turib qolgan; «Reklama qilmaslik» belgisi), matn (AI yoki shablon, «Boshqa variant»), shablon (Chegirma, Yangi (oq), Katta narx, Brend), format (rasm 1:1 yoki
+  video 9:16 720×1280, kuy bilan), tayyor (saqlash / ulashish / «Telegram'ga»). Telefon 360 px, tugmalar ≥44 px.
+- **AI ixtiyoriy** (Gemini, `AI_API_KEY` + `AI_MODEL`): AI'ga faqat nom, kategoriya, qisqa tavsif va post turi — narx, mijoz, ta'minotchi, tannarx, telefon, filial nomi hech qachon.
+  Oylik limit (sukut 300). Kalit yo'q — shablon rejimi.
+- **Narx faqat serverda:** rasm va izohdagi narx — vitrina bilan bir xil; yuborishda QAYTA tekshiriladi (o'zgargan — qayta chiziladi, qoldiq 0 — yuborilmaydi).
+- **Telegram:** hisobot boti orqali filialning «Reklama kanali»ga (getChatMember tekshiruvi), takroriy post yo'q, xato — sabab + «Qayta yuborish». Video vaqtincha
+  Storage'da, yuborilgach darhol o'chadi. Reklamada nom — «POWERFUL» (Group'siz), izohda «Powerful».
+- **Avtopilot** (`ai-ads-cron`, har soat :20; sukut o'chiq): tanlangan soatlarda mahsulotning o'z rasmi bilan post; «tasdiqlash bilan» — qoralama + egasi guruhiga xabar,
+  «Navbat»da tasdiqlash / «Shablon bilan» / o'tkazish, 24 soatda muddati o'tadi; «to'liq avtomat» — darhol (xato — keyingi soatda 1 marta qayta, keyin egasiga xabar).
+- Funksiyalar: 69 → 71 (`ai-ads`, `ai-ads-cron`). Testlar: p138–p143; evidence: `tests/evidence/ai-reklama-*.png`, `p140-*`, `p142-*`.
+
 # POWERFUL GROUP — v25.7: ziyon paroli serverda (57-migratsiya) (2026-11-23)
 - **57-migratsiya (yangi, QO'LLANMAGAN — Supabase SQL Editor'da ishga tushiriladi):** `fw_settings.loss_pin_hash` — ziyon paroli faqat SHA-256 xesh ko'rinishida (standart — egasi bergan parolning xeshi); `fw_loss_pin_fails` — 15 daqiqada 5 noto'g'ri urinish → 15 daqiqa qulf; `fw_loss_pin_check` / `fw_loss_pin_set` (faqat server). Brauzer rollari sozlama jadvalini o'qiy olmaydi. Takror ishga tushirish xavfsiz.
 - **Diller:** optom narxdan 10% gacha arzon — avvalgidek; undan past endi rad etilmaydi — **ziyon paroli** so'raladi (`record_dealer_sale_v42(..., p_loss_pin)`, serverda `encode(digest(...,'sha256'),'hex')`). Noto'g'ri parol — savdo yozilmaydi. Parol bilan o'tgan savdo — auditda (`loss_pin_sale`) va adminga bildirishnoma (`dealer_loss_pin`). Savatda qatorda «Optom: X · Ziyon: −Y» (10% dan past — qizil).

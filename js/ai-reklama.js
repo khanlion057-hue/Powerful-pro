@@ -579,7 +579,7 @@ function airRender() {
   if (AIR.sub === 'new') airRenderNew();
   else if (AIR.sub === 'set') airRenderSettings();
   else if (AIR.sub === 'hist') airRenderHistory();
-  else document.getElementById('air-body').innerHTML = `<div class="air-empty">${_airIc('hourglass')}<b>Navbat</b><span>Avtopilot tayyorlagan qoralamalar (tasdiqlash uchun) shu yerda koʻrinadi — keyingi bosqich.</span></div>`;
+  else airRenderQueue();
 }
 async function airLoadStatus() {
   const r = await airApi('status');
@@ -811,7 +811,7 @@ async function airRenderSettings() {
     ${sw('top', 'Koʻp sotilganlar')}${num('topN', 'Top — nechta', 1, 30)}${sw('stuck', 'Turib qolganlar (maxsus taklif)')}${num('stuckDays', 'Turib qolgan — necha kun sotilmagan', 7, 365)}
     ${num('repeatDays', 'Qayta reklama — necha kundan keyin', 1, 60)}
   </section>
-  <p class="air-note">Avtopilot (har kuni oʻzi post tayyorlash) — keyingi bosqichda.</p>
+  ${airAutopilotCard(s)}
   <button class="air-btn pri" onclick="airSaveSettings()">${_airIc('check')}Saqlash</button>`;
 }
 async function airSaveSettings() {
@@ -924,15 +924,105 @@ async function airRenderHistory() {
 // Xato bo'lgan post: mahsulot, matn va shablon tiklanadi; foto — o'sha kalit bilan (o'sha post qayta yuboriladi),
 // video — qayta yozib yuboriladi (video saqlanmaydi)
 async function airRetryFromHistory(id) {
-  const h = (AIR.hist || []).find((x) => x.id === id); if (!h) return;
+  const h = (AIR.hist || []).find((x) => x.id === id); if (h) airOpenInEditor(h);
+}
+// Mahsulot + matn (+ shablon, kalit) bilan muharrirni ochish: tarixdagi xato post yoki Navbatdagi qoralama
+async function airOpenInEditor(h) {
   const r = await airApi('product', { pid: h.pid });
   if (!r.ok) { _airToast((r.data && r.data.error) || 'Mahsulot topilmadi'); return; }
   AIR.sel = { ...r.data.item, reasons: [h.reason || 'stuck'] };
   AIR.text = { title: h.title || '', body: h.body || '', tags: h.tags || [], source: 'manual' }; AIR.alts = []; AIR.altI = 0;
   if ((window.AIR_TEMPLATES || []).some((t) => t.id === h.template)) { AIR.tpl = h.template; AIR._tplTouched = 1; }
+  else { AIR.tpl = { discount: 'chegirma', new: 'yangioq', top: 'kattanarx', stuck: 'kattanarx' }[h.reason] || 'chegirma'; AIR._tplTouched = 1; }
   AIR.fmt = h.format === 'video' ? 'video' : 'post';
   AIR.out = null; AIR.sent = null; AIR.sendErr = null; AIR.imgs = []; AIR.pendingKey = h.idemKey || null;
   AIR.sub = 'new'; airRender();
   airLoadAssets(AIR.sel).then(() => { const ed = document.getElementById('air-editor'); if (ed) ed.scrollIntoView({ behavior: 'smooth', block: 'start' });
     _airToast(h.format === 'video' ? 'Videoni qayta yarating, keyin «Telegram\'ga»' : 'Tekshirib, «Telegram\'ga» tugmasini bosing'); });
+}
+
+// ════════════════════════════════════════════════════════════
+// 7. AVTOPILOT (5-bosqich): Navbat (qoralamalar) va sozlama. Post — ai-ads-cron (soatlik), mahsulotning o'z rasmi bilan.
+// ════════════════════════════════════════════════════════════
+const AIR_HOURS = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
+function airAutopilotCard(s) {
+  const A = s.autopilot || { enabled: false, mode: 'approve', hours: [10, 18], perDay: 3 };
+  const hourBtn = (h) => `<button class="air-chip${A.hours.includes(h) ? ' on' : ''}" onclick="airApHour(${h})">${String(h).padStart(2, '0')}:00</button>`;
+  return `<section class="air-card air-ap">
+    <label class="air-sw"><input type="checkbox" id="air-ap-on" ${A.enabled ? 'checked' : ''} onchange="AIR.settings.autopilot.enabled=this.checked;airRenderSettings()"><span><b>Avtopilot</b> — tanlangan soatlarda oʻzi post tayyorlaydi</span></label>
+    ${A.enabled ? `
+    <div class="air-seg">
+      <button class="${A.mode !== 'auto' ? 'on' : ''}" onclick="AIR.settings.autopilot.mode='approve';airRenderSettings()">Tasdiqlash bilan</button>
+      <button class="${A.mode === 'auto' ? 'on' : ''}" onclick="AIR.settings.autopilot.mode='auto';airRenderSettings()">Toʻliq avtomat</button>
+    </div>
+    ${A.mode === 'auto' ? `<p class="air-mp4 bad">${_airIc('warning')}<span>Post sizning tasdiqingizsiz kanalga chiqadi. Narx va qoldiq yuborishdan oldin tekshiriladi, lekin matnni hech kim koʻrmaydi.</span></p>`
+      : '<p class="air-note">Qoralama tayyor boʻlganda egasi guruhiga xabar keladi; «Navbat»da tasdiqlaysiz. 24 soatda tasdiqlanmasa — bekor boʻladi.</p>'}
+    <b class="air-h">Soatlar (Toshkent, eng koʻpi 6 ta)</b>
+    <div class="air-chips air-moods">${AIR_HOURS.map(hourBtn).join('')}</div>
+    <b class="air-h">Kuniga eng koʻpi</b>
+    <div class="air-seg">${[1, 2, 3, 4, 5].map((n) => `<button class="${A.perDay === n ? 'on' : ''}" onclick="AIR.settings.autopilot.perDay=${n};airRenderSettings()">${n}</button>`).join('')}</div>
+    <p class="air-note">Avtopilot posti mahsulotning oʻz rasmi bilan chiqadi (shablon rasmi — «Navbat» → «Shablon bilan»). Bir mahsulot ${s.criteria.repeatDays} kunda bir marta.</p>` : ''}
+  </section>`;
+}
+function airApHour(h) {
+  const A = AIR.settings.autopilot, i = A.hours.indexOf(h);
+  if (i >= 0) { if (A.hours.length > 1) A.hours.splice(i, 1); else _airToast('Kamida bitta soat kerak'); }
+  else if (A.hours.length >= 6) _airToast('Eng koʻpi 6 ta soat');
+  else { A.hours.push(h); A.hours.sort((a, b) => a - b); }
+  airRenderSettings();
+}
+
+async function airRenderQueue() {
+  const el = document.getElementById('air-body'); if (!el) return;
+  if (!AIR.queue) {
+    el.innerHTML = `<div class="air-skel air-skel-t">${'<i></i>'.repeat(2)}</div>`;
+    const r = await airApi('drafts');
+    if (!r.ok) { el.innerHTML = airErrBox({ ...(r.data || {}), status: r.status, offline: r.offline }, 'AIR.queue=null;airRenderQueue()'); return; }
+    AIR.queue = { items: r.data.items || [], ap: r.data.autopilot || {} };
+  }
+  const { items, ap } = AIR.queue;
+  const head = ap.enabled ? `<p class="air-tgl">${_airIc('sparkle')}<span>Avtopilot: <b>${ap.mode === 'auto' ? 'toʻliq avtomat' : 'tasdiqlash bilan'}</b> · ${(ap.hours || []).map((h) => String(h).padStart(2, '0') + ':00').join(', ')} · kuniga ${ap.perDay}</span></p>`
+    : `<p class="air-tgl">${_airIc('info')}<span>Avtopilot oʻchiq${_airCan('reklama.settings') ? ' — <a href="#" onclick="AIR.sub=\'set\';airRender();return false">Sozlamalarda yoqing</a>' : ''}</span></p>`;
+  if (!items.length) { el.innerHTML = head + `<div class="air-empty">${_airIc('hourglass')}<b>Tasdiqlash kutayotgan post yoʻq</b><span>Avtopilot tayyorlagan qoralamalar shu yerda chiqadi.</span></div>`; return; }
+  const left = (s) => { const ms = Date.parse(s) - Date.now(); if (!(ms > 0)) return 'muddati tugayapti'; const h = Math.floor(ms / 3600000); return h ? `${h} soat qoldi` : `${Math.max(1, Math.round(ms / 60000))} daqiqa qoldi`; };
+  const can = _airCan('reklama.publish');
+  el.innerHTML = head + `<div class="air-hist">${items.map((d) => `<article class="air-hi air-dr">
+      <div class="air-hi-h"><em class="air-st wait">Tasdiqlash kutilmoqda</em><span>${d.aiText ? 'AI matni' : 'Shablon matn'}</span><time>${_airE(left(d.expiresAt))}</time></div>
+      <div class="air-dr-b">${d.img ? `<img src="${_airE(d.img)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ''}<div>
+        <b>${_airE(d.name || ('#' + d.pid))}</b>${d.price ? `<span class="air-cand-p">${_airE(d.price.line)}${d.price.oldLine ? `<s>${_airE(d.price.oldLine)}</s>` : ''}</span>` : ''}
+        <span class="air-hi-t"><b>${_airE(d.title || '')}</b></span><p class="air-dr-t">${_airE(d.body || '')}</p>
+        <span class="air-tags">${(d.tags || []).map((g) => `<em>#${_airE(g)}</em>`).join('')}</span></div></div>
+      ${can ? `<div class="air-row">
+        <button class="air-btn tg" onclick="airDraftAsk('${_airE(d.id)}')">${_airIc('send')}Tasdiqlash va yuborish</button>
+        <button class="air-btn" onclick="airDraftEditor('${_airE(d.id)}')">${_airIc('edit')}Shablon bilan</button>
+        <button class="air-btn" onclick="airDraftSkip('${_airE(d.id)}')">${_airIc('close')}Oʻtkazish</button></div>` : ''}
+    </article>`).join('')}</div>`;
+}
+function airDraftAsk(id) {
+  const d = ((AIR.queue && AIR.queue.items) || []).find((x) => x.id === id); if (!d) return;
+  const ch = AIR.st && AIR.st.telegram && AIR.st.telegram.channel;
+  openSheet({ ic: 'send', c: 'pink', title: 'Kanalga yuborilsinmi?', body: `<div class="air-ask">
+      <p><span>Kanal</span><b>${_airE(ch || '—')}</b></p><p><span>Mahsulot</span><b>${_airE(d.name || '')}</b></p>
+      <p><span>Rasm</span><b>Mahsulotning oʻz rasmi</b></p>
+      <small>Narx va qoldiq yuborish paytida qayta tekshiriladi — izohda oʻsha paytdagi narx boʻladi.</small></div>`,
+    foot: `<button class="air-btn" onclick="closeSheet()">Bekor qilish</button><button class="air-btn pri" onclick="closeSheet();airDraftApprove('${_airE(id)}')">${_airIc('send')}Yuborish</button>` });
+}
+async function airDraftApprove(id) {
+  _airToast('Yuborilmoqda…');
+  const r = await airApi('draft_action', { id, op: 'approve' });
+  AIR.queue = null; AIR.hist = null;
+  if (r.ok && r.data.ok) _airToast('Kanalga yuborildi');
+  else _airToast((r.data && r.data.error) || (r.offline ? 'Internet yoʻq' : 'Yuborilmadi') + ' — Tarixda «Qayta yuborish»');
+  if (AIR.sub === 'queue') airRenderQueue();
+}
+async function airDraftSkip(id) {
+  const r = await airApi('draft_action', { id, op: 'skip' });
+  AIR.queue = null; _airToast(r.ok ? 'Oʻtkazildi' : ((r.data && r.data.error) || 'Bajarilmadi'));
+  if (AIR.sub === 'queue') airRenderQueue();
+}
+// Qoralamani shablon rasmi bilan yuborish: muharrirda ochiladi; o'sha kalit — yuborilganda qoralama shu postga aylanadi
+function airDraftEditor(id) {
+  const d = ((AIR.queue && AIR.queue.items) || []).find((x) => x.id === id); if (!d) return;
+  AIR.queue = null;
+  airOpenInEditor({ pid: d.pid, title: d.title, body: d.body, tags: d.tags, reason: d.reason, format: 'photo', idemKey: d.idemKey });
 }

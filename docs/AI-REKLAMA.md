@@ -1,6 +1,6 @@
 # AI-reklama moduli — reja (v25.8)
 
-Holat: **reja tasdiqlangan (2026-11-23).** 1-bosqich bajarildi; keyingi bosqichlar — ketma-ket.
+Holat: **5 bosqich bajarildi (2026-11-27)**, deploy kutilmoqda (58-migratsiya + sayt — egasi buyrug'i bilan).
 Maqsad: onlayn-do'kon mahsulotidan Telegram kanal uchun foto-post yoki Reels video, Instagram uchun esa
 saqlab beriladigan fayl. Hammasi Netlify Free + Supabase Free ichida, oyiga 0 so'm (AI — ixtiyoriy).
 
@@ -210,7 +210,7 @@ Hech bir rolga avtomatik berilmaydi (deny-by-default) — admin hammasini ko'rad
 | 2. Matn | ✅ | `tests/p139-ai-reklama-matn.test.js` (shablonlar, AI'ga ketgan haqiqiy so'rov tanasi, limit, tozalash) |
 | 3. Canvas, video, UI | ✅ | `tests/p140-ai-reklama-canvas-video-ui.test.js` (canvas, MediaRecorder mock, 360 px), `p139` (rasm proksisi, alts); evidence: `tests/evidence/ai-reklama-*.png` (`node scripts/ai-reklama-evidence.js`) |
 | 4. Telegram | ✅ | `tests/p141-ai-reklama-telegram.test.js` (server: getChatMember, narx qayta tekshiruvi, takrorsiz, xato/qayta yuborish, video), `tests/p142-ai-reklama-yuborish-ui.test.js` (brauzer) |
-| 5. Avtopilot | — | |
+| 5. Avtopilot | ✅ | `tests/p143-ai-reklama-avtopilot.test.js` (cron: soatlar, soatda bitta, kuniga N, qoralama/tasdiqlash/o'tkazish/muddat, avtomat + 1 marta qayta), `p142` (Navbat va sozlama UI) |
 
 ## 10. 3-bosqich eslatmalari
 - **Shablonlar** (`js/ai-reklama-shablonlar.js`), egasi tanlovi: Chegirma, Yangi (oq), Katta narx, Brend. Yangi kelgan mahsulotga sukut — «Yangi (oq)».
@@ -239,3 +239,15 @@ Hech bir rolga avtomatik berilmaydi (deny-by-default) — admin hammasini ko'rad
 - **Do'kon nomi reklamada:** faqat asosiy so'z — «Powerful Group» → rasmda «POWERFUL» (katta harf, ochiq harf oralig'i), izohda «Powerful».
   Har shablonda nom bir marta: logo bo'lsa — faqat logo («GROUP» qatori kesib chiziladi), logo yuklanmasa — nom yozuvi.
   Vitrina va do'kon sozlamalaridagi nom o'zgarmaydi.
+
+## 12. 5-bosqich: avtopilot va Navbat
+- **Yoqish:** AI-reklama → Sozlamalar → «Avtopilot» (bot va kanal bo'lmasa — yoqilmaydi). Soatlar (Toshkent, 1–6 ta), kuniga eng ko'pi 1–5.
+- **Qanday ishlaydi:** `ai-ads-cron` har soatda `:20` da ishga tushadi. Filial jadvalidagi soatda — **bitta** post (shu soat qayta chaqirilsa ham ikkinchisi yo'q).
+  Mahsulot — nomzodlar ro'yxatining birinchisi; oxirgi «Qayta reklama» kunlari ichida reklama qilinganlari tanlanmaydi. Matn — AI (4 s) yoki shablon.
+  **Serverda canvas yo'q** — avtopilot posti mahsulotning o'z rasmi bilan (narx izohda).
+- **«Tasdiqlash bilan» (sukut):** qoralama + egasi guruhiga (Sozlamalar → Telegram → hisobot guruhi) «Yangi reklama tayyor — tasdiqlang» xabari.
+  **Navbat:** «Tasdiqlash va yuborish» (mahsulot rasmi bilan, narx shu paytda qayta), «Shablon bilan» (muharrirda dizayn rasm/video bilan — o'sha post),
+  «O'tkazish». 24 soatda tasdiqlanmasa — «Muddati o'tdi».
+- **«To'liq avtomat»:** darhol kanalga (ogohlantirish bilan yoqiladi). Xato — keyingi soatda 1 marta qayta; yana xato — «Xato» + egasi guruhiga xabar.
+- **Tozalash:** yuborilmay qolgan vaqtinchalik videolar — 1 soatdan keyin; postlar — 90 kundan keyin.
+- **Bepul tarifga ta'siri:** cron — kuniga 24 chaqiruv (oyiga ~720), har biri odatda < 1 s (jadval soati bo'lmasa — 2 ta so'rov); baza — post ~1 KB.

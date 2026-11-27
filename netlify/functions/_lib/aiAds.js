@@ -198,8 +198,8 @@ function pickCandidates(L, opts) {
   return out;
 }
 
-async function candidates(admin, filial, settings, now = Date.now()) {
-  const L = await loadBranch(admin, filial);
+async function candidates(admin, filial, settings, now = Date.now(), preloaded) {
+  const L = preloaded || await loadBranch(admin, filial);   // avtopilot — allaqachon yuklangan ma'lumot bilan
   if (!L.shopOn) return { shopOn: false, items: [] };
   const C = settings.criteria;
   const topSince = tzDate(now, C.topDays), stuckSince = tzDate(now, C.stuckDays);

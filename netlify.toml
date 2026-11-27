@@ -99,3 +99,7 @@
 # v24.5: kunlik zaxira nusxa — egasining shaxsiy Telegram chatiga (Sozlamalar → Maʼlumotlar), kuniga bir marta
 [functions."backup-daily"]
   schedule = "35 * * * *"
+
+# v25.8: AI-reklama avtopiloti — har soatda :20 (filial sozlamasidagi soatlarda bitta post; qoralamalar muddati; vaqtinchalik videolar)
+[functions."ai-ads-cron"]
+  schedule = "20 * * * *"

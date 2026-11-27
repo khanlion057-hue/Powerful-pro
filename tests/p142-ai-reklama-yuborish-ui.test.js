@@ -6,6 +6,8 @@
 //  • Tarix: holat, xato, «Kanalda ochish»; xato foto — «Qayta yuborish» tarixdagi kalit bilan.
 //  • Ruxsat: reklama.publish yo'q — tugma yo'q; kanal yo'q — tugma o'chiq va sababi ko'rinadi.
 const assert = require('node:assert/strict');
+const path = require('path');
+const EVID = path.join(__dirname, 'evidence');
 const { _withAir: withAir, _MOCK: MOCK } = require('./p140-ai-reklama-canvas-video-ui.test.js');
 
 const pick = async (page, n = 1) => { await page.evaluate(() => airRender()); await page.waitForSelector('.air-cand'); await page.click(`.air-cand:nth-child(${n})`); await page.waitForSelector('#air-cv'); await page.waitForSelector('#air-title'); };
@@ -116,11 +118,78 @@ async function testHistoryAndPerms() {
   });
 }
 
+// ── 5-bosqich: Navbat va avtopilot sozlamasi ──
+async function testQueueAndAutopilot() {
+  const DRAFT = { id: '11111111-2222-4333-8444-555555555555', pid: 11, at: '2026-11-27T05:20:00Z', expiresAt: new Date(Date.now() + 5 * 3600000).toISOString(),
+    price: { line: '1 854 000 soʻm', oldLine: '' }, name: 'Tortsovochnaya pila MS 1900-255 L', title: 'Yangi keldi', body: 'Aniq kesish.\nTez oling.', tags: ['arra'], reason: 'new',
+    img: 'tests/fixtures/ai-reklama/tortsovka.webp', aiText: false, idemKey: 'ap-2026-11-27-10' };
+  let drafts = [DRAFT, { ...DRAFT, id: '11111111-2222-4333-8444-666666666666', idemKey: 'ap-2026-11-27-18', name: 'Elektroarra' }];
+  const saved = [];
+  await withAir(async (page, calls) => {
+    await page.evaluate(() => { document.body.insertAdjacentHTML('beforeend', '<div id="bs-ov" hidden></div>'); AIR.sub = 'queue'; airRender(); });
+    await page.waitForSelector('.air-dr');
+    assert.match(await page.textContent('#air-body'), /Avtopilot: tasdiqlash bilan · 10:00, 18:00 · kuniga 3/);
+    await page.waitForFunction(() => [...document.querySelectorAll('.air-dr img')].every((i) => i.complete));
+    await page.screenshot({ path: path.join(EVID, 'p142-navbat-360.png'), fullPage: true });
+    const card = await page.$eval('.air-dr', (e) => e.innerText);
+    assert.match(card, /Tasdiqlash kutilmoqda[\s\S]*(4|5) soat qoldi[\s\S]*Tortsovochnaya pila[\s\S]*1 854 000 soʻm[\s\S]*Yangi keldi/);
+    // tasdiqlash — oyna, so'ng draft_action approve
+    await page.click('.air-dr:nth-child(1) button:has-text("Tasdiqlash va yuborish")');
+    await page.waitForSelector('.air-ask');
+    assert.match(await page.textContent('.air-ask'), /Mahsulotning oʻz rasmi/);
+    await page.click('#bs-ov button:has-text("Yuborish")');
+    await page.waitForFunction(() => document.querySelectorAll('.air-dr').length === 1);
+    assert.deepEqual(calls.filter((c) => c.action === 'draft_action').map((c) => [c.id, c.op]), [[DRAFT.id, 'approve']]);
+    // o'tkazish
+    await page.click('.air-dr button:has-text("Oʻtkazish")');
+    await page.waitForSelector('.air-empty');
+    assert.match(await page.textContent('.air-empty'), /Tasdiqlash kutayotgan post yoʻq/);
+    // «Shablon bilan»: muharrir ochiladi — matn, «Yangi (oq)» shabloni, qoralama kaliti
+    drafts = [DRAFT];
+    await page.evaluate(() => { AIR.queue = null; airRenderQueue(); });
+    await page.waitForSelector('.air-dr');
+    await page.click('.air-dr button:has-text("Shablon bilan")');
+    await page.waitForSelector('#air-title'); await page.waitForSelector('#air-cv');
+    assert.equal(await page.inputValue('#air-title'), 'Yangi keldi');
+    assert.equal(await page.$eval('.air-tpl.on span', (x) => x.textContent), 'Yangi (oq)');
+    await page.waitForFunction(() => !document.querySelector('button.tg').disabled);
+    await sendViaSheet(page);
+    await page.waitForSelector('.air-done a');
+    assert.equal(calls.find((c) => c.action === 'publish').idemKey, DRAFT.idemKey, 'qoralama kaliti — oʻsha post');
+    // Sozlamalar: avtopilot
+    await page.evaluate(() => { AIR.sub = 'set'; airRender(); });
+    await page.waitForSelector('#air-ap-on');
+    assert.equal(await page.isChecked('#air-ap-on'), false);
+    await page.check('#air-ap-on');
+    await page.waitForSelector('.air-ap .air-seg');
+    await page.click('.air-ap button:has-text("Toʻliq avtomat")');
+    assert.match(await page.textContent('.air-ap'), /tasdiqingizsiz kanalga chiqadi/);
+    for (const h of ['08:00', '12:00', '14:00', '16:00', '20:00']) await page.click(`.air-ap .air-chip:has-text("${h}")`);
+    assert.equal(await page.$$eval('.air-ap .air-chip.on', (a) => a.length), 6, 'eng koʻpi 6 ta soat');
+    await page.$eval('.air-ap', (e) => e.scrollIntoView());
+    await page.screenshot({ path: path.join(EVID, 'p142-avtopilot-sozlama-360.png') });
+    await page.click('.air-ap .air-seg:last-of-type button:has-text("2")');
+    await page.click('button:has-text("Saqlash")');
+    await page.waitForFunction(() => window.__toasts && window.__toasts.some((t) => /Saqlandi/.test(t.msg)));
+    assert.deepEqual(saved[0].autopilot, { enabled: true, mode: 'auto', hours: [8, 10, 12, 14, 16, 18], perDay: 2 });
+  }, { handle: (b) => {
+    if (b.action === 'drafts') return [200, { ok: true, autopilot: { enabled: true, mode: 'approve', hours: [10, 18], perDay: 3 }, items: drafts }];
+    if (b.action === 'draft_action') { drafts = drafts.filter((d) => d.id !== b.id); return [200, { ok: true, status: b.op === 'approve' ? 'sent' : 'skipped' }]; }
+    if (b.action === 'product') return [200, { ok: true, item: { pid: 11, name: DRAFT.name, img: ['tests/fixtures/ai-reklama/tortsovka.webp'], line: '1 854 000 soʻm', oldLine: '', pct: 0, stock: 3, cur: 'UZS' } }];
+    if (b.action === 'publish') return [200, { ok: true, url: 'https://t.me/c/2193336308/9' }];
+    if (b.action === 'settings_get') return [200, { ok: true, settings: { channel: '-1002193336308', lang: 'uz', criteria: { discount: true, new: true, stuck: true, top: true, newDays: 14, stuckDays: 30, topDays: 30, topN: 10, repeatDays: 7 },
+      autopilot: { enabled: false, mode: 'approve', hours: [10, 18], perDay: 3 } } }];
+    if (b.action === 'settings_save') { saved.push(b.settings); return [200, { ok: true, settings: b.settings }]; }
+    return null;
+  } });
+}
+
 module.exports = {
   name: 'P142 — AI-reklama 4-bosqich: «Telegram\'ga» (tasdiqlash, qayta yuborish, narx o\'zgarishi, video yuklash, tarix, ruxsat)',
   cases: [
     { name: 'foto: tasdiqlash → yuborish; xato → «Qayta yuborish» o\'sha kalit; narx o\'zgardi — yangi narx va yangi kalit', run: testPhotoRetryAndPrice },
     { name: 'video: yaratilmagan — tugma o\'chiq; yuklash (PUT) → publish(videoPath) bir xil kalit bilan', run: testVideoUpload },
+    { name: 'Navbat: qoralama (vaqt, narx, matn), tasdiqlash oynasi, o\'tkazish, «Shablon bilan» — o\'sha kalit; avtopilot sozlamasi (avtomat ogohlantirishi, ≤6 soat)', run: testQueueAndAutopilot },
     { name: 'tarix: holat/xato/havola; «Qayta yuborish» — matn, shablon tiklanadi, tarixdagi kalit; kanal yo\'q / ruxsat yo\'q', run: testHistoryAndPerms },
   ],
 };

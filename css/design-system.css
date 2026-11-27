@@ -4130,3 +4130,11 @@ a.air-btn{ text-decoration:none; }
 .air-st.wait{ color:var(--amber); background:color-mix(in srgb,var(--amber) 16%,transparent); }
 .air-st.mute{ color:var(--text-secondary); background:var(--bg-hover); }
 .air-ok{ color:var(--emerald); } .air-bad{ color:var(--red); }
+/* v25.8 (5-bosqich): Navbat (avtopilot qoralamalari) */
+.air-dr-b{ display:flex; gap:12px; align-items:flex-start; min-width:0; }
+.air-dr-b img{ width:96px; height:96px; flex:none; object-fit:contain; border-radius:12px; background:#fff; border:1px solid var(--border); }
+.air-dr-b > div{ display:flex; flex-direction:column; gap:4px; min-width:0; }
+.air-dr-b > div > b{ font-size:14.5px; overflow-wrap:anywhere; }
+.air-dr-t{ margin:0; font-size:13px; color:var(--text-secondary); white-space:pre-line; overflow-wrap:anywhere; }
+.air-ap .air-h{ margin-top:12px; }
+.air-tgl a{ color:#229ed9; font-weight:700; }

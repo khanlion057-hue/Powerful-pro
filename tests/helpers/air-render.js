@@ -25,6 +25,15 @@ const PRODUCTS = [
   { key: 'tik-rasm', name: 'Цепная электропила ECS 1900-40 (Ўзбекистон)', title: 'Хит продаж', lang: 'ru',
     priceLine: '542 000 soʻm', oldLine: '', pct: 0, reason: 'top', img: 'tests/fixtures/ai-reklama/pila-tik.jpg' },
 ];
+// «Yangi (oq)» uchun: uzun nom / tik rasm / rangli fondagi rasm (hammasi yangi kelgan)
+const NEW_PRODUCTS = [
+  { key: 'uzun-nom', name: 'Tortsovochnaya pila MS 1900-255 L — lazer koʻrsatkich, 255 mm disk, sirpanuvchi qoʻl, oʻtkir gʻildirak bilan', title: 'Yangi keldi: aniq kesish',
+    priceLine: '1 854 000 soʻm', oldLine: '', pct: 0, reason: 'new', img: 'tests/fixtures/ai-reklama/tortsovka.webp' },
+  { key: 'tik-rasm', name: 'Zanjirli elektroarra ECS 1900-40', title: 'Bogʻ uchun yangi yordamchi',
+    priceLine: '542 000 soʻm', oldLine: '', pct: 0, reason: 'new', img: 'tests/fixtures/ai-reklama/pila-tik.jpg' },
+  { key: 'rangli-fon', name: 'Drel AGH 600 Vt (rasm rangli fonda)', title: 'Ustalar uchun kuchli tanlov',
+    priceLine: '891 000 soʻm', oldLine: '', pct: 0, reason: 'new', img: 'tests/fixtures/ai-reklama/drel-fon.jpg' },
+];
 async function openAir() {
   const srv = await server(), port = srv.address().port;
   const browser = await chromium.launch({ executablePath: fs.existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined, args: ['--no-sandbox'] });
@@ -50,4 +59,4 @@ async function renderAll(page, fmt, products = PRODUCTS) {
     return { fontOk, out };
   }, { fmt, products });
 }
-module.exports = { openAir, renderAll, PRODUCTS, ROOT };
+module.exports = { openAir, renderAll, PRODUCTS, NEW_PRODUCTS, ROOT };

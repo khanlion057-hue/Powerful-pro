@@ -211,6 +211,41 @@ async function testTemplateMode() {
   }, { aiOn: false });
 }
 
+// ── 5. «Yangi (oq)»: oq fon, ramka/karta yo'q, oq fonli rasm fonga singadi; yangi mahsulotga sukut ──
+async function testYangiOq() {
+  await withAir(async (page) => {
+    const r = await page.evaluate(async () => {
+      await airLoadFonts();
+      const tpl = AIR_TEMPLATES.find((t) => t.id === 'yangioq');
+      const img = await airGetImage('tests/fixtures/ai-reklama/tortsovka.webp');
+      const out = {};
+      for (const [W, H] of [[1080, 1080], [1080, 1920]]) {
+        const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const ctx = cv.getContext('2d');
+        airDraw(ctx, W, H, tpl, { name: 'Tortsovochnaya pila', title: '', priceLine: '1 854 000 soʻm', oldLine: '', pct: 0, reason: 'new', lang: 'uz', shopName: 'Powerful Group', imgs: [img] }, null);
+        const px = (x, y) => Array.from(ctx.getImageData(x, y, 1, 1).data).slice(0, 3);
+        // burchaklar va chetlar — toza oq (ramka, chegara, to'q fon yo'q)
+        const edges = [[4, 4], [W - 5, H - 5], [4, H - 5], [W - 5, H / 2], [4, H / 2], [W / 2, H - 5]].map(([x, y]) => px(x, y));
+        // rasm qutisining burchagi — oq rasm foni oq fonga singgan (karta yoki to'rtburchak ko'rinmaydi): to'q/kulrang emas
+        const box = W === H ? [260, 160] : [160, 270];
+        out[H] = { edges, boxCorner: px(box[0], box[1]) };
+      }
+      return { out, name: tpl.name, layout: tpl.layout };
+    });
+    assert.deepEqual([r.name, r.layout], ['Yangi (oq)', 'fresh']);
+    for (const H of ['1080', '1920']) {
+      for (const e of r.out[H].edges) assert.ok(e.every((v) => v >= 250), `${H}: chet oq (ramka yoʻq): ${e}`);
+      assert.ok(r.out[H].boxCorner.every((v) => v >= 225), `${H}: rasm burchagi fonga singgan: ${r.out[H].boxCorner}`);
+    }
+    // yangi kelgan mahsulot tanlansa — sukut bo'yicha «Yangi (oq)»
+    await page.evaluate(() => airRender());
+    await page.waitForSelector('.air-cand');
+    await page.click('.air-cand:nth-child(2)');
+    await page.waitForSelector('.air-tpl.on');
+    assert.equal(await page.$eval('.air-tpl.on span', (s) => s.textContent), 'Yangi (oq)');
+    assert.deepEqual(await page.$$eval('.air-tpl span', (a) => a.map((x) => x.textContent)), ['Chegirma', 'Yangi (oq)', 'Katta narx', 'Brend']);
+  });
+}
+
 module.exports = {
   name: 'P140 — AI-reklama 3-bosqich: canvas, video (MediaRecorder mock), UI 360 px',
   cases: [
@@ -218,5 +253,6 @@ module.exports = {
     { name: 'video: MP4 (isTypeSupported), 4 Mbit/s, kuy, Wake Lock; bekor qilish; ilovadan chiqish — fayl yoʻq; NO_MP4; TOO_BIG', run: testVideo },
     { name: 'UI 360 px: nomzod kartochkasi, «Boshqa variant» darhol, shablon almashtirish, tugmalar ≥44 px, 9:16 sigʻadi, qayta urinish', run: testUi360 },
     { name: 'shablon rejimi: «Shablon rejimi» holati, «AI yozsin» yoʻq', run: testTemplateMode },
+    { name: '«Yangi (oq)»: oq fon, ramka yoʻq, rasm foni singadi; yangi mahsulotga sukut; 4 ta shablon', run: testYangiOq },
   ],
 };

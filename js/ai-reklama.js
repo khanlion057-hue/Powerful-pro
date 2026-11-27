@@ -99,6 +99,7 @@ function _bg(ctx, tpl, W, H, t) {
   else if (tpl.bg.type === 'radial') { const g = ctx.createRadialGradient(W * 0.5, H * 0.3, 40, W * 0.5, H * 0.45, Math.max(W, H) * 0.85); g.addColorStop(0, st[0]); g.addColorStop(1, st[1]); ctx.fillStyle = g; }
   else ctx.fillStyle = _grad(ctx, 0, 0, W, H, st);
   ctx.fillRect(0, 0, W, H);
+  if (tpl.layout === 'fresh') return;   // «Yangi (oq)» — fon toza oq (nur faqat mahsulot orqasida)
   // yumshoq rangli dog'lar (fon tekis ko'rinmasin); videoda sekin siljiydi
   const k = t == null ? 0 : t * 0.25;
   [[0.15 + 0.05 * Math.sin(k), 0.12, tpl.glow[0]], [0.9 - 0.05 * Math.cos(k), 0.72, tpl.glow[1]]].forEach(([fx, fy, c]) => {
@@ -172,8 +173,8 @@ function _cta(ctx, cx, y, tpl, L, t, dur) {
   const pulse = t == null ? 1 : 1 + 0.04 * Math.sin(t * 6);
   ctx.save(); ctx.globalAlpha = a; ctx.translate(cx, y); ctx.scale(pulse, pulse);
   ctx.font = AIR_FF(800, 46); const txt = L.order + '  →', w = ctx.measureText(txt).width + 120, h = 104;
-  _rr(ctx, -w / 2, -h / 2, w, h, h / 2); ctx.fillStyle = tpl.priceOnPill ? '#ffffff' : _grad(ctx, -w / 2, 0, w / 2, 0, tpl.accent); ctx.fill();
-  ctx.fillStyle = tpl.priceOnPill ? '#9a3412' : (tpl.id === 'minimal' || tpl.id === 'top' || tpl.id === 'brend' ? (tpl.id === 'minimal' ? '#ffffff' : '#1f1300') : '#ffffff');
+  _rr(ctx, -w / 2, -h / 2, w, h, h / 2); ctx.fillStyle = _grad(ctx, -w / 2, 0, w / 2, 0, tpl.accent); ctx.fill();
+  ctx.fillStyle = tpl.ctaInk || (tpl.id === 'brend' ? '#1f1300' : '#ffffff');
   ctx.textAlign = 'center'; ctx.fillText(txt, 0, 16); ctx.textAlign = 'left'; ctx.restore();
 }
 function _header(ctx, d, tpl, Wn, center) {
@@ -188,6 +189,79 @@ function _header(ctx, d, tpl, Wn, center) {
     if (tpl.logoPlate) { ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.15)'; ctx.shadowBlur = 16; _rr(ctx, x - 18, 30, w + 36, h + 20, 24); ctx.fillStyle = '#ffffff'; ctx.fill(); ctx.restore(); }
     ctx.drawImage(logo, x, 40, w, h);
   }
+}
+
+// To'rt qirrali yulduzcha (✦) — shriftga bog'liq emas
+function _star(ctx, cx, cy, r) {
+  ctx.beginPath();
+  for (let i = 0; i < 8; i++) { const a = -Math.PI / 2 + i * Math.PI / 4, rr = i % 2 ? r * 0.32 : r; ctx.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); }
+  ctx.closePath(); ctx.fill();
+}
+// «Yangi (oq)»: oq fon, ramka va karta yo'q. Mahsulot fonning o'zida, ostida och kulrang soya («havoda»); orqasida pushti-binafsha nur;
+// burchakda katta «YANGI» (~8%); tepada «✦ YANGI KELDI»; narx eng katta, to'q siyoh; pastda ingichka gradient chiziq + tugma.
+// Video: mahsulot pastdan suzib chiqadi va yengil tebranadi; «YANGI» sekin paydo bo'ladi; narx kuy zarbasida «pop».
+function _fresh(ctx, Wn, Hn, tall, tpl, d, L, t, dur, beat, nameBlock, priceA) {
+  const X = 80, R = Wn - 80, img = d.imgs && d.imgs[0];
+  const box = tall ? { x: 150, y: 260, w: 780, h: 860 } : { x: 250, y: 150, w: 580, h: 440 };
+  // 1) katta «YANGI» — fon yozuvi, och gradient, ~8%
+  const wa = 0.08 * _A(t, 0, 2.5, (x) => x);
+  if (wa > 0) {
+    ctx.save(); ctx.globalAlpha = wa; const word = L.new, fs = tall ? 230 : 180;   // yuqori o'ng burchak
+    ctx.font = AIR_FF(900, fs); ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic';
+    const w = ctx.measureText(word).width, k = Math.min(1, (Wn * 0.7) / w); ctx.translate(Wn - 24, (tall ? 400 : 300)); ctx.scale(k, k);
+    ctx.fillStyle = _grad(ctx, -w, 0, 0, 0, ['#ec4899', '#8b5cf6']); ctx.fillText(word, 0, 0); ctx.restore();
+  }
+  // 2) nur (blur doira) — mahsulot orqasida, fon baribir oq
+  const cx = box.x + box.w / 2, cy = box.y + box.h * 0.5;
+  const ga = _A(t, 0.1, 1.2);
+  if (ga > 0) {
+    ctx.save(); ctx.globalAlpha = ga;
+    [[cx - box.w * 0.12, cy - box.h * 0.06, '#f9a8d4'], [cx + box.w * 0.14, cy + box.h * 0.06, '#c4b5fd']].forEach(([x, y, c]) => {
+      const g = ctx.createRadialGradient(x, y, 10, x, y, box.w * 0.55); g.addColorStop(0, c + '59'); g.addColorStop(0.55, c + '1f'); g.addColorStop(1, c + '00');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, Wn, Hn);
+    });
+    ctx.restore();
+  }
+  // 3) mahsulot — pastdan suzib chiqadi, keyin yengil tebranadi; ostida och soya
+  const fa = _A(t, 0.2, 1.1), bob = t == null ? 0 : Math.sin(t * 1.6) * 6 * fa, lift = (1 - fa) * 140 - bob;
+  if (img && img.naturalWidth && fa > 0) {
+    const iw = img.naturalWidth, ih = img.naturalHeight, s = Math.min(box.w / iw, box.h / ih), dw = iw * s, dh = ih * s;
+    const dx = box.x + (box.w - dw) / 2, dy = box.y + (box.h - dh) / 2 + lift;
+    const sy = box.y + (box.h + dh) / 2 + (tall ? 50 : 36), sw = dw * (0.78 - 0.04 * (bob / 6));   // soya — joyida, mahsulot ko'tarilganda kichrayadi
+    ctx.save(); ctx.globalAlpha = fa; ctx.translate(cx, sy); ctx.scale(1, 0.13);
+    const g = ctx.createRadialGradient(0, 0, 4, 0, 0, sw / 2); g.addColorStop(0, 'rgba(15,23,42,.22)'); g.addColorStop(0.6, 'rgba(15,23,42,.08)'); g.addColorStop(1, 'rgba(15,23,42,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, sw / 2, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    // multiply: rasmning oq foni ko'rinmaydi — mahsulot oq fonning o'zida turadi (rangli fondagi rasm — yumaloq burchakli)
+    ctx.save(); ctx.globalAlpha = fa; ctx.globalCompositeOperation = 'multiply'; _rr(ctx, dx, dy, dw, dh, 22); ctx.clip(); ctx.drawImage(img, dx, dy, dw, dh); ctx.restore();
+  }
+  // 4) tepada pill «✦ YANGI KELDI» va logo
+  const pa = _A(t, 0.3, 0.45, _easeBack);
+  if (pa > 0) {
+    const txt = L.newIn || L.new, fs = tall ? 36 : 30; ctx.save(); ctx.font = AIR_FF(800, fs);
+    const w = ctx.measureText(txt).width + fs * 2.6, h = fs * 2, x = X, y = tall ? 110 : 64;
+    ctx.translate(x, y + h / 2); ctx.scale(pa, pa); ctx.translate(-x, -(y + h / 2));
+    ctx.shadowColor = 'rgba(236,72,153,.28)'; ctx.shadowBlur = 22; ctx.shadowOffsetY = 6;
+    _rr(ctx, x, y, w, h, h / 2); ctx.fillStyle = _grad(ctx, x, 0, x + w, 0, tpl.accent); ctx.fill(); ctx.shadowColor = 'transparent';
+    ctx.fillStyle = '#ffffff'; _star(ctx, x + fs * 0.95, y + h / 2, fs * 0.42);
+    ctx.textBaseline = 'middle'; ctx.fillText(txt, x + fs * 1.65, y + h / 2 + 1); ctx.restore();
+  }
+  if (d.logo && d.logo.naturalWidth) { const h = tall ? 76 : 64, w = Math.min(240, d.logo.naturalWidth * h / d.logo.naturalHeight); ctx.drawImage(d.logo, R - w, tall ? 108 : 62, w, h); }
+  // 5) nom, narx (eng katta, to'q siyoh, kuy zarbasida «pop»)
+  const nameY = tall ? 1250 : 676;
+  nameBlock(X, nameY, R - X, tall ? [46, 42, 38] : [36, 33, 30], tpl.sub, 'left', 1.22);
+  const pSize = tall ? 150 : 104, pY = tall ? 1470 : 838;
+  if (d.oldLine) { const oa = _A(t, 1.4, 0.5); if (oa > 0) { ctx.save(); ctx.globalAlpha = oa; _old(ctx, X, pY - pSize * 0.98, d.oldLine, pSize * 0.34, '#9ca3af', 'left'); ctx.restore(); } }
+  if (priceA > 0) {
+    const ph = t == null ? 0 : _clamp(1 - ((t - beat * 4) % (beat * 2)) / (beat * 0.6));   // har 2 zarbada qisqa «pop»
+    const sc = priceA * (1 + (t != null && t > beat * 4.5 ? 0.05 * ph : 0));
+    ctx.save(); ctx.translate(X, pY - pSize * 0.35); ctx.scale(sc, sc); ctx.translate(-X, -(pY - pSize * 0.35));
+    _price(ctx, X, pY, d.priceLine, pSize, tpl.priceInk, R - X, 'left'); ctx.restore();
+  }
+  // 6) ingichka gradient chiziq + «Buyurtma bering →»
+  const la = _A(t, 1.0, 0.8), lineY = tall ? 1580 : 900;
+  if (la > 0) { ctx.fillStyle = _grad(ctx, X, 0, R, 0, ['#ec4899', '#8b5cf6']); ctx.save(); ctx.globalAlpha = 0.9; ctx.fillRect(X, lineY, (R - X) * la, 4); ctx.restore(); }
+  _cta(ctx, Wn / 2, tall ? 1720 : 990, tpl, L, t, dur);
+  if (tall && d.shopName) { ctx.save(); ctx.fillStyle = '#9ca3af'; ctx.font = AIR_FF(700, 28); ctx.textAlign = 'center'; ctx.fillText(String(d.shopName).toUpperCase().slice(0, 32), Wn / 2, 1850); ctx.restore(); }
 }
 
 // Asosiy chizish. d: { name, title, priceLine, oldLine, pct, reason, shopName, lang, imgs:[Image], logo, logoDark }
@@ -205,7 +279,7 @@ function airDraw(ctx, W, H, tpl, d, t = null, dur = 10, bpm = 110) {
     : _badge(ctx, kind, d, tpl, card.x + 32, card.y + 64, t, beat, L);
   ctx.save(); ctx.setTransform(sc, 0, 0, sc, 0, 0); ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
   _bg(ctx, tpl, Wn, Hn, t);
-  const img0 = d.imgs && d.imgs[0], img1 = (d.imgs && d.imgs[1]) || img0;
+  const img0 = d.imgs && d.imgs[0];
   const titleA = _A(t, 0.5, 0.6), nameA = _A(t, 0.8, 0.6), oldA = _A(t, 1.4, 0.5), priceA = _A(t, beat * 4, 0.5, _easeBack);
   const txt = (s, x, y, size, w, color, a, align, maxW) => {
     if (a <= 0 || !s) return; ctx.save(); ctx.globalAlpha = _clamp(a); ctx.translate(0, (1 - _clamp(a)) * 30);
@@ -220,7 +294,6 @@ function airDraw(ctx, W, H, tpl, d, t = null, dur = 10, bpm = 110) {
     return f;
   };
   const priceBlock = (x, y, size, maxW, align, colorOld) => {
-    if (tpl.priceOnPill) return pillPrice(x, y, size, maxW, align);
     if (d.oldLine && oldA > 0) { ctx.save(); ctx.globalAlpha = oldA; _old(ctx, x, y - size * 0.98, d.oldLine, size * 0.42, colorOld || tpl.sub, align); ctx.restore(); }
     if (priceA > 0) {
       ctx.save(); const s = priceA; ctx.translate(x, y - size * 0.35); ctx.scale(s, s); ctx.translate(-x, -(y - size * 0.35));
@@ -228,22 +301,7 @@ function airDraw(ctx, W, H, tpl, d, t = null, dur = 10, bpm = 110) {
       ctx.restore();
     }
   };
-  // Narx oq "tabletka" ichida (Maxsus taklif). Eski narx — tabletka o'ngida (sig'sa), aks holda tepasida, to'qnashmaydi
-  const pillPrice = (x, y, size, maxW, align) => {
-    // Tabletka kengligi — _price bilan bir xil o'lchov (raqam katta + valyuta kichik)
-    ctx.save(); ctx.globalAlpha = 0; const pw = _price(ctx, 0, -9999, d.priceLine, size, '#000', maxW, 'left').w; ctx.restore();
-    const w = pw + 96, h = size * 1.42, x0 = align === 'center' ? x - w / 2 : x - 44, top = y - size * 1.04;
-    let oldX = null, oldY = top - size * 0.24;
-    if (d.oldLine) { ctx.font = AIR_FF(600, size * 0.4); const ow = ctx.measureText(d.oldLine).width; if (align !== 'center' && x0 + w + 28 + ow < Wn - 60) { oldX = x0 + w + 28; oldY = top + h / 2 + size * 0.14; } }
-    if (d.oldLine && oldA > 0) { ctx.save(); ctx.globalAlpha = oldA; _old(ctx, oldX != null ? oldX : (align === 'center' ? x : x0 + 8), oldY, d.oldLine, size * 0.4, tpl.sub, oldX != null ? 'left' : align); ctx.restore(); }
-    if (priceA > 0) {
-      ctx.save(); const s = priceA, cy = top + h / 2; ctx.translate(x0 + w / 2, cy); ctx.scale(s, s); ctx.translate(-(x0 + w / 2), -cy);
-      ctx.shadowColor = 'rgba(0,0,0,.18)'; ctx.shadowBlur = 30; ctx.shadowOffsetY = 8;
-      _rr(ctx, x0, top, w, h, h / 2); ctx.fillStyle = '#ffffff'; ctx.fill(); ctx.shadowColor = 'transparent';
-      _price(ctx, align === 'center' ? x : x0 + 44, y, d.priceLine, size, tpl.priceInk, maxW, align === 'center' ? 'center' : 'left');
-      ctx.restore();
-    }
-  };
+
 
   if (tpl.layout === 'hero') {
     _header(ctx, d, tpl, Wn);
@@ -275,37 +333,8 @@ function airDraw(ctx, W, H, tpl, d, t = null, dur = 10, bpm = 110) {
       nameBlock(540, bandY + 80, 900, [36, 32, 30], '#334155', 'center', 1.18);
       priceBlock(540, bandY + 340, 150, 980, 'center', '#94a3b8');
     }
-  } else if (tpl.layout === 'collage') {
-    _header(ctx, d, tpl, Wn);
-    const c1 = tall ? { x: 70, y: 200, w: 600, h: 600, r: 56 } : { x: 64, y: 150, w: 470, h: 470, r: 48 };
-    const c2 = tall ? { x: 410, y: 600, w: 600, h: 600, r: 56 } : { x: 546, y: 210, w: 470, h: 470, r: 48 };
-    _card(ctx, c1, img0, tpl, t, dur);
-    _card(ctx, c2, img1, tpl, t, dur, { delay: 0.25, zoom: img1 === img0 ? 1.7 : 1, pad: img1 === img0 ? 0 : 0.07 });
-    if (circle) _badge(ctx, kind, d, tpl, tall ? 900 : 960, tall ? 1180 : 690, t, beat, L); else badgeAt(c1);
-    if (tall) {
-      txt(d.title, 80, 1330, 64, 800, tpl.ink, titleA, 'left', 920);
-      nameBlock(80, 1402, 920, [42, 38, 34], tpl.sub, 'left');
-      priceBlock(80, 1660, 128, 920, 'left');
-      _cta(ctx, 540, 1800, tpl, L, t, dur);
-    } else {
-      txt(d.title, 64, 770, 52, 800, tpl.ink, titleA, 'left', 760);
-      nameBlock(64, 824, 760, [34, 30], tpl.sub, 'left', 1.2);
-      priceBlock(64, 1010, 92, 700, 'left');
-    }
-  } else if (tpl.layout === 'minimal') {
-    const card = tall ? { x: 70, y: 110, w: 940, h: 1080, r: 48 } : { x: 90, y: 80, w: 900, h: 620, r: 44 };
-    _card(ctx, card, img0, tpl, t, dur);
-    badgeAt(card);
-    ctx.fillStyle = '#e2e8f0'; ctx.fillRect(tall ? 70 : 90, tall ? 1250 : 740, tall ? 940 : 900, 3);
-    if (tall) {
-      nameBlock(70, 1340, 940, [48, 44, 40], tpl.ink, 'left');
-      priceBlock(70, 1610, 128, 940, 'left');
-      txt(String(d.shopName || '').toUpperCase(), 70, 1840, 30, 700, tpl.sub, 1, 'left', 640);
-    } else {
-      nameBlock(90, 806, 900, [40, 36, 32], tpl.ink, 'left', 1.18);
-      priceBlock(90, 1012, 92, 640, 'left');
-      txt(String(d.shopName || '').toUpperCase(), 990, 1010, 26, 700, tpl.sub, 1, 'right', 300);
-    }
+  } else if (tpl.layout === 'fresh') {   // v25.8: «Yangi (oq)»
+    _fresh(ctx, Wn, Hn, tall, tpl, d, L, t, dur, beat, nameBlock, priceA);
   } else {   // frame (brend)
     ctx.save(); ctx.strokeStyle = tpl.frame; ctx.lineWidth = 6; _rr(ctx, 34, 34, Wn - 68, Hn - 68, 44); ctx.stroke(); ctx.restore();
     const logo = d.logoDark || d.logo;
@@ -542,7 +571,7 @@ function airHowSheet() {
   openSheet({ ic: 'sparkle', c: 'pink', title: 'Bu qanday ishlaydi', body: `<ol class="air-how-l">
     <li><b>Mahsulot tanlang.</b> Tizim oʻzi taklif qiladi: chegirmadagi, yangi kelgan, koʻp sotilgan va uzoq turib qolganlar.</li>
     <li><b>Matn.</b> AI ulangan boʻlsa — AI yozadi; boʻlmasa tayyor shablon. «Boshqa variant» bilan almashtiring yoki oʻzingiz tahrirlang.</li>
-    <li><b>Shablon</b> — 8 ta dizayndan birini tanlang. Narx va eski narx tizimdan olinadi, oʻzgartirib boʻlmaydi.</li>
+    <li><b>Shablon</b> — Chegirma, Yangi (oq), Katta narx yoki Brend. Yangi kelgan mahsulotga sukut boʻyicha «Yangi (oq)». Narx va eski narx tizimdan olinadi, oʻzgartirib boʻlmaydi.</li>
     <li><b>Format va musiqa.</b> Post (1:1 rasm) yoki Reels (9:16 video, 8–15 soniya, kuy bilan).</li>
     <li><b>Saqlash yoki ulashish.</b> Video yozilayotganda ilovadan chiqmang — chiqsangiz, yozish toʻxtaydi va qayta urinasiz.</li></ol>
     <p class="air-note">AI'ga faqat mahsulot nomi, kategoriyasi va qisqa tavsifi yuboriladi. Narx, mijoz, taʼminotchi va telefon — hech qachon.</p>` });
@@ -582,7 +611,7 @@ async function airLoadCands() {
 async function airPick(pid) {
   const c = (AIR.cands || []).find((x) => x.pid === pid); if (!c) return;
   AIR.sel = c; AIR.text = null; AIR.alts = []; AIR.altI = 0; AIR.out = null; AIR.err = null; AIR.imgs = [];
-  if (!AIR._tplTouched) AIR.tpl = { discount: 'chegirma', new: 'yangi', top: 'top', stuck: 'maxsus' }[c.reasons[0]] || 'chegirma';
+  if (!AIR._tplTouched) AIR.tpl = { discount: 'chegirma', new: 'yangioq', top: 'kattanarx', stuck: 'kattanarx' }[c.reasons[0]] || 'chegirma';
   airRenderNew();
   const ed = document.getElementById('air-editor'); if (ed) ed.scrollIntoView({ behavior: 'smooth', block: 'start' });
   airLoadAssets(c); airLoadText(false);
@@ -646,7 +675,7 @@ function airRenderEditor() {
         <button class="air-btn" onclick="airNextVariant()" ${AIR.textBusy ? 'disabled' : ''}>${_airIc('swap')}Boshqa variant</button>
         ${AIR.st && AIR.st.ai && AIR.st.ai.on ? `<button class="air-btn" onclick="airLoadText(true)" ${AIR.textBusy || AIR.st.ai.exhausted ? 'disabled' : ''}>${_airIc('sparkle')}${AIR.textBusy ? 'Yozilmoqda…' : 'AI yozsin'}</button>` : ''}
       </div>
-      <div class="air-step"><span class="air-n">3</span><div><b>Shablon</b><small>8 ta dizayn</small></div></div>
+      <div class="air-step"><span class="air-n">3</span><div><b>Shablon</b><small>${(window.AIR_TEMPLATES || []).length} ta dizayn</small></div></div>
       <div class="air-tpls">${(window.AIR_TEMPLATES || []).map(tplBtn).join('')}</div>
       <div class="air-step"><span class="air-n">4</span><div><b>Format va musiqa</b><small>${video ? 'Reels / Story — 720×1280, 30 kadr/s' : 'Post — 1080×1080 rasm'}</small></div></div>
       <div class="air-seg">${seg('post', AIR.fmt, "AIR.fmt='post';airRenderEditor()", 'Post 1:1')}${seg('video', AIR.fmt, "AIR.fmt='video';airRenderEditor()", 'Video 9:16')}</div>

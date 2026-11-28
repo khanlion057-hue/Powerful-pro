@@ -8,6 +8,9 @@ Ishlab turgan `powerful-pro.netlify.app` ni shu versiyaga o'tkazish. Noldan yang
 > **v25.9 (yagona Telegram bot):** **59-migratsiya** (`supabase-migration-59-bot-inbox.sql`, ASCII) — **48 va 58 dan KEYIN**, **saytdan OLDIN**.
 > Bitta jadval `tg_inbox` (bot qabul qilgan «/start kod» va guruh/kanal holati; oddiy shaxsiy matn saqlanmaydi; faqat server), `ops_cleanup` — 48 soatdan
 > eskisini o'chiradi. Tekshiruv: `supabase-migration-59-verify.sql` (hamma ustun `true`). Qayta ishga tushirsa zarar qilmaydi.
+> Yangi funksiya `telegram-bot` (webhook). **Tartib:** 59 → deploy → Sozlamalar → Botlar → **«Botni sozlash»** (bir marta; 4 qator ✅ bo'lishi kerak) →
+> xodimlarga: asosiy botda bir marta «Start». «Botni sozlash» deploydan OLDIN bosilmasin (eski kod getUpdates ishlatadi). Qaytish: Telegram'da
+> `deleteWebhook` (yoki eski versiyaga qaytish) — getUpdates yana ishlaydi. `docs/BOTLAR.md`.
 > **v25.8 (AI-reklama):** **58-migratsiya** (`supabase-migration-58-ai-reklama.sql`, ASCII) — **48 dan KEYIN** (48 bo'lmasa xato bilan to'xtaydi).
 > Uchta jadval (`ai_ad_posts`, `ai_usage`, `ai_ad_settings`), ikki funksiya (`ai_usage_take`, `ai_usage_release`), 4 ta `reklama.*` ruxsati
 > (hech bir rolga berilmaydi — administrator Rollar bo'limida beradi), yopiq Storage bucket `ai-ads-tmp` (20 MB, faqat mp4), `ops_cleanup` — 90 kundan eski

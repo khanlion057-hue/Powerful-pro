@@ -1,6 +1,17 @@
 # POWERFUL GROUP — v25.9: barcha Telegram ishlari bitta botda (59-migratsiya) (2026-11-28)
 - **59-migratsiya (yangi, QO'LLANMAGAN):** `tg_inbox` — asosiy bot webhook orqali qabul qilgan «/start kod» va guruh/kanal holati (48 soat; oddiy shaxsiy
   matn saqlanmaydi; brauzer ko'rmaydi). Tekshiruv — `supabase-migration-59-verify.sql`. P145.
+- **Yagona bot (hisobot boti — `tgBotToken`):** kunlik hisobot, guruhlar, AI-reklama kanali, avtopilot, xodim so'rovlari (/foyda …) va do'kon xaridorlari —
+  hammasi bitta botda. Alohida So'rov boti va Do'kon boti tokeni kerak emas (ulangan xodimlar saqlanadi). `docs/BOTLAR.md`.
+- **`telegram-bot` (yangi funksiya, jami 72):** botning yagona kirish nuqtasi (webhook, maxfiy kalit, takroriy yetkazish — bir marta). Mijoz «Start» bossa — darhol
+  ulanadi. Xaridor xodim buyrug'ini yozsa — faqat «Bu buyruq mavjud emas» / «Такой команды нет».
+- **Ulash tekshiruvlari** (xodim paroli, investor, guruhlarni topish, mijoz) — xabarlar qutisidan; webhook yo'q bo'lsa — eskicha getUpdates (o'tish xavfsiz).
+- **Menyu va tavsif — o'zbekcha va ruscha.** Xaridorga faqat /start va yordam; xodim buyruqlari menyusi — faqat ulangan xodimning o'z chatida.
+- **«Botni sozlash»** (Sozlamalar → Botlar, administrator): webhook + menyu + tavsif, keyin tekshiruv — bot / webhook / menyu (uz, ru) / tavsif, har biri aniq.
+  Bot o'chirilgan yoki token yaroqsiz — «Bot topilmadi — BotFather’da tekshiring». Yagona bot — **@Powerful_hisobot**: tekshiruv bot nomini ko'rsatadi,
+  boshqa bot ulangan bo'lsa — «Bot nomi mos emas» ogohlantirishi.
+- **Eski botlar:** So'rov boti webhook'i — faqat yangi botga yo'naltiradi; Onlayn-do'kon → Telegram: token maydoni yo'q, «Eski tokenni o'chirish».
+- Testlar: P145–P148 (yangi), P110, P120, P20, P8, P11, P48, P49, P89 (yangilandi). Mavjud tekshiruvlar susaytirilmagan.
 
 # POWERFUL GROUP — v25.8: AI-reklama — onlayn-do'kon mahsulotidan Telegram post va Reels (58-migratsiya) (2026-11-27)
 - **58-migratsiya (yangi, QO'LLANMAGAN — deploy bilan birga, 48 dan keyin):** `ai_ad_posts` (postlar, holat, xato, takrorsiz kalit), `ai_usage` (AI oylik limiti, atomik),

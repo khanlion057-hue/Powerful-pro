@@ -54,7 +54,7 @@ async function testSetup() {
     assert.equal((await h(post({ action: 'setup' }, 't-set'))).statusCode, 403, 'faqat administrator');
     // sozlashdan oldin — tekshiruv aniq aytadi
     let s = B(await h(post({ action: 'status' })));
-    assert.equal(s.bot.ok, true); assert.equal(s.webhook.ok, false); assert.match(s.webhook.error, /Webhook oʻrnatilmagan/);
+    assert.equal(s.bot.ok, true); assert.equal(s.webhook.ok, false); assert.match(s.webhook.error, /Hali oʻrnatilmagan/);
     assert.equal(s.menu.ok, false); assert.equal(s.description.ok, false); assert.equal(s.ok, false);
     // sozlash
     const r = await h(post({ action: 'setup' }));

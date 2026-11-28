@@ -33,7 +33,7 @@ async function verify(admin, token, f, env) {
   const info = (wi && wi.ok && wi.result) || {};
   let webhook;
   if (!want) webhook = { ok: false, error: 'Sayt manzili aniqlanmadi (URL)' };
-  else if (!info.url) webhook = { ok: false, error: 'Webhook oʻrnatilmagan — «Botni sozlash»ni bosing' };
+  else if (!info.url) webhook = { ok: false, error: 'Hali oʻrnatilmagan — «Botni sozlash»ni bosing' };
   else if (info.url !== want) webhook = { ok: false, error: 'Webhook boshqa manzilga oʻrnatilgan — «Botni sozlash»ni bosing' };
   else if (!hook.secret || String(hook.bot_id) !== bot.id) webhook = { ok: false, error: 'Webhook kaliti mos emas — «Botni sozlash»ni bosing' };
   else webhook = { ok: true, pending: Number(info.pending_update_count) || 0,

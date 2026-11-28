@@ -846,41 +846,33 @@ function dkDiscSave() {
 }
 
 // ════════════════════════════════════════════════════════════
-// TELEGRAM BOT — token faqat serverda (netlify/functions/shop-bot.js)
+// TELEGRAM BOT — v25.9: YAGONA BOT. Do'kon (xaridorlar) vazifasi ASOSIY botda — alohida token kerak emas.
+// Holat — serverdan (shop-bot status → asosiy bot nomi); «Botni sozlash» va tekshiruv — Sozlamalar → Botlar (bitta joy).
 // ════════════════════════════════════════════════════════════
+const DKB = { st: null };
 function dkTelegramSheet() {
-  const c = shopCfg(), bot = c.bot, set = !!(S.settings && (S.settings.shopBotTokenSet || S.settings.shopBotToken));
-  const on = !!(bot && bot.username && set);
-  openSheet({ ic:'send', c:'sky', title:'Doʻkonning Telegram-boti', sub:'Xaridorlar bot orqali doʻkoningizni ochadi',
+  const legacy = !!(S.settings && (S.settings.shopBotTokenSet || S.settings.shopBotToken));
+  const st = DKB.st, on = !!(st && st.ok && st.bot && st.bot.username);
+  openSheet({ ic:'send', c:'sky', title:'Doʻkonning Telegram-boti', sub:'Xaridorlar ham asosiy botda — alohida bot kerak emas',
     body:`
-      <div class="bs-card dk-bot ${on ? 'on' : ''}">
+      <div class="bs-card dk-bot ${on ? 'on' : ''}" id="dk-bot-card">
         <div class="dk-bot-h"><span class="dk-bot-ic">${ICONF.send}<i></i></span>
-          <span><b>${on ? '@' + esc(bot.username) : 'Bot ulanmagan'}</b><small>${on ? `Ulangan · ${esc(shopFmtTime(bot.at))}` : 'Doʻkon faqat brauzerda ishlaydi'}</small></span></div>
-        <p class="bs-note">Xaridor hech narsa toʻldirmaydi: «Start»ni bosadi, raqamini ulashadi — va buyurtma bera oladi.</p>
-      </div>
-      <div class="bs-card"><div class="dk-sec"><span class="dk-rowic" style="--c:var(--sky)">${ICONF.listNum}</span><b>Botni qanday yaratish — 3 qadam</b></div>
-        <ol class="dk-steps"><li>Telegramda @BotFather ni oching va unga /newbot buyrugʻini yuboring</li>
-          <li>Bot nomini (masalan, doʻkoningiz nomini) va <i>bot</i> bilan tugaydigan manzilni yozing</li>
-          <li>BotFather uzun satr — token yuboradi. Uni toʻliq nusxalab, quyiga joylashtiring.</li></ol>
-        <a class="dk-ghost" href="https://t.me/BotFather" target="_blank" rel="noopener">${ICONF.launch}<span>@BotFather ni ochish</span></a>
-      </div>
-      <div class="bs-card"><div class="dk-sec"><span class="dk-rowic" style="--c:var(--amber)">${ICONF.key}</span><b>Bot tokeni</b></div>
-        <div class="dk-token"><input class="bs-in" id="dk-tok" autocomplete="off" spellcheck="false" placeholder="${set ? 'Token saqlangan — almashtirish uchun yangisini kiriting' : '1234567890:AA…'}">
-          <button class="dk-ibtn" onclick="dkPasteToken()" aria-label="Joylashtirish">${ICONF.paste}</button></div>
-        <p class="bs-info">${ICONF.lock}<span>Token — botingizning kaliti. U faqat serverda saqlanadi: brauzerga, qurilma xotirasiga va xodimlarga qaytarilmaydi.</span></p>
-        <button class="bs-btn" id="dk-tok-btn" onclick="dkBotConnect()" ${shopCanCfg() ? '' : 'disabled'}>${ICONF.link} Botni ulash</button>
-        ${on ? `<button class="dk-ghost danger" onclick="dkBotDisconnect()">${ICONF.close}<span>Botni uzish</span></button>` : ''}
+          <span><b>${on ? '@' + esc(st.bot.username) : st ? 'Bot ishlamayapti' : 'Tekshirilmoqda…'}</b><small>${on ? 'Asosiy bot · xaridorlar, xodimlar va hisobotlar' : st ? esc(st.error || 'Bot topilmadi — BotFather’da tekshiring') : ''}</small></span></div>
+        <p class="bs-note">Xaridor havola orqali «Start»ni bosadi — nasiya, toʻlov, qarz eslatmasi va buyurtma xabarlari shu botga keladi. Xodim buyruqlari (/foyda va h.k.) xaridorga yopiq: «Bu buyruq mavjud emas».</p>
       </div>
       <div class="bs-card"><div class="dk-sec"><span class="dk-rowic" style="--c:var(--purple)">${ICONF.sparkle}</span><b>Nimalar oʻzi sozlanadi</b></div>
-        <ul class="dk-checks"><li>${ICONF.check}<span>/start, /shop, /help buyruqlari menyusi</span></li>
-          <li>${ICONF.check}<span>Bot tavsifi va qisqa tavsifi (doʻkon nomi bilan)</span></li>
-          <li class="later">${ICONF.hourglass}<span>«Doʻkon» menyu tugmasi va xaridordan raqam soʻrash — ommaviy vitrina ishga tushganda yoqiladi</span></li></ul>
+        <ul class="dk-checks"><li>${ICONF.check}<span>Menyu: xaridorga /start va yordam — oʻzbekcha va ruscha</span></li>
+          <li>${ICONF.check}<span>Bot tavsifi va qisqa tavsifi — oʻzbekcha va ruscha</span></li>
+          <li>${ICONF.check}<span>Xabarlarni darhol qabul qilish (webhook) va tekshiruv natijasi</span></li></ul>
+        ${typeof fwServerAdmin === 'function' && fwServerAdmin() ? `<button class="bs-btn" onclick="closeSheet();stBotsSheet()">${ICONF.check} Botni sozlash va tekshirish</button>` : '<p class="bs-note">«Botni sozlash» — administrator (Sozlamalar → Botlar).</p>'}
         <p class="bs-info">${ICONF.image}<span>@BotFather’da qoʻlda faqat bot rasmi qoladi: Telegram uni tashqaridan oʻzgartirishga ruxsat bermaydi.</span></p>
-      </div>` });
-}
-async function dkPasteToken() {
-  try { const t = await navigator.clipboard.readText(); const i = document.getElementById('dk-tok'); if (i) i.value = String(t || '').trim(); }
-  catch (e) { toast('Nusxani qoʻlda joylashtiring (uzoq bosib → Joylashtirish)', 'warning'); }
+      </div>
+      ${legacy ? `<div class="bs-card"><div class="dk-sec"><span class="dk-rowic" style="--c:var(--amber)">${ICONF.key}</span><b>Eski doʻkon boti</b></div>
+        <p class="bs-note">Avval ulangan alohida doʻkon botining tokeni hali serverda turibdi — u endi ishlatilmaydi.</p>
+        <button class="dk-ghost danger" onclick="dkBotDisconnect()" ${shopCanCfg() ? '' : 'disabled'}>${ICONF.close}<span>Eski tokenni oʻchirish</span></button></div>` : ''}` });
+  if (!st) dkBotCall({ action: 'status' }).then((r) => { DKB.st = r && (r.ok || r.error) ? r : { ok: false, error: 'Server javob bermadi' }; if (document.getElementById('dk-bot-card')) dkTelegramSheet(); })
+    .catch(() => { DKB.st = { ok: false, error: 'Serverga ulanib boʻlmadi' }; if (document.getElementById('dk-bot-card')) dkTelegramSheet(); });
+  else DKB.st = null;   // keyingi ochilishda qayta tekshiriladi
 }
 async function dkBotCall(body) {
   const r = await authFetch('/.netlify/functions/shop-bot', { method: 'POST', body: JSON.stringify(body) });
@@ -888,41 +880,11 @@ async function dkBotCall(body) {
   if (!r.ok && !d.error) d.error = `Server xatosi (${r.status})`;
   return d;
 }
-async function dkBotConnect() {
-  if (!shopCanCfg()) { toast("Ruxsatingiz yoʻq", 'error'); return; }
-  const inp = document.getElementById('dk-tok'), btn = document.getElementById('dk-tok-btn');
-  const token = String(inp?.value || '').trim();
-  const stored = !!(S.settings && S.settings.shopBotTokenSet);
-  if (!token && !stored) { toast('Tokenni joylashtiring', 'error'); return; }
-  if (token && !/^\d{5,}:[A-Za-z0-9_-]{20,}$/.test(token)) { toast("Token formati notoʻgʻri — BotFather yuborgan satrni toʻliq nusxalang", 'error'); return; }
-  if (btn) btn.disabled = true;
-  try {
-    let bot = null;
-    if (token) {
-      const chk = await dkBotCall({ action: 'check', token });
-      if (!chk.ok) { toast(chk.error || 'Token qabul qilinmadi', 'error'); return; }
-      bot = chk.bot;
-      // Token BIR MARTA serverga yuboriladi (settings.shopBotToken) — server uni saqlab, keyin brauzerdan olib tashlanadi
-      S.settings.shopBotToken = token;
-      await save();
-      delete S.settings.shopBotToken; S.settings.shopBotTokenSet = true;
-      if (inp) inp.value = '';
-    }
-    const st = await dkBotCall({ action: 'setup', shopName: shopCfg().name });
-    if (!st.ok && !st.bot) { toast(st.error || 'Bot sozlanmadi', 'error'); return; }
-    bot = st.bot || bot;
-    shopData().settings.bot = { username: bot.username, name: bot.name, at: shopNowIso() };
-    shopTouchCfg(); auditLog(`Onlayn-doʻkon boti ulandi: @${bot.username}`); save();
-    toast(st.ok ? `✅ @${bot.username} ulandi` : `@${bot.username} ulandi, lekin ba'zi sozlamalar oʻrnatilmadi`, st.ok ? 'success' : 'warning');
-    dkTelegramSheet();
-  } catch (e) { toast("Serverga ulanib boʻlmadi", 'error'); }
-  finally { if (btn) btn.disabled = false; }
-}
 function dkBotDisconnect() {
-  if (!shopCanCfg() || !confirm("Bot doʻkondan uzilsinmi? (Token serverdan oʻchiriladi)")) return;
+  if (!shopCanCfg() || !confirm("Eski doʻkon boti tokeni serverdan oʻchirilsinmi? (Asosiy botga taʼsir qilmaydi)")) return;
   S.settings.shopBotToken = ''; delete S.settings.shopBotTokenSet;
   delete shopData().settings.bot; shopTouchCfg();
-  auditLog('Onlayn-doʻkon boti uzildi');
+  auditLog('Onlayn-doʻkon: eski bot tokeni oʻchirildi (yagona bot)');
   save().then(() => { delete S.settings.shopBotToken; });
   dkTelegramSheet();
 }

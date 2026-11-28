@@ -13273,7 +13273,7 @@ const THEME_META = {
   mono:{name:'Monoxrom', sub:'Oq-qora mavzu'},
   'mono-light':{name:'Monoxrom (yorugʻ)', sub:'Qora urgʻuli oq mavzu'},
 };
-// ── v25.6.9: TELEGRAM SO'ROV BOTI — xodimni ulash (kod), administrator uchun bot sozlash ──
+// ── v25.6.9: TELEGRAM SO'ROV BOTI — xodimni ulash (kod). v25.9: buyruqlar ASOSIY botda (alohida bot va token yo'q) ──
 async function tgqCall(body) {
   const r = await authFetch('/.netlify/functions/telegram-query', { method: 'POST', body: JSON.stringify(body) });
   const j = await r.json().catch(() => ({}));
@@ -13283,7 +13283,7 @@ async function tgqCall(body) {
 // v25.6.10: SODDA ULASH — bitta tugma: «Telegramda ulash» → Telegram ochiladi → «Start». Kod yozish shart emas.
 async function tgqOpen() {
   const owner = fwServerAdmin();   // bot sozlamasi serverda faqat administratorga
-  openSheet({ ic: 'send', c: 'sky', title: 'Telegram soʻrov boti', sub: 'Botdan hisobot soʻrash',
+  openSheet({ ic: 'send', c: 'sky', title: 'Botdan hisobot soʻrash', sub: 'Asosiy botda: /foyda, /kassa, /qarz…',
     body: `<div class="fr-form" id="tgq-box"><p class="bs-note">Yuklanmoqda…</p></div>` });
   let r = null, err = '';
   try { r = await tgqCall({ action: 'link_code' }); } catch (e) { err = e.message || 'Xato'; }
@@ -13298,22 +13298,17 @@ async function tgqOpen() {
       + help + (r.linked ? `<button class="bs-btn ghost" onclick="tgqUnlink(this)">Telegramni uzish</button>` : '')
       + `<details><summary class="bs-note">Tugma ishlamasa</summary><p class="bs-note">Telegramda <b>@${esc(r.bot || '?')}</b> ni toping va yozing: <b>/start ${esc(r.code)}</b> (${r.minutes} daqiqa amal qiladi)</p></details>`;
   } else if (notSet) {
-    main = owner ? `<div class="bs-card"><b>Bot hali sozlanmagan</b><p class="bs-note">Bir marta: @BotFather → /newbot → bergan tokenni pastga qoʻying.</p></div>` : `<div class="bs-card"><b>Bot hali sozlanmagan</b><p class="bs-note">Administratorga ayting — u Sozlamalarda botni bir marta sozlaydi.</p></div>`;
+    // v25.9: alohida so'rov boti yo'q — buyruqlar ASOSIY botda; asosiy bot sozlanmagan bo'lsa — o'sha yerga yo'naltiramiz
+    main = owner ? `<div class="bs-card"><b>Asosiy bot hali sozlanmagan</b><p class="bs-note">Sozlamalar → Telegram bot: bot tokenini saqlang, keyin «Botlar va avtomatik vazifalar» → «Botni sozlash».</p></div><button class="bs-btn" onclick="closeSheet();stBotsSheet()">Botlar va «Botni sozlash»</button>`
+      : `<div class="bs-card"><b>Bot hali sozlanmagan</b><p class="bs-note">Administratorga ayting — u Sozlamalarda botni bir marta sozlaydi.</p></div>`;
   } else main = `<p class="bs-note" style="color:var(--red)">${esc(err)}</p>`;
-  const setup = owner ? `<${notSet ? 'div' : 'details'}>${notSet ? '' : '<summary class="bs-note">Administrator: bot sozlamasi</summary>'}<div class="st-eyebrow">Bot tokeni (@BotFather)</div><input class="form-control" id="tgq-token" autocomplete="off" placeholder="123456:ABC..."><button class="bs-btn ${notSet ? '' : 'ghost'}" onclick="tgqSetup(this)">Botni sozlash</button><p class="bs-note">Hisobot botidan ALOHIDA bot boʻlsin.</p><div id="tgq-st" class="bs-note"></div></${notSet ? 'div' : 'details'}>` : '';
-  box.innerHTML = main + setup;
-  if (owner && !notSet) tgqCall({ action: 'status' }).then((st) => { const o = document.getElementById('tgq-st'); if (o) o.textContent = `Bot: @${st.bot || '?'} · ulangan: ${st.links}`; }).catch(() => {});
+  box.innerHTML = main + (owner && !notSet ? `<p class="bs-note" id="tgq-st"></p>` : '');
+  if (owner && !notSet) tgqCall({ action: 'status' }).then((st) => { const o = document.getElementById('tgq-st'); if (o) o.textContent = `Asosiy bot: @${st.bot || '?'} · ulangan xodimlar: ${st.links}`; }).catch(() => {});
 }
 async function tgqUnlink(btn) {
   if (btn) btn.disabled = true;
   try { await tgqCall({ action: 'unlink' }); toast('Telegram uzildi'); tgqOpen(); }
   catch (e) { toast(e.message, 'error'); if (btn) btn.disabled = false; }
-}
-async function tgqSetup(btn) {
-  const t = (document.getElementById('tgq-token')?.value || '').trim(); if (!t) { toast('Tokenni kiriting', 'error'); return; }
-  if (btn) btn.disabled = true;
-  try { const r = await tgqCall({ action: 'setup', token: t }); document.getElementById('tgq-token').value = ''; toast('✅ Bot sozlandi: @' + r.bot); tgqOpen(); }
-  catch (e) { toast(e.message, 'error'); } finally { if (btn) btn.disabled = false; }
 }
 // ── v25.6.9: DASTLABKI SINOVNI TOZALASH (faqat administrator, parol bilan, boshlanishdan 6 oy ichida) ──
 const TRS = { st: null, counts: null, busy: false };
@@ -13734,37 +13729,80 @@ function stBranchMenu(key) {
 // (/.netlify/functions/telegram-test) yuboriladi — token brauzerdan Telegramga ketmaydi.
 function _stTgTokenSet() { const st = S.settings||{}; return !!(st.tgBotToken || st.tgBotTokenSet); }
 // v24.7: Botlar xaritasi — qaysi bot qayerdan, qanday vazifani bajaradi (tokenlar faqat serverda, bu yerda faqat holat)
-function stBotsSheet() {
-  stBotsPaint(null);
-  if (fwServerAdmin()) tgqCall({ action: 'status' }).then(q => { if (document.querySelector('.bt-map')) stBotsPaint(q); }).catch(() => {});   // so'rov boti holati (faqat administrator)
+// v25.9: YAGONA BOT — hamma ish asosiy botda (hisobot, guruhlar, AI-reklama, avtopilot, xodim so'rovlari, do'kon xaridorlari).
+//   «Botni sozlash» (administrator) — webhook + menyu/tavsif (uz, ru); natija: bot / webhook / menyu / tavsif — har biri aniq.
+async function tgBotCall(body) {
+  const r = await authFetch('/.netlify/functions/telegram-bot', { method: 'POST', body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || `Server xatosi (${r.status})`);
+  return j;
 }
-function stBotsPaint(q) {
-  const st = S.settings || {}, tgOn = !!((st.tgBotToken || st.tgBotTokenSet) && st.tgChatId);
-  const shopOn = !!(st.shopBotTokenSet || st.shopBotToken), hh = (h, d) => String(+h >= 0 && h !== '' && h != null ? h : d).padStart(2, '0') + ':00';
+const BOTS = { q: null, v: null, busy: false };
+function stBotsSheet() {
+  BOTS.q = null; BOTS.v = null; BOTS.busy = false;
+  stBotsPaint();
+  if (!fwServerAdmin()) return;   // holat va sozlash — faqat administrator (server ham tekshiradi)
+  tgqCall({ action: 'status' }).then(q => { BOTS.q = q; if (document.querySelector('.bt-map')) stBotsPaint(); }).catch(() => {});
+  BOTS.busy = 'check'; stBotsPaint();
+  tgBotCall({ action: 'status' }).then(v => { BOTS.v = v; }).catch(e => { BOTS.v = { error: e.message }; })
+    .finally(() => { BOTS.busy = false; if (document.querySelector('.bt-map')) stBotsPaint(); });
+}
+async function stBotSetup(btn) {
+  if (!fwServerAdmin() || BOTS.busy) return;
+  BOTS.busy = 'setup'; stBotsPaint();
+  try { BOTS.v = await tgBotCall({ action: 'setup' }); toast(BOTS.v.ok ? '✅ Bot sozlandi va tekshirildi' : 'Bot toʻliq sozlanmadi — sababi koʻrsatilgan', BOTS.v.ok ? 'success' : 'warning'); }
+  catch (e) { BOTS.v = { error: e.message }; toast(e.message, 'error'); }
+  finally { BOTS.busy = false; if (document.querySelector('.bt-map')) stBotsPaint(); }
+  if (BOTS.v && BOTS.v.bot && BOTS.v.bot.username) { try { localStorage.setItem('fw_tg_bot', BOTS.v.bot.username); } catch (e) {} }
+}
+// Tekshiruv natijasi: 4 qator — har biri ✅ / ❌ va aniq sabab
+function stBotCheckHtml(v, busy) {
+  if (busy) return `<div class="bt-chk"><p class="bs-note">${busy === 'setup' ? 'Sozlanmoqda va tekshirilmoqda…' : 'Tekshirilmoqda…'}</p></div>`;
+  if (!v) return '';
+  if (v.error && !v.bot) return `<div class="bt-chk"><div class="bt-chk-r bad"><i>✕</i><span><b>Tekshirib boʻlmadi</b><small>${esc(v.error)}</small></span></div></div>`;
+  const row = (ok, t, sub) => `<div class="bt-chk-r ${ok ? 'ok' : 'bad'}"><i>${ok ? '✓' : '✕'}</i><span><b>${t}</b><small>${sub}</small></span></div>`;
+  const b = v.bot || {}, w = v.webhook || {}, m = v.menu || {}, d = v.description || {};
+  if (!b.ok) return `<div class="bt-chk">${row(false, 'Bot ishlamayapti', esc(b.error || 'Bot topilmadi — BotFather’da tekshiring'))}</div>`;
+  const miss = [m.uz ? '' : 'oʻzbekcha', m.ru ? '' : 'ruscha'].filter(Boolean).join(', ');
+  return `<div class="bt-chk">
+    ${row(true, 'Bot ishlayapti', '@' + esc(b.username || '') + (b.name ? ' · ' + esc(b.name) : ''))}
+    ${row(!!w.ok, w.ok ? 'Webhook oʻrnatilgan' : 'Webhook oʻrnatilmagan', w.ok ? (w.warning ? esc(w.warning) : 'Xabarlar darhol qabul qilinadi' + (w.pending ? ` · navbatda ${+w.pending}` : '')) : esc(w.error || '«Botni sozlash»ni bosing'))}
+    ${row(!!m.ok, m.ok ? 'Menyu oʻrnatilgan' : 'Menyu oʻrnatilmagan', m.ok ? 'Oʻzbekcha va ruscha · xaridorga faqat /start va yordam' : 'Yetishmaydi: ' + esc(miss || 'menyu'))}
+    ${row(!!d.ok, d.ok ? 'Tavsif oʻrnatilgan' : 'Tavsif oʻrnatilmagan', d.ok ? 'Oʻzbekcha va ruscha' : '«Botni sozlash»ni bosing')}
+  </div>`;
+}
+function stBotsPaint() {
+  const q = BOTS.q;
+  const st = S.settings || {}, tgOn = !!((st.tgBotToken || st.tgBotTokenSet) && st.tgChatId), tokOn = !!(st.tgBotToken || st.tgBotTokenSet);
+  const hh = (h, d) => String(+h >= 0 && h !== '' && h != null ? h : d).padStart(2, '0') + ':00';
   const parts = (S.partners || []).filter(p => p && p.tgChat).length;
   const job = (on, t, where, what, act) => `<div class="bt-job${on ? ' on' : ''}"><i></i><span><b>${t}</b><small>${where}</small><em>${what}</em></span>${act ? `<button class="bt-go" onclick="closeSheet();${act}">${ICONF.chevron}</button>` : ''}</div>`;
-  const bot = (ic, c, name, sub, on, jobs) => `<section class="bt-bot" style="--c:var(--${c})"><div class="bt-bot-h"><span class="bt-bot-ic">${ICONF[ic]}</span><span><b>${name}</b><small>${sub}</small></span><em class="${on ? 'ok' : ''}">${on ? 'Ulangan' : 'Ulanmagan'}</em></div>${jobs.join('')}</section>`;
-  openSheet({ ic: 'send', c: 'sky', title: 'Botlar va avtomatik vazifalar', sub: 'Tokenlar faqat serverda saqlanadi — brauzerga chiqmaydi',
+  const bot = (ic, c, name, sub, on, jobs, head = '') => `<section class="bt-bot" style="--c:var(--${c})"><div class="bt-bot-h"><span class="bt-bot-ic">${ICONF[ic]}</span><span><b>${name}</b><small>${sub}</small></span><em class="${on ? 'ok' : ''}">${on ? 'Ulangan' : 'Ulanmagan'}</em></div>${head}${jobs.join('')}</section>`;
+  const v = BOTS.v, dead = !!(v && v.bot && !v.bot.ok);   // tekshiruv «bot topilmadi» desa — eski nom va «Ulangan» ko'rsatilmaydi
+  const nm = dead ? '' : (v && v.bot && v.bot.ok && v.bot.username) || (tokOn && fwTgBotName());
+  const adm = fwServerAdmin();
+  const setupBox = adm ? `${stBotCheckHtml(v, BOTS.busy)}<div class="bt-setup"><button class="bs-btn" id="bt-setup-btn" onclick="stBotSetup(this)" ${BOTS.busy || !tokOn ? 'disabled' : ''}>${ICONF.check || ''} Botni sozlash</button>
+      <small>${tokOn ? 'Webhook, menyu va tavsif (oʻzbekcha, ruscha) oʻrnatiladi va darhol tekshiriladi. Qayta bosish xavfsiz.' : 'Avval Sozlamalar → Telegram bot: bot tokenini saqlang.'}</small></div>` : '';
+  const shopName = typeof shopCfg === 'function' ? shopCfg().name : '';
+  openSheet({ ic: 'send', c: 'sky', title: 'Botlar va avtomatik vazifalar', sub: 'Bitta bot hamma ishni qiladi · token faqat serverda',
     body: `<div class="bt-map">
-      ${bot('send', 'sky', 'Asosiy bot' + (tgOn && fwTgBotName() ? ' · @' + esc(fwTgBotName()) : ''), 'Sozlamalar → Telegram bot · biznes egasi va jamoa uchun', tgOn, [
+      ${bot('send', 'sky', 'Asosiy bot' + (nm ? ' · @' + esc(nm) : ''), 'Sozlamalar → Telegram bot · hamma ish shu botda', tokOn && !dead, [
         job(tgOn && st.tgDaily, 'Kunlik hisobot', `Guruhga · har kuni ${hh(st.tgDailyHour, 21)} (avtomatik, har soatda tekshiriladi)`, 'Savdo, foyda, xarajat, kassalar va qarzlar — har filial alohida', 'stEditTelegram()'),
         job(!!(st.tgBackupChat && st.tgBackupDaily), 'Kunlik zaxira nusxa', `Egasining shaxsiy chatiga · har kuni ${hh(st.tgBackupHour, 23)}`, 'Barcha maʼlumot .json.gz fayl koʻrinishida', 'stBackupSheet()'),
         job(parts > 0, 'Investor hisobotlari', `Hamkorlar → Telegram · ${parts} ta hamkor ulangan`, 'Oylik / yillik hisobot PDF — investor «Start»ni bosgach, bitta tugma bilan', "go('hamkorlar')"),
         job(tgOn, 'Hujjat va cheklarni yuborish', 'Chek, hisob-faktura, hisobot oynalaridagi «Telegram» tugmasi', 'PDF hujjatni guruhga (Chat ID) yuboradi · faqat administrator'),
         job(!!(tgOn && st.tgAnnounceOn), 'Yangi mahsulot eʼloni', 'Kanal va guruhlarga · mahsulot qoʻshilganda', 'Rasm, nom, narx va havola — bir chatga bir marta', 'stEditTelegram()'),
-      ])}
+        job(tokOn, 'AI-reklama va avtopilot', 'Onlayn-doʻkon → AI-reklama · filialning reklama kanaliga', 'Post va Reels kanalga; avtopilot qoralamasi haqida egasiga xabar', 'goAiReklama()'),
+        job(!!(tokOn && q && q.links), 'Xodim soʻrovlari', 'Shaxsiy chatda: /foyda /xarajat /qarz /kassa /ombor /mahsulot', 'Egasi — hamma filial; xodim — oʻz filiali va ruxsati boricha' + (q ? ` · ulangan xodim: ${q.links}` : '') + ' · menyu faqat xodimga koʻrinadi', 'tgqOpen()'),
+        job(tokOn, 'Doʻkon boti vazifasi — xaridorlar', 'Xaridor havola orqali «Start» bosadi' + (shopName ? ' · ' + esc(shopName) : ''), 'Nasiya, toʻlov, qarz eslatmasi va buyurtma xabarlari; xodim buyruqlari xaridorga yopiq', "go('dokon')"),
+      ], setupBox)}
       ${(() => { const bk = Object.keys(S._store || { baza: 1 }), brOn = bk.filter(k => (st.tgBranchChats || {})[k]).length, dls = (S.dealers || []), dlOn = dls.filter(d => (st.tgDealerChatMap || {})[d.id]).length;
         return bot('send', 'sky', 'Guruhlar · kim nima oladi', 'Asosiy bot shularga yuboradi · Sozlamalar → Telegram bot', tgOn, [
         job(!!st.tgChatId, 'Egasi guruhi', 'Hammasi: barcha filial, bosh kassa, dillerlar', 'Nasiya, toʻlov, diller, kirim, oʻtkazma, kunlik va oy hisoboti', 'stEditTelegram()'),
         job(brOn > 0, `Filial guruhlari · ${brOn}/${bk.length}`, 'Har biriga faqat oʻz filiali', 'Kunlik hisobot, nasiya, qarz toʻlovi, eslatma, tovar kirimi, oʻtkazma, oy yakuni', 'stEditTelegram()'),
         job(dlOn > 0, `Diller guruhlari · ${dlOn}/${dls.length}`, 'Har biriga faqat oʻzi', 'Tovar olish/qaytarish, savdo, toʻlov, oy yakuni', 'stEditTelegram()'),
       ]); })()}
-      ${bot('chart', 'purple', 'Soʻrov boti' + (q && q.bot ? ' · @' + esc(q.bot) : ''), 'Xodim botdan oʻzi soʻraydi · alohida bot', !!(q && q.set), [
-        job(!!(q && q.set), 'Buyruqlar', 'Shaxsiy chatda: /foyda /xarajat /qarz /kassa /ombor /mahsulot', 'Egasi — hamma filial; xodim — oʻz filiali va ruxsati boricha' + (q ? ` · ulangan xodim: ${q.links}` : ''), 'tgqOpen()'),
-      ])}
-      ${bot('cart', 'emerald', 'Doʻkon boti' + (shopOn && typeof shopCfg === 'function' && shopCfg().bot && shopCfg().bot.username ? ' · @' + esc(shopCfg().bot.username) : ''), 'Onlayn-doʻkon → Telegram bot · xaridorlar uchun', shopOn, [
-        job(shopOn, 'Vitrina va buyurtma', 'Xaridor «Start» → raqamini ulashadi', 'Katalogni ochadi va buyurtma beradi; buyurtma Onlayn-doʻkon boʻlimiga tushadi', "go('dokon')"),
-      ])}
+      <p class="bs-info bt-merged">${ICONF.info || ''}<span>Avvalgi alohida <b>Soʻrov boti</b> va <b>Doʻkon boti</b> endi kerak emas — ularning ishi asosiy botda. Ulangan xodimlar saqlanadi: ular asosiy botda bir marta «Start» bosadi. Eski botlarni @BotFather’da oʻchirish — ixtiyoriy.</span></p>
     </div>` });
 }
 // v24.7: ulangan botning nomi (@username) — serverdan (getMe; token brauzerga chiqmaydi), shu qurilmada eslab qolinadi

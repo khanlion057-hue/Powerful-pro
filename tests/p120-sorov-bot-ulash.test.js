@@ -1,4 +1,5 @@
 // P120 — v25.6.10: so'rov botini ulash — bitta tugma (t.me havola), ulangan holat, sozlanmagan holat
+// v25.9: buyruqlar asosiy botda — sozlanmagan holatda token maydoni yo'q, «Botni sozlash»ga yo'naltiradi
 const assert = require('node:assert/strict');
 const { openPage } = require('./p4-responsive.test.js')._helpers;
 const SHOT = process.env.P120_SHOT || '';
@@ -19,8 +20,11 @@ async function run() {
     await page.waitForFunction(() => /Telegram ulangan/.test(document.getElementById('tgq-box')?.textContent || ''));
     if (SHOT) await page.screenshot({ path: SHOT + '-2.png' });
     await page.evaluate(() => { __mode = 'off'; tgqOpen(); });
-    await page.waitForSelector('#tgq-token');
-    assert.match(await page.textContent('#tgq-box'), /Bot hali sozlanmagan/);
+    // v25.9: alohida so'rov boti yo'q — token maydoni ham yo'q; asosiy botni sozlashga yo'naltiradi
+    await page.waitForFunction(() => /sozlanmagan/.test(document.getElementById('tgq-box')?.textContent || ''));
+    assert.match(await page.textContent('#tgq-box'), /Asosiy bot hali sozlanmagan/);
+    assert.equal(await page.$('#tgq-token'), null, 'alohida bot tokeni so\'ralmaydi');
+    assert.match(await page.getAttribute('#tgq-box .bs-btn', 'onclick'), /stBotsSheet/);
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }
 }

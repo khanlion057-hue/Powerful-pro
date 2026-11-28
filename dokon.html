@@ -23,10 +23,14 @@
 </div></header>
 
 <main class="vt-wrap" id="vt-main">
-  <section class="vt-hero" id="vt-hero" aria-roledescription="slayder"></section>
-  <div class="vt-perks" id="vt-perks"></div>
+  <!-- v25.9 (PageSpeed 4-band, CLS): ma'lumot kelguncha ham joylashuv yakuniy holatga teng — banner va afzalliklar yopiq,
+       kategoriyalar qatori (bir qator, balandligi doimiy) skelet bilan, mahsulot kartalari skeleti HTML'da. Oldingi tashrifdagi
+       holat (banner bor/yo'q, kategoriyalar bor/yo'q) eslab qolinadi — bannerli do'kon ham ikkinchi ochilishdan siljimaydi. -->
+  <section class="vt-hero" id="vt-hero" aria-roledescription="slayder" hidden></section>
+  <div class="vt-perks" id="vt-perks" hidden></div>
 
-  <section class="vt-catsw" id="vt-catsw" hidden><h3 class="vt-h3">Kategoriyalar</h3><div class="vt-cats" id="vt-cats"></div></section>
+  <section class="vt-catsw" id="vt-catsw"><h3 class="vt-h3">Kategoriyalar</h3><div class="vt-cats" id="vt-cats" aria-hidden="true"><div class="vt-cat vt-catsk"><i></i><b></b><small></small></div><div class="vt-cat vt-catsk"><i></i><b></b><small></small></div><div class="vt-cat vt-catsk"><i></i><b></b><small></small></div><div class="vt-cat vt-catsk"><i></i><b></b><small></small></div></div></section>
+  <script>try{var _l=JSON.parse(localStorage.getItem('vt_lay_'+((new URLSearchParams(location.search).get('s')||'').toLowerCase().replace(/[^a-z0-9-]/g,'').slice(0,40)))||'null');if(_l){if(_l.hero){var _h=document.getElementById('vt-hero');_h.hidden=false;_h.classList.add('vt-wait')}if(!_l.cats)document.getElementById('vt-catsw').hidden=true}}catch(e){}</script>
 
   <section class="vt-finder" id="vt-finder" hidden>
     <div class="vt-fhd"><b>Arra tigʻi tanlash yordamchisi</b><small>Stanokingizga mos tigʻni 3 qadamda toping</small></div>
@@ -42,7 +46,7 @@
     <select class="vt-sel" id="vt-sort" aria-label="Saralash"><option value="def">Odatiy</option><option value="lo">Arzonroq</option><option value="hi">Qimmatroq</option><option value="disc">Chegirmadagilar</option><option value="az">Nom (A–Z)</option></select>
   </div>
   <p class="vt-count" id="vt-count" aria-live="polite"></p>
-  <div class="vt-grid" id="vt-grid"></div>
+  <div class="vt-grid" id="vt-grid"><div class="vt-sk"></div><div class="vt-sk"></div><div class="vt-sk"></div><div class="vt-sk"></div><div class="vt-sk"></div><div class="vt-sk"></div><div class="vt-sk"></div><div class="vt-sk"></div></div>
 
   <section id="vt-recentw" hidden><h3 class="vt-h3">Yaqinda koʻrilganlar</h3><div class="vt-row" id="vt-recent"></div></section>
 </main>

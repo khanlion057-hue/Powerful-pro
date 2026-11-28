@@ -75,6 +75,7 @@
         document.title = D.shop.name + ' — onlayn doʻkon';
         $('vt-name').textContent = D.shop.name;
         hero(); perks(); catCards(); filters(); finder(); footer(); render(); cartUi(); recent(); navUi();
+        lsSet('vt_lay_' + SLUG, { hero: !$('vt-hero').hidden, cats: !$('vt-catsw').hidden });   // v25.9: keyingi ochilishda siljimasin (CLS)
         var m = /#p=([\w-]+)/.exec(location.hash); if (m && BYID[m[1]]) openProduct(m[1]);
       })
       .catch(function () { closed(navigator.onLine === false ? 'Internet yoʻq — ulanishni tekshiring' : 'Doʻkon vaqtincha ochilmadi'); });
@@ -83,6 +84,7 @@
     $('vt-grid').innerHTML = '<div class="vt-empty"><b>' + esc(msg || 'Doʻkon hozircha yopiq') + '</b>Birozdan soʻng qayta urinib koʻring.<br><br><button class="vt-cta" onclick="location.reload()">Qayta yuklash</button></div>';
     // v25.6.9: xato holatida qarama-qarshi «Tez orada ochilamiz» bannerini ko'rsatmaymiz
     $('vt-hero').innerHTML = ''; $('vt-hero').style.display = 'none';
+    $('vt-catsw').hidden = true;   // v25.9: kategoriya skeleti ham yopiladi
   }
 
   // ── slayder ──
@@ -92,8 +94,8 @@
   function hero() {
     var s = [], cats = catList();
     (D.banners || []).forEach(function (b) { s.push('<div class="vt-slide img"><img src="' + esc(b.url) + '" alt="' + esc(b.title || D.shop.name) + '"></div>'); });
-    if (!s.length) { $('vt-hero').innerHTML = ''; $('vt-hero').hidden = true; clearInterval(SLT); return; }
-    $('vt-hero').hidden = false;
+    if (!s.length) { $('vt-hero').innerHTML = ''; $('vt-hero').hidden = true; $('vt-hero').classList.remove('vt-wait'); clearInterval(SLT); return; }
+    $('vt-hero').hidden = false; $('vt-hero').classList.remove('vt-wait');
     if (0) s.push(slideHtml(0, 'Professional arra tigʻlari', 'Rover va formatli stanoklar uchun — original, kafolatli', ['Katalogni koʻrish', 'grid']));
     if (0) s.push(slideHtml(1, D.shop.freeMin > 0 ? money(D.shop.freeMin) + ' dan — bepul yetkazish' : 'Yetkazib berish xizmati', 'Buyurtmani onlayn bering — doʻkon tasdiqlab, yetkazib beradi', ['Savatni ochish', 'cart']));
     if (0) s.push(slideHtml(2, cats.length + ' ta kategoriya', cats.slice(0, 4).join(' · '), ['Tigʻ tanlash', 'finder']));

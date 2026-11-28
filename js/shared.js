@@ -2602,6 +2602,23 @@ function fwqDrop(id) {
   if (!confirm('Bu savdo serverga yozilmaydi va roʻyxatdan oʻchiriladi. Tasdiqlaysizmi?')) return;
   _fwqUpdate(id, null); if (typeof closeModal === 'function') closeModal(); fwqBadge();
 }
+// v25.9: yangi versiya tayyor — ilova endi ochilgan bo'lsa o'zi yangilanadi, aks holda «Yangilash» tugmasi (ma'lumot yo'qolmasin)
+const FW_T0 = Date.now();
+function fwNewVersion() {
+  if (typeof document === 'undefined' || document.getElementById('fw-upd')) return;
+  let last = 0; try { last = Number(sessionStorage.getItem('fw_upd_at')) || 0; } catch (e) {}
+  const busy = !!document.querySelector('.bs-box, #modal-ov.open .modal, .modal-ov.open');   // oyna yoki varaq ochiq — kiritilgan narsa yo'qolmasin
+  if (Date.now() - FW_T0 < 10000 && !busy && Date.now() - last > 60000) {
+    try { sessionStorage.setItem('fw_upd_at', String(Date.now())); } catch (e) {}
+    location.reload(); return;
+  }
+  const b = document.createElement('div');
+  b.id = 'fw-upd'; b.setAttribute('role', 'status');
+  b.style.cssText = 'position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:99999;display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:#0a3d66;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.25);font-size:14px;max-width:520px;margin:0 auto';
+  b.innerHTML = '<span style="flex:1">Yangi versiya tayyor</span><button type="button" style="min-height:calc(44px / var(--fw-z,1));padding:0 16px;border:0;border-radius:10px;background:#fff;color:#0a3d66;font-weight:700;font-size:14px;cursor:pointer">Yangilash</button>';
+  b.querySelector('button').onclick = () => { try { sessionStorage.setItem('fw_upd_at', String(Date.now())); } catch (e) {} location.reload(); };
+  document.body.appendChild(b);
+}
 if (typeof window !== 'undefined') {
   window.addEventListener('online', () => { if (!fwqPending().length && typeof toast === 'function') toast('Internet qaytdi');
     fwqBadge(); Promise.resolve(fwqFlush()).then(() => { if (typeof FWQ.onOnline === 'function') FWQ.onOnline(); }); });
@@ -2609,7 +2626,20 @@ if (typeof window !== 'undefined') {
   window.addEventListener('load', () => { fwqBadge(); setTimeout(fwqFlush, 4000); });
   // PWA — oflayn ochilish (admin, sotuvchi va diller sahifalari)
   if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
-    window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+    // v25.9: YANGI VERSIYA TELEFONGA YETIB BORSIN. Avval: sekin internetda SW eski sahifani berardi va yangi SW o'rnatilib
+    // ulgurmasdan ilova yopilardi — telefon eski versiyada qolib ketardi. Endi: ochilganda va ilovaga qaytilganda yangilanish
+    // tekshiriladi; yangi versiya tayyor bo'lsa — ilova endi ochilgan bo'lsa (10 soniya, oyna ochiq emas) o'zi qayta yuklanadi,
+    // aks holda «Yangilash» tugmasi chiqadi (ishlayotgan xodimning kiritgani yo'qolmaydi).
+    const _fwHadSw = !!navigator.serviceWorker.controller;
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then((reg) => {
+        const chk = () => { try { reg.update().catch(() => {}); } catch (e) {} };
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') chk(); });
+        setInterval(chk, 30 * 60e3);
+      }).catch(() => {});
+      navigator.serviceWorker.addEventListener('controllerchange', () => { if (_fwHadSw) fwNewVersion(); });
+      navigator.serviceWorker.addEventListener('message', (ev) => { if (ev.data && ev.data.type === 'FW_NEW_VERSION') fwNewVersion(); });
+    });
   }
 }
 

@@ -18,8 +18,16 @@ const NAV_TIMEOUT_MS = 1500;
 
 self.addEventListener('install', (e) => {
   self.skipWaiting();
-  // Har bir fayl alohida — bittasi topilmasa ham qolganlari keshga tushadi
-  e.waitUntil(caches.open(CACHE).then(c => Promise.all(SHELL.map(u => c.add(new Request(u, { cache: 'reload' })).catch(() => {})))));
+  // Har bir fayl alohida — bittasi topilmasa ham qolganlari keshga tushadi.
+  // v25.9: xeshli fayllar (./h/…) o'zgarmaydi — eski keshda bo'lsa o'shandan olinadi (qayta yuklanmaydi). Sekin internetda
+  // yangi versiya bir necha soniyada o'rnatiladi; avval hammasi qayta yuklangani uchun ilova yopilsa o'rnatish uzilib, telefon
+  // eski versiyada qolib ketardi.
+  e.waitUntil(caches.open(CACHE).then(c => Promise.all(SHELL.map(u => {
+    const hashed = u.indexOf('./h/') === 0;
+    return (hashed ? caches.match(u) : Promise.resolve(null))
+      .then(hit => (hit ? c.put(u, hit) : c.add(new Request(u, { cache: hashed ? 'default' : 'reload' }))))
+      .catch(() => {});
+  }))));
 });
 
 self.addEventListener('activate', (e) => {
@@ -53,6 +61,37 @@ function networkFirst(req, fallbackHtml, waitMs) {
   }));
 }
 
+// v25.9: sahifa (navigatsiya) — networkFirst bilan bir xil, lekin keshdagi sahifa berilgan bo'lsa tarmoq javobi fonda kutiladi
+// (e.waitUntil — SW o'chib qolmaydi): keshga yoziladi va sahifa versiyasi o'zgargan bo'lsa ochiq oynaga «yangi versiya» xabari.
+function pageFirst(e, req, fallbackHtml) {
+  const wait = caches.open(CACHE).then(cache => new Promise((resolve) => {
+    let done = false, fromCacheText = null;
+    const fromCache = () => cache.match(req, { ignoreSearch: true }).then(r => r || cache.match(fallbackHtml));
+    const net = fetch(req);
+    const timer = setTimeout(() => {
+      fromCache().then(r => { if (r && !done) { done = true; resolve(r); r.clone().text().then(t => { fromCacheText = t; }).catch(() => {}); } });
+    }, NAV_TIMEOUT_MS);
+    const bg = net.then(res => {
+      clearTimeout(timer);
+      if (!done) { done = true; putCache(req, res); resolve(res); return null; }
+      if (!res || !res.ok) return null;
+      return res.clone().text().then(t => {
+        putCache(req, res);
+        const ver = (x) => { const m = /js\.main\.([0-9a-f]+)\.js/.exec(x || ''); return m ? m[1] : x; };
+        if (fromCacheText !== null && ver(t) !== ver(fromCacheText)) {
+          return self.clients.matchAll({ type: 'window' }).then(cs => cs.forEach(c => c.postMessage({ type: 'FW_NEW_VERSION' })));
+        }
+        return null;
+      });
+    }).catch(() => {
+      clearTimeout(timer);
+      return fromCache().then(r => { if (!done) { done = true; resolve(r || Response.error()); } });
+    });
+    e.waitUntil(bg.catch(() => {}));
+  }));
+  return wait;
+}
+
 // Avval kesh (versiyali CDN fayllari o'zgarmaydi)
 function cacheFirst(req) {
   return caches.match(req).then(r => r || fetch(req).then(res => { putCache(req, res); return res; }));
@@ -70,5 +109,5 @@ self.addEventListener('fetch', (e) => {
   const isPage = req.mode === 'navigate';
   const page = /\/sotuvchi(\.html)?$/.test(url.pathname) ? './sotuvchi.html' : /\/diller(\.html)?$/.test(url.pathname) ? './diller.html' : /\/dokon(\.html)?$/.test(url.pathname) ? './dokon.html' : './index.html';
   // v25.3: sahifa — tarmoq 1,5 soniyada javob bermasa keshdagisi ochiladi (sekin internetda ilova tez ochiladi; yangisi fonda keshga tushadi)
-  e.respondWith(networkFirst(req, isPage ? page : null, isPage ? NAV_TIMEOUT_MS : 0));
+  e.respondWith(isPage ? pageFirst(e, req, page) : networkFirst(req, null, 0));
 });

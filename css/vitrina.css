@@ -1,0 +1,327 @@
+/* POWERFUL GROUP — ommaviy vitrina (dokon.html). Brend: ko'mir-qora + oltin. Telefon birinchi, keyin planshet va kompyuter. */
+:root{--bg:#f6f3ec;--card:#fff;--tx:#17181c;--mut:#6c6f78;--bd:#e7e1d4;--g:#e8961e;--g2:#c9780f;--gl:#fff3dc;--ink:#15161a;--ink2:#22242a;--red:#d23b2b;--grn:#13805b;--r:16px}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--tx);font:500 15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}button{cursor:pointer}a{color:inherit}
+img{max-width:100%}
+.vt-wrap{max-width:1200px;margin:0 auto;padding:0 14px}
+.vt-skip{position:absolute;left:-9999px}.vt-skip:focus{left:10px;top:10px;z-index:99;background:#fff;padding:8px;border-radius:8px}
+:focus-visible{outline:2px solid var(--g);outline-offset:2px}
+
+/* sarlavha */
+.vt-hd{position:sticky;top:0;z-index:30;background:var(--ink);color:#fff;box-shadow:0 6px 20px -12px #000}
+.vt-hdin{display:flex;align-items:center;gap:8px;padding:9px 14px}
+.vt-logo{display:flex;align-items:center;gap:8px;text-decoration:none;font-weight:800;white-space:nowrap;min-width:0}
+.vt-logo img{width:58px;height:auto;display:block}
+.vt-logo span{font-size:15px;max-width:180px;overflow:hidden;text-overflow:ellipsis}
+.vt-search{flex:1;position:relative;min-width:0}
+.vt-search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:16px;height:16px;fill:none;stroke:#9aa0ab;stroke-width:2.4;stroke-linecap:round}
+.vt-search input{width:100%;border:1px solid #30333b;border-radius:12px;padding:10px 12px 10px 34px;background:var(--ink2);color:#fff;outline:none}
+.vt-search input::placeholder{color:#8b909b}.vt-search input:focus{border-color:var(--g)}
+.vt-ic,.vt-cartb{position:relative;flex:none;border:0;border-radius:12px;width:42px;height:42px;display:grid;place-items:center;background:var(--ink2);color:#fff}
+.vt-ic svg,.vt-cartb svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linejoin:round;stroke-linecap:round}
+.vt-cartb{background:var(--g);color:#1b1200;width:auto;padding:0 12px;gap:6px;display:flex;align-items:center;font-weight:800}
+.vt-ic b,.vt-cartb b{min-width:20px;height:20px;border-radius:10px;font-size:11.5px;display:grid;place-items:center;padding:0 5px}
+.vt-ic b{position:absolute;top:-4px;right:-4px;background:var(--g);color:#1b1200}
+.vt-cartb b{background:#1b1200;color:var(--g)}
+.vt-cartb.bump{animation:vtBump .45s}
+@keyframes vtBump{30%{transform:scale(1.14)}60%{transform:scale(.96)}}
+@media(max-width:600px){.vt-logo span{display:none}.vt-logo img{width:46px}#vt-ordb{display:none}}
+
+/* slayder */
+.vt-hero{position:relative;margin:14px 0 12px;border-radius:22px;overflow:hidden;background:var(--ink);color:#fff;min-height:200px}
+.vt-slide{position:absolute;inset:0;display:flex;align-items:center;padding:24px 26px;opacity:0;transition:opacity .7s;pointer-events:none}
+.vt-slide.on{opacity:1;pointer-events:auto}
+.vt-slide.img{padding:0}.vt-slide.img img{width:100%;height:100%;object-fit:cover}
+.vt-slide h2{margin:0 0 6px;font-size:clamp(22px,4.6vw,38px);line-height:1.08;letter-spacing:-.02em;max-width:62%}
+.vt-slide p{margin:0 0 14px;color:#c9c4b8;max-width:52%;font-size:14px}
+.vt-cta{border:0;background:var(--g);color:#1b1200;font-weight:800;border-radius:12px;padding:10px 16px}
+.vt-s0{background:radial-gradient(120% 140% at 85% 50%,#3a2a10 0,#15161a 60%)}
+.vt-s1{background:radial-gradient(120% 140% at 85% 50%,#2a2f3a 0,#15161a 60%)}
+.vt-s2{background:radial-gradient(120% 140% at 85% 50%,#123a2c 0,#15161a 62%)}
+.vt-saw{position:absolute;right:-30px;top:50%;width:min(46%,260px);aspect-ratio:1;transform:translateY(-50%);animation:vtSpin 14s linear infinite;opacity:.95}
+@keyframes vtSpin{to{transform:translateY(-50%) rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.vt-saw{animation:none}.vt-slide{transition:none}}
+.vt-dots{position:absolute;right:18px;bottom:12px;display:flex;gap:6px;z-index:2}
+.vt-dots button{width:8px;height:8px;border-radius:9px;border:0;background:#5b5d66;padding:0;transition:width .3s}
+.vt-dots button.on{width:24px;background:var(--g)}
+@media(max-width:600px){.vt-hero{min-height:178px}.vt-slide h2{max-width:70%}.vt-slide p{max-width:64%}.vt-saw{width:52%;right:-46px}}
+
+/* afzalliklar */
+.vt-perks{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin-bottom:14px}
+.vt-perk{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:10px 12px;display:flex;gap:10px;align-items:center;font-size:13px}
+.vt-perk i{flex:none;width:34px;height:34px;border-radius:10px;background:var(--gl);display:grid;place-items:center;font-style:normal;font-size:17px}
+.vt-perk b{display:block;font-size:13px}.vt-perk span{color:var(--mut);font-size:12px}
+
+/* arra tanlash yordamchisi */
+.vt-finder{background:linear-gradient(135deg,#1c1d22,#2b2418);color:#fff;border-radius:18px;padding:14px 16px;margin-bottom:14px}
+.vt-fhd b{font-size:16px;display:block}.vt-fhd small{color:#c9b98f}
+.vt-frow{display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap}
+.vt-frow>span{width:72px;font-size:12px;color:#c9b98f;font-weight:700}
+.vt-seg{display:flex;gap:6px;flex-wrap:wrap;flex:1}
+.vt-seg button{border:1px solid #474036;background:transparent;color:#eee;border-radius:99px;padding:6px 12px;font-size:12.5px;font-weight:700}
+.vt-seg button.on{background:var(--g);border-color:var(--g);color:#1b1200}
+@media(max-width:600px){.vt-frow{flex-wrap:nowrap}.vt-frow>span{width:58px;flex:none}.vt-seg{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}.vt-seg::-webkit-scrollbar{display:none}.vt-seg button{flex:none}}
+.vt-fhint{margin:10px 0 0;font-size:12.5px;color:#e9d7ac;min-height:18px}
+
+/* filtrlar */
+.vt-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+.vt-chips{display:flex;gap:6px;overflow-x:auto;flex:1;min-width:0;padding-bottom:4px;scrollbar-width:none}
+.vt-chips::-webkit-scrollbar{display:none}
+.vt-chip{flex:none;border:1px solid var(--bd);background:var(--card);border-radius:99px;padding:7px 14px;font-weight:700;font-size:13px;color:var(--mut)}
+.vt-chip.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.vt-sel{border:1px solid var(--bd);background:var(--card);border-radius:12px;padding:8px 10px;font-weight:600;font-size:13px}
+@media(max-width:600px){.vt-chips{flex:1 1 100%}.vt-sel{flex:1;min-width:0}}
+.vt-count{color:var(--mut);font-size:12.5px;margin:2px 0 10px}
+.vt-count{min-height:1.5em}   /* v25.9: «N ta mahsulot» qatori uchun joy — ma'lumot kelganda siljimaydi */
+.vt-catsk i,.vt-catsk b,.vt-catsk small{background:linear-gradient(90deg,#ece6d8 0,#f6f1e6 40%,#ece6d8 80%);background-size:200% 100%;animation:vtSk 1.2s infinite;border-radius:8px}
+.vt-catsk b{display:block;height:17px;width:70%;margin:0 0 4px}.vt-catsk small{display:block;height:14px;width:45%}
+
+/* kartalar */
+.vt-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+@media(min-width:640px){.vt-grid{grid-template-columns:repeat(3,1fr);gap:14px}}
+@media(min-width:980px){.vt-grid{grid-template-columns:repeat(4,1fr)}}
+.vt-pc{position:relative;background:var(--card);border:1px solid var(--bd);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column;transition:transform .15s,box-shadow .15s}
+.vt-pc:hover{transform:translateY(-2px);box-shadow:0 12px 28px -16px rgba(21,22,26,.45)}
+.vt-pic{position:relative;aspect-ratio:1;background:#fff;border-bottom:1px solid var(--bd);display:grid;place-items:center;padding:12px;cursor:pointer;border:0;width:100%}
+.vt-pic img{max-width:100%;max-height:100%;object-fit:contain}
+.vt-pic svg{width:74%}
+.vt-tag{position:absolute;left:8px;top:8px;border-radius:8px;padding:3px 8px;font-size:11px;font-weight:800;background:var(--red);color:#fff}
+.vt-low{position:absolute;left:8px;bottom:8px;border-radius:8px;padding:3px 8px;font-size:11px;font-weight:800;background:#fff3d6;color:#8a5a00}
+.vt-fav{position:absolute;right:6px;top:6px;width:34px;height:34px;border-radius:50%;border:0;background:#ffffffd9;display:grid;place-items:center}
+.vt-fav svg{width:18px;height:18px;fill:none;stroke:#8c8f98;stroke-width:2}
+.vt-fav.on svg{fill:var(--red);stroke:var(--red)}
+.vt-pb{padding:10px 11px 12px;display:flex;flex-direction:column;gap:3px;flex:1}
+.vt-br{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--g2)}
+.vt-nm{font-size:13.5px;font-weight:700;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.6em;cursor:pointer;background:none;border:0;padding:0;text-align:left}
+.vt-pr{margin-top:auto;padding-top:6px}
+.vt-pr b{font-size:16px;letter-spacing:-.01em}.vt-pr s{color:var(--mut);font-size:12px;margin-left:6px;font-weight:500}
+.vt-add{margin-top:8px;border:0;border-radius:11px;padding:9px;background:var(--ink);color:#fff;font-weight:800;font-size:13px}
+.vt-add:active{transform:scale(.98)}
+.vt-stp{margin-top:8px;display:flex;align-items:center;justify-content:space-between;background:var(--gl);border-radius:11px;overflow:hidden}
+.vt-stp button{border:0;background:transparent;width:38px;height:36px;font-size:18px;font-weight:800;color:var(--g2)}
+.vt-stp span{font-weight:800}
+.vt-empty{grid-column:1/-1;text-align:center;color:var(--mut);padding:40px 10px}
+.vt-empty b{display:block;color:var(--tx);font-size:17px;margin-bottom:4px}
+.vt-sk{border-radius:var(--r);background:linear-gradient(90deg,#ece6d8 0,#f6f1e6 40%,#ece6d8 80%);background-size:200% 100%;animation:vtSk 1.2s infinite;aspect-ratio:.72}
+@keyframes vtSk{to{background-position:-200% 0}}
+.vt-h3{font-size:19px;margin:28px 0 10px;letter-spacing:-.01em}
+.vt-row{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(150px,1fr);gap:10px;overflow-x:auto;padding-bottom:6px}
+
+/* pastki qism */
+.vt-ft{margin-top:36px;background:var(--ink);color:#c8c4bb;padding:26px 0 96px;font-size:14px}
+.vt-ftin{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px}
+.vt-ft b{color:#fff;display:block;margin-bottom:4px}
+.vt-ft a{color:var(--g);text-decoration:none;font-weight:700}
+
+/* pastdagi savat paneli (telefon) */
+.vt-cartbar{position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));z-index:40;background:var(--ink);color:#fff;border-radius:16px;padding:10px 10px 10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;box-shadow:0 14px 30px -10px #000a}
+.vt-cartbar[hidden]{display:none}
+.vt-cartbar button{border:0;border-radius:12px;background:var(--g);color:#1b1200;font-weight:800;padding:10px 14px}
+@media(min-width:900px){.vt-cartbar{left:auto;width:380px;right:20px}}
+
+/* oyna */
+.vt-ov{position:fixed;inset:0;background:rgba(10,11,14,.58);z-index:50;display:flex;align-items:flex-end;justify-content:center}
+.vt-ov[hidden]{display:none}
+@media(min-width:760px){.vt-ov{align-items:center}}
+.vt-sheet{background:var(--card);width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:22px 22px 0 0;padding:18px;position:relative;animation:vtUp .22s ease-out}
+@media(min-width:760px){.vt-sheet{border-radius:22px}}
+@keyframes vtUp{from{transform:translateY(24px);opacity:.4}}
+.vt-x{position:absolute;right:12px;top:12px;width:34px;height:34px;border-radius:50%;border:0;background:#f0ebe0;font-size:18px;z-index:2}
+.vt-sheet h2{margin:2px 0 4px;font-size:20px;letter-spacing:-.01em;padding-right:34px}
+.vt-big{background:#fff;border:1px solid var(--bd);border-radius:16px;height:260px;display:grid;place-items:center;margin-bottom:8px;padding:12px}
+.vt-big img{max-width:100%;max-height:100%;object-fit:contain}.vt-big svg{width:60%}
+.vt-thumbs{display:flex;gap:6px;margin-bottom:10px;overflow-x:auto}
+.vt-thumbs button{width:52px;height:52px;flex:none;border:1px solid var(--bd);border-radius:10px;background:#fff;padding:3px}
+.vt-thumbs button.on{border-color:var(--g)}.vt-thumbs img{width:100%;height:100%;object-fit:contain}
+.vt-meta{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.vt-meta span{background:#f3efe5;border-radius:8px;padding:3px 9px;font-size:12px;font-weight:700;color:var(--mut)}
+.vt-qty{display:inline-flex;align-items:center;border:1px solid var(--bd);border-radius:12px;overflow:hidden}
+.vt-qty button{width:36px;height:36px;border:0;background:#f3efe5;font-size:18px;font-weight:800}
+.vt-qty span{min-width:38px;text-align:center;font-weight:800}
+.vt-line{display:flex;gap:10px;align-items:center}
+.vt-prim{border:0;border-radius:13px;background:var(--g);color:#1b1200;font-weight:800;padding:13px 16px;width:100%}
+.vt-prim:disabled{opacity:.55}
+.vt-sec{border:1px solid var(--bd);border-radius:13px;background:#fff;font-weight:800;padding:12px 16px;width:100%;text-align:center;text-decoration:none;display:block}
+.vt-ci{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--bd)}
+.vt-ci .t{width:56px;height:56px;border-radius:12px;background:#fff;border:1px solid var(--bd);flex:none;display:grid;place-items:center;padding:3px}
+.vt-ci .t img,.vt-ci .t svg{max-width:100%;max-height:100%}
+.vt-ci .i{flex:1;min-width:0;font-size:13px;font-weight:700}.vt-ci .i small{display:block;color:var(--mut);font-weight:500}
+.vt-tot{display:flex;justify-content:space-between;padding:4px 0;color:var(--mut)}
+.vt-tot.f{color:var(--tx);font-weight:800;font-size:17px;padding-top:8px}
+.vt-free{background:var(--gl);border-radius:12px;padding:9px 11px;font-size:12.5px;margin:10px 0}
+.vt-free i{display:block;height:6px;border-radius:6px;background:#ead9b3;margin-top:6px;overflow:hidden}
+.vt-free i::after{content:"";display:block;height:100%;width:var(--w,0);background:linear-gradient(90deg,var(--g2),var(--g));border-radius:6px;transition:width .4s}
+.vt-seg2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+.vt-seg2 button{border:1.5px solid var(--bd);background:#fff;border-radius:12px;padding:10px;font-weight:700;font-size:13px}
+.vt-seg2 button.on{border-color:var(--g);background:var(--gl)}
+.vt-seg2 button:disabled{opacity:.45}
+.vt-fld{display:block;margin:8px 0}.vt-fld span{font-size:12px;font-weight:700;color:var(--mut)}
+.vt-fld input,.vt-fld textarea{width:100%;border:1px solid var(--bd);border-radius:12px;padding:11px;background:#fff;outline:none;margin-top:3px}
+.vt-fld input:focus,.vt-fld textarea:focus{border-color:var(--g)}
+.vt-hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.vt-err{color:var(--red);font-size:13px;font-weight:700;min-height:18px}
+.vt-ok{text-align:center;padding:8px 0}.vt-ok i{font-style:normal;font-size:46px;display:block}
+.vt-ord{border:1px solid var(--bd);border-radius:14px;padding:12px;margin-bottom:8px}
+.vt-st{display:flex;gap:4px;margin-top:8px}.vt-st i{flex:1;height:5px;border-radius:5px;background:#ece5d6}.vt-st i.on{background:var(--g)}
+.vt-badge{display:inline-block;border-radius:8px;padding:2px 9px;font-size:12px;font-weight:800;background:#e6f4ee;color:var(--grn)}
+.vt-badge.x{background:#fde8e5;color:var(--red)}
+.vt-toast{position:fixed;left:50%;bottom:86px;transform:translate(-50%,24px);background:var(--ink);color:#fff;padding:10px 16px;border-radius:12px;font-weight:700;font-size:13px;opacity:0;transition:.25s;z-index:80;pointer-events:none;max-width:90vw}
+.vt-toast.on{opacity:1;transform:translate(-50%,0)}
+
+/* v25.5 — RASMLAR KARTOCHKA USLUBIDA: oq yumaloq kartochka, rasm tepani to'ldiradi, rasm ostida nuqtalar / kichik rasmlar tasmasi, nom + kulrang izoh */
+.vt-pc{border-radius:22px;padding:6px 6px 0;box-shadow:0 10px 30px -22px rgba(21,22,26,.5)}
+.vt-pic{border:0;border-radius:17px;overflow:hidden;background:#f1f2f4;padding:0}
+.vt-pic.has img{width:100%;height:100%;max-width:none;max-height:none;object-fit:cover;display:block}
+.vt-pic svg{width:70%}
+.vt-dots{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);display:flex;gap:5px;padding:5px 7px;border-radius:99px;background:rgba(20,21,24,.28);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.vt-dots i{width:6px;height:6px;border-radius:50%;background:#ffffff8c;display:block;transition:width .2s,background .2s;cursor:pointer}
+.vt-dots i::after{content:"";position:absolute;inset:-8px 0}   /* barmoq uchun kattaroq maydon */
+.vt-dots i{position:relative}
+.vt-dots i.on{width:16px;border-radius:99px;background:#fff}
+.vt-pic.multi .vt-low{bottom:30px}
+.vt-fav{right:12px;top:12px}
+.vt-tag{left:12px;top:12px}
+.vt-pb{padding-left:6px;padding-right:6px}
+.vt-hero{position:relative;margin-bottom:12px}
+.vt-big{border:0;border-radius:22px;overflow:hidden;background:#f1f2f4;height:auto;aspect-ratio:1;max-height:56vh;width:100%;margin:0;padding:0}
+.vt-hero.has .vt-big img{width:100%;height:100%;max-width:none;max-height:none;object-fit:cover;display:block}
+.vt-hero .vt-thumbs{position:absolute;left:0;right:0;bottom:10px;margin:0;padding:0 10px;justify-content:center;gap:8px;scrollbar-width:none}
+.vt-hero .vt-thumbs::-webkit-scrollbar{display:none}
+.vt-hero .vt-thumbs button{width:56px;height:56px;border-radius:12px;border:2px solid transparent;padding:0;overflow:hidden;background:#fff;box-shadow:0 4px 14px -4px rgba(0,0,0,.45);opacity:.9}
+.vt-hero .vt-thumbs button.on{border-color:#fff;opacity:1;transform:translateY(-2px)}
+.vt-hero .vt-thumbs img{object-fit:cover}
+.vt-sheet h2{font-size:22px;font-weight:800;letter-spacing:-.02em;margin:0 0 2px}
+.vt-sub{margin:0 0 8px;color:#8b8e97;font-size:14px}
+@media(min-width:640px){.vt-big{max-height:min(50vh,440px)}}
+
+/* ═══ v25.6.10 — TAILWIND USLUBI (slate palitra, rounded-2xl, ring-1, shadow-sm), TELEFON BIRINCHI ═══
+   Tailwind CDN ulanmaydi (oflayn/CSP/tezlik) — uning o'lchov va rang tizimi shu yerda qo'lda: 4px qadam, slate-50..900, amber-500 urg'u. */
+:root{--bg:#f8fafc;--card:#fff;--tx:#0f172a;--mut:#64748b;--bd:#e2e8f0;--g:#f59e0b;--g2:#b45309;--gl:#fffbeb;--ink:#0f172a;--ink2:#1e293b;--red:#dc2626;--grn:#059669;--r:16px;
+  --sh:0 1px 2px rgba(15,23,42,.06),0 1px 3px rgba(15,23,42,.08);--sh2:0 10px 25px -10px rgba(15,23,42,.25)}
+html,body{font:500 15px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Inter,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+.vt-hd{background:rgba(15,23,42,.96);backdrop-filter:saturate(1.4) blur(8px);-webkit-backdrop-filter:saturate(1.4) blur(8px)}
+.vt-search input{background:#1e293b;border-color:#334155;border-radius:14px}
+.vt-ic{background:#1e293b;border-radius:14px}
+.vt-perks{grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px}
+.vt-perk{border:0;box-shadow:var(--sh);border-radius:16px;text-align:left;background:#fff;color:var(--tx);width:100%}
+.vt-perk i{background:#fef3c7;color:#b45309}
+.vt-perk i svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+button.vt-perk:active{transform:scale(.98)}
+.vt-chip{border-color:var(--bd)}.vt-chip.on{background:#0f172a;border-color:#0f172a}
+.vt-sel{border-radius:12px}
+
+/* mahsulot kartasi — bir xil kvadrat, oq fon, rasm markazda (object-contain + ichki bo'shliq) */
+.vt-pc{border:0;border-radius:20px;padding:6px 6px 0;box-shadow:var(--sh)}
+.vt-pc:hover{box-shadow:var(--sh2)}
+.vt-pic{aspect-ratio:1/1;border-radius:16px;background:#fff;box-shadow:inset 0 0 0 1px #f1f5f9;padding:0;overflow:hidden}
+.vt-pic.has{background:linear-gradient(90deg,#f1f5f9 0,#f8fafc 40%,#f1f5f9 80%);background-size:200% 100%;animation:vtSk 1.2s infinite}
+.vt-pic.has img,.vt-pic img{width:100%;height:100%;max-width:none;max-height:none;object-fit:contain;padding:7%;background:#fff;display:block;opacity:0;transition:opacity .25s}
+.vt-pic img.ld{opacity:1}
+.vt-pic:has(img.ld){animation:none;background:#fff}
+.vt-noimg{width:46%!important;height:auto;opacity:1}
+.vt-pic:not(.has){background:#f8fafc}
+.vt-nm{font-size:13.5px;color:#0f172a}
+.vt-add{background:#0f172a;border-radius:12px}
+.vt-stp{background:#fef3c7}
+
+/* KAFOLAT belgisi — hamma joyda bir xil */
+.vt-war{display:inline-flex;align-items:center;gap:4px;align-self:flex-start;margin-top:4px;border-radius:999px;padding:2px 8px 2px 6px;font-size:11.5px;font-weight:700;line-height:1.5;
+  background:#ecfdf5;color:#047857;box-shadow:inset 0 0 0 1px #a7f3d0;white-space:nowrap}
+.vt-war svg,.vt-wb svg{width:13px;height:13px;flex:none;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.vt-war.big{font-size:13px;padding:4px 10px 4px 8px}.vt-war.big svg{width:15px;height:15px}
+.vt-wb{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:4px 10px 4px 8px;font-size:12.5px;font-weight:800;background:#0f172a;color:#fcd34d}
+.vt-warbox{margin:12px 0;border-radius:16px;padding:12px;background:#f0fdf4;box-shadow:inset 0 0 0 1px #bbf7d0}
+.vt-warh{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.vt-warbox p{margin:8px 0 0;font-size:13px;color:#166534;line-height:1.5}
+.vt-warbox .vt-tot{padding:6px 0 0;color:#14532d;font-size:13px;gap:8px;align-items:center}
+.vt-ci .i .vt-war{margin-top:3px}
+
+/* KATEGORIYALAR — hamma karta bir xil o'lcham, rasm 4:3 */
+.vt-catsw .vt-h3{margin-top:6px}
+.vt-cats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:6px}
+@media(min-width:640px){.vt-cats{grid-template-columns:repeat(3,1fr);gap:14px}}
+@media(min-width:980px){.vt-cats{grid-template-columns:repeat(4,1fr)}}
+.vt-cat{border:0;background:#fff;border-radius:18px;padding:6px 6px 10px;box-shadow:var(--sh);text-align:left;display:flex;flex-direction:column;min-width:0}
+.vt-cat i{display:grid;place-items:center;aspect-ratio:4/3;border-radius:14px;overflow:hidden;background:#f1f5f9;color:#94a3b8;margin-bottom:8px}
+.vt-cat i svg{width:34%;height:auto;fill:none;stroke:currentColor;stroke-width:1.6}
+.vt-cat i.has{background:#fff}
+.vt-cat i img{width:100%;height:100%;object-fit:cover;display:block}
+.vt-cat b{font-size:13.5px;padding:0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vt-cat small{color:var(--mut);font-size:12px;padding:0 4px}
+.vt-cat.on{box-shadow:0 0 0 2px var(--g),var(--sh)}
+.vt-cat:active{transform:scale(.98)}
+
+/* tez aloqa va do'kon */
+.vt-call{display:flex;align-items:center;justify-content:space-between;gap:10px;border-radius:14px;padding:10px 10px 10px 14px;background:#f8fafc;box-shadow:inset 0 0 0 1px var(--bd);margin-top:8px}
+.vt-call small{display:block;color:var(--mut);font-size:12px;font-weight:600}
+.vt-call b{font-size:16px;letter-spacing:.01em;white-space:nowrap}
+.vt-callb{flex:none;border-radius:12px;background:#059669;color:#fff;font-weight:800;text-decoration:none;padding:10px 14px;font-size:14px}
+.vt-callb:active{transform:scale(.97)}
+.vt-pt{border-radius:16px;padding:12px;box-shadow:inset 0 0 0 1px var(--bd);margin-top:10px}
+.vt-pth{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.vt-pt p{margin:6px 0 0;font-size:13.5px;color:#334155}.vt-pt a{color:#b45309;font-weight:700}
+.vt-badge.g{background:#f1f5f9;color:#334155}
+.vt-sheet{border-radius:24px 24px 0 0}
+.vt-big{background:#fff;box-shadow:inset 0 0 0 1px #f1f5f9}
+.vt-hero.has .vt-big img,.vt-big img{object-fit:contain;padding:6%;background:#fff}
+.vt-ci .t img{object-fit:contain}
+.vt-fld input,.vt-fld textarea{border-radius:12px;border-color:#cbd5e1}
+.vt-fld input:focus,.vt-fld textarea:focus{border-color:var(--g);box-shadow:0 0 0 3px #fde68a}
+.vt-prim{border-radius:14px;background:#f59e0b;color:#1c1917}
+
+/* PASTKI MENYU — faqat telefon/planshet */
+.vt-nav{position:fixed;left:0;right:0;bottom:0;z-index:45;display:grid;grid-template-columns:repeat(5,1fr);background:rgba(255,255,255,.96);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  border-top:1px solid var(--bd);padding:4px 4px calc(4px + env(safe-area-inset-bottom))}
+.vt-nav button{position:relative;border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0;font-size:10.5px;font-weight:700;color:#475569;min-width:0}
+.vt-nav svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.vt-nav button:active{color:#b45309}
+.vt-nav b{position:absolute;top:2px;left:calc(50% + 6px);min-width:18px;height:18px;border-radius:9px;background:#f59e0b;color:#1c1917;font-size:11px;display:grid;place-items:center;padding:0 4px}
+.vt-nav b[hidden]{display:none}
+.vt-cartbar{bottom:calc(70px + env(safe-area-inset-bottom))}
+.vt-ft{padding-bottom:150px}
+.vt-toast{bottom:150px}
+.vt-dsk{display:none}
+@media(min-width:900px){.vt-nav{display:none}.vt-dsk{display:grid}.vt-cartbar{bottom:20px}.vt-ft{padding-bottom:96px}.vt-toast{bottom:86px}}
+/* slayder nuqtalari — o'ng pastda (kartochka nuqtalari qoidasi slayderga tegmasin) */
+#vt-hero>.vt-dots{left:auto;right:18px;bottom:12px;transform:none;background:none;backdrop-filter:none;-webkit-backdrop-filter:none;padding:0}
+.vt-pt a.vt-callb,.vt-call a.vt-callb{color:#fff}
+/* v25.6.10 (egasi: «oq fon — mahsulotlar orasidagi fon»): sahifa foni oq; kartalar ingichka chegara bilan ajraladi */
+:root{--bg:#fff}
+html,body{background:#fff}
+.vt-pc,.vt-cat,.vt-perk{box-shadow:0 0 0 1px #e2e8f0,0 1px 2px rgba(15,23,42,.05)}
+.vt-pc:hover{box-shadow:0 0 0 1px #cbd5e1,var(--sh2)}
+.vt-cat.on{box-shadow:0 0 0 2px var(--g)}
+/* egasi: bosh sahifa — faqat mahsulotlar. Kategoriyalar ixcham bir qator (bir xil o'lcham), takroriy tugmalar yo'q */
+#vt-hero[hidden],#vt-perks[hidden]{display:none}
+.vt-chips{display:none}
+.vt-catsw{margin-top:12px}
+.vt-catsw .vt-h3{display:none}
+.vt-cats{display:grid;grid-auto-flow:column;grid-auto-columns:116px;grid-template-columns:none;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px 2px 6px;margin:0 -2px 6px}
+.vt-cats::-webkit-scrollbar{display:none}
+@media(min-width:640px){.vt-cats{grid-auto-columns:140px;gap:10px;grid-template-columns:none}}
+@media(min-width:980px){.vt-cats{grid-template-columns:none}}
+.vt-cat{padding:5px 5px 8px;border-radius:14px}
+.vt-cat i{border-radius:10px;margin-bottom:6px}
+.vt-cat b{font-size:12.5px}.vt-cat small{font-size:11px}
+.vt-finder{margin-top:4px}
+/* banner (1200x600, 2:1) — hech qachon kesilmaydi: telefonda to'liq kenglikda, kompyuterda balandligi 440px gacha, yon tomonlari banner rangida */
+#vt-hero:has(.vt-slide.img){aspect-ratio:2/1;min-height:0;max-height:440px;background:#0f172a}
+#vt-hero .vt-slide.img img{object-fit:contain;width:100%;height:100%}
+#vt-hero:has(.vt-slide.img){width:min(100%,880px);margin-left:auto;margin-right:auto}
+#vt-hero.vt-wait{aspect-ratio:2/1;min-height:0;max-height:440px;background:#0f172a;width:min(100%,880px);margin-left:auto;margin-right:auto}   /* v25.9: banner kelguncha aynan o'sha joy (CLS) */
+/* egasi namunasi: rasm kartochka tepasini TO'LIQ to'ldiradi (cover), nuqtalar rasm ustida pastda;
+   mahsulot sahifasida katta rasm to'liq, kichik rasmlar uning ustida pastda */
+.vt-pic.has img,.vt-pic img{object-fit:cover;padding:0;background:#f1f5f9}
+.vt-hero.has .vt-big img,.vt-big img{object-fit:cover;padding:0;background:#f1f5f9}
+.vt-big{box-shadow:none;border-radius:22px}
+.vt-pic{box-shadow:none;border-radius:18px}
+/* ko'p olganda narx */
+.vt-bulk{display:block;font-size:12px;color:#0f766e;font-weight:600;margin-top:2px}
+.vt-bulk b{font-weight:800}
+.vt-bulk.on{color:#047857}
+.vt-tiers{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
+.vt-tiers>div{position:relative;border-radius:14px;padding:10px 12px;box-shadow:inset 0 0 0 1px #e2e8f0;background:#fff}
+.vt-tiers>div.on{box-shadow:inset 0 0 0 2px #0f766e;background:#f0fdfa}
+.vt-tiers span{display:block;font-size:12px;color:#64748b;font-weight:600}.vt-tiers b{font-size:16px}
+.vt-tiers em{position:absolute;right:8px;top:8px;font-style:normal;font-size:11px;font-weight:800;background:#0f766e;color:#fff;border-radius:6px;padding:1px 6px}

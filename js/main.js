@@ -1342,6 +1342,7 @@ function applyMenuPermissions() {
   // «Kassa yopish» — kassa yoki savdo huquqi bo'lmaganlarga ko'rinmasin (v23.7: sotuvchi ham yopadi)
   const khBtn = document.getElementById('topbar-kunlik-hisob');
   if (khBtn) khBtn.style.display = khCanClose() ? '' : 'none';
+  if (typeof airNavSync === 'function') airNavSync();   // v25.8: yon menyudagi «AI-reklama» — ruxsatga qarab
   renderBranchBadge(); // CURRENT_USER endi aniq — tugma holati (faol/nofaol) shunga qarab yangilanadi
   if (S.page && !canSeePage(S.page)) {
     go('dashboard');

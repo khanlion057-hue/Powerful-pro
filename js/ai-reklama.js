@@ -1026,3 +1026,28 @@ function airDraftEditor(id) {
   AIR.queue = null;
   airOpenInEditor({ pid: d.pid, title: d.title, body: d.body, tags: d.tags, reason: d.reason, format: 'photo', idemKey: d.idemKey });
 }
+
+// ════════════════════════════════════════════════════════════
+// 8. YON MENYU: «AI-reklama» bandi (egasi talabi) — to'g'ridan-to'g'ri Onlayn-do'kon → AI-reklama.
+//    Ko'rinish qoidasi — bo'limning o'zidagi bilan bir xil: do'kon sahifasi ko'rinadi + (reklama.view yoki server administratori).
+// ════════════════════════════════════════════════════════════
+function airNavAllowed() {
+  const pageOk = typeof canSeePage !== 'function' || canSeePage('dokon');
+  const perm = typeof hasPerm !== 'function' || hasPerm('reklama.view') || (typeof fwServerAdmin === 'function' && fwServerAdmin());
+  return !!(pageOk && perm);
+}
+function airNavSync() {
+  const ok = airNavAllowed();
+  document.querySelectorAll('[data-nav="aireklama"]').forEach((n) => { n.style.display = ok ? '' : 'none'; });
+}
+function goAiReklama() {
+  if (!airNavAllowed()) { _airToast("Bu boʻlimga ruxsatingiz yoʻq"); return; }
+  const on = typeof shopCfg === 'function' && shopCfg().enabled;
+  if (!on) _airToast("Bu filialda onlayn-doʻkon yoqilmagan — AI-reklama doʻkoni yoqilgan filialda (masalan, Baza) ishlaydi");
+  S.dkTab = 'ai';
+  if (typeof go === 'function') go('dokon');
+  if (on) {   // menyuda AI-reklama belgilangan bo'lsin (Onlayn-do'kon emas)
+    document.querySelectorAll('.nav-item[data-page="dokon"]').forEach((n) => n.classList.remove('active'));
+    document.querySelectorAll('[data-nav="aireklama"]').forEach((n) => n.classList.add('active'));
+  }
+}

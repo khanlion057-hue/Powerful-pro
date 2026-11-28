@@ -20,7 +20,7 @@ async function run() {
         await new Promise((r) => setTimeout(r, 30));
         if (__mode === 'gone') return { ok: false, bot: { ok: false, error: 'Bot topilmadi — BotFather’da tekshiring' }, webhook: { ok: false }, menu: { ok: false }, description: { ok: false } };
         if (b.action === 'status' && __mode === 'before') return { ok: false, bot: { ok: true, username: 'powerful_bot', name: 'Powerful' }, webhook: { ok: false, error: 'Hali oʻrnatilmagan — «Botni sozlash»ni bosing' }, menu: { ok: false, uz: true, ru: false }, description: { ok: false } };
-        return { ok: true, bot: { ok: true, username: 'powerful_bot', name: 'Powerful' }, webhook: { ok: true, pending: 0 }, menu: { ok: true, uz: true, ru: true }, description: { ok: true }, staffMenus: 2 };
+        return { ok: true, bot: { ok: true, username: 'Powerful_hisobot', name: 'Powerful', nameOk: true, expected: 'Powerful_hisobot' }, webhook: { ok: true, pending: 0 }, menu: { ok: true, uz: true, ru: true }, description: { ok: true }, staffMenus: 2 };
       };
       stBotsSheet();
     });
@@ -39,9 +39,17 @@ async function run() {
     await page.waitForFunction(() => document.querySelectorAll('.bt-chk-r.ok').length === 4);
     const after = await page.evaluate(() => ({ rows: [...document.querySelectorAll('.bt-chk-r')].map((r) => r.querySelector('b').textContent + ' — ' + r.querySelector('small').textContent), calls: __calls.slice() }));
     assert.deepEqual(after.calls, ['status', 'setup']);
-    assert.deepEqual(after.rows, ['Bot ishlayapti — @powerful_bot · Powerful', 'Webhook oʻrnatilgan — Xabarlar darhol qabul qilinadi',
+    assert.deepEqual(after.rows, ['Bot ishlayapti — @Powerful_hisobot · Powerful', 'Webhook oʻrnatilgan — Xabarlar darhol qabul qilinadi',
       'Menyu oʻrnatilgan — Oʻzbekcha va ruscha · xaridorga faqat /start va yordam', 'Tavsif oʻrnatilgan — Oʻzbekcha va ruscha']);
     if (SHOT) await page.screenshot({ path: SHOT + '-2-sozlandi.png' });
+    // boshqa bot ulangan — nom bo'yicha ogohlantirish (sariq qator)
+    await page.evaluate(() => { __mode = 'other'; const f = tgBotCall; tgBotCall = async (b) => { const r = await f(b); if (__mode === 'other') r.bot = { ok: true, username: 'powerful_onlaynbot', name: 'Onlayn', nameOk: false, expected: 'Powerful_hisobot',
+      warning: 'Ulangan bot @powerful_onlaynbot — kutilgan @Powerful_hisobot. Sozlamalar → Asosiy bot: @Powerful_hisobot tokenini saqlang.' }; return r; }; });
+    await page.click('#bt-setup-btn');
+    await page.waitForSelector('.bt-chk-r.warn');
+    const warn = await page.evaluate(() => document.querySelector('.bt-chk-r.warn').innerText.replace(/\s+/g, ' ').trim());
+    assert.equal(warn, '! Bot nomi mos emas Ulangan bot @powerful_onlaynbot — kutilgan @Powerful_hisobot. Sozlamalar → Asosiy bot: @Powerful_hisobot tokenini saqlang.');
+    if (SHOT) await page.screenshot({ path: SHOT + '-2b-nom.png' });
     // bot o'chirilgan / token yaroqsiz
     await page.evaluate(() => { __mode = 'gone'; });
     await page.click('#bt-setup-btn');

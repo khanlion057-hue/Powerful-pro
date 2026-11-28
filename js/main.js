@@ -13750,7 +13750,9 @@ function stBotsSheet() {
 async function stBotSetup(btn) {
   if (!fwServerAdmin() || BOTS.busy) return;
   BOTS.busy = 'setup'; stBotsPaint();
-  try { BOTS.v = await tgBotCall({ action: 'setup' }); toast(BOTS.v.ok ? '✅ Bot sozlandi va tekshirildi' : 'Bot toʻliq sozlanmadi — sababi koʻrsatilgan', BOTS.v.ok ? 'success' : 'warning'); }
+  try { BOTS.v = await tgBotCall({ action: 'setup' });
+    const nameBad = BOTS.v.bot && BOTS.v.bot.nameOk === false;
+    toast(BOTS.v.ok && !nameBad ? '✅ Bot sozlandi va tekshirildi' : nameBad ? 'Diqqat: bot nomi @' + (BOTS.v.bot.expected || 'Powerful_hisobot') + ' emas' : 'Bot toʻliq sozlanmadi — sababi koʻrsatilgan', BOTS.v.ok && !nameBad ? 'success' : 'warning'); }
   catch (e) { BOTS.v = { error: e.message }; toast(e.message, 'error'); }
   finally { BOTS.busy = false; if (document.querySelector('.bt-map')) stBotsPaint(); }
   if (BOTS.v && BOTS.v.bot && BOTS.v.bot.username) { try { localStorage.setItem('fw_tg_bot', BOTS.v.bot.username); } catch (e) {} }
@@ -13766,6 +13768,7 @@ function stBotCheckHtml(v, busy) {
   const miss = [m.uz ? '' : 'oʻzbekcha', m.ru ? '' : 'ruscha'].filter(Boolean).join(', ');
   return `<div class="bt-chk">
     ${row(true, 'Bot ishlayapti', '@' + esc(b.username || '') + (b.name ? ' · ' + esc(b.name) : ''))}
+    ${b.nameOk === false ? `<div class="bt-chk-r warn"><i>!</i><span><b>Bot nomi mos emas</b><small>${esc(b.warning || '')}</small></span></div>` : ''}
     ${row(!!w.ok, w.ok ? 'Webhook oʻrnatilgan' : 'Webhook oʻrnatilmagan', w.ok ? (w.warning ? esc(w.warning) : 'Xabarlar darhol qabul qilinadi' + (w.pending ? ` · navbatda ${+w.pending}` : '')) : esc(w.error || '«Botni sozlash»ni bosing'))}
     ${row(!!m.ok, m.ok ? 'Menyu oʻrnatilgan' : 'Menyu oʻrnatilmagan', m.ok ? 'Oʻzbekcha va ruscha · xaridorga faqat /start va yordam' : 'Yetishmaydi: ' + esc(miss || 'menyu'))}
     ${row(!!d.ok, d.ok ? 'Tavsif oʻrnatilgan' : 'Tavsif oʻrnatilmagan', d.ok ? 'Oʻzbekcha va ruscha' : '«Botni sozlash»ni bosing')}
@@ -13786,7 +13789,7 @@ function stBotsPaint() {
   const shopName = typeof shopCfg === 'function' ? shopCfg().name : '';
   openSheet({ ic: 'send', c: 'sky', title: 'Botlar va avtomatik vazifalar', sub: 'Bitta bot hamma ishni qiladi · token faqat serverda',
     body: `<div class="bt-map">
-      ${bot('send', 'sky', 'Asosiy bot' + (nm ? ' · @' + esc(nm) : ''), 'Sozlamalar → Telegram bot · hamma ish shu botda', tokOn && !dead, [
+      ${bot('send', 'sky', 'Asosiy bot' + (nm ? ' · @' + esc(nm) : ''), 'Sozlamalar → Asosiy bot · yagona bot @Powerful_hisobot', tokOn && !dead, [
         job(tgOn && st.tgDaily, 'Kunlik hisobot', `Guruhga · har kuni ${hh(st.tgDailyHour, 21)} (avtomatik, har soatda tekshiriladi)`, 'Savdo, foyda, xarajat, kassalar va qarzlar — har filial alohida', 'stEditTelegram()'),
         job(!!(st.tgBackupChat && st.tgBackupDaily), 'Kunlik zaxira nusxa', `Egasining shaxsiy chatiga · har kuni ${hh(st.tgBackupHour, 23)}`, 'Barcha maʼlumot .json.gz fayl koʻrinishida', 'stBackupSheet()'),
         job(parts > 0, 'Investor hisobotlari', `Hamkorlar → Telegram · ${parts} ta hamkor ulangan`, 'Oylik / yillik hisobot PDF — investor «Start»ni bosgach, bitta tugma bilan', "go('hamkorlar')"),

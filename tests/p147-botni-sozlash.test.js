@@ -1,4 +1,5 @@
 // P147 — v25.9 (yagona bot, 5-bosqich): «Botni sozlash» va tekshiruv (telegram-bot: setup / status; _lib/botSetup).
+//  • Bot nomi ko'rsatiladi; @Powerful_hisobot bo'lmasa — ogohlantirish (egasi qarori).
 // Soxta Telegram HOLATNI eslab qoladi (webhook manzili, kalit, menyu tillar bo'yicha, tavsif) — tekshiruv haqiqiy holatni qayta o'qiydi.
 //  • Natija aniq: bot ishlayaptimi, webhook o'rnatildimi, menyu (uz + ru) va tavsif o'rnatildimi.
 //  • Token yaroqsiz (401) yoki bot o'chirilgan (404) — aynan «Bot topilmadi — BotFather’da tekshiring».
@@ -22,7 +23,7 @@ function fakeTelegram(mode = { me: 'ok' }) {
       if (mode.me === '401') return { json: async () => ({ ok: false, error_code: 401, description: 'Unauthorized' }) };
       if (mode.me === '404') return { json: async () => ({ ok: false, error_code: 404, description: 'Not Found' }) };
       if (mode.me === 'net') throw new Error('ECONNRESET');
-      return ok({ id: 700009, username: 'powerful_bot', first_name: 'Powerful' });
+      return ok({ id: 700009, username: mode.name || 'Powerful_hisobot', first_name: 'Powerful' });
     }
     if (method === 'setWebhook') { if (mode.wh === 'fail') return { json: async () => ({ ok: false, error_code: 400, description: 'Bad Request: bad webhook: HTTPS url must be provided for webhook' }) }; S.webhook = b.url; S.secret = b.secret_token; S.allowed = b.allowed_updates; return ok(true); }
     if (method === 'getWebhookInfo') return ok({ url: S.webhook || '', pending_update_count: 0 });
@@ -60,7 +61,7 @@ async function testSetup() {
     const r = await h(post({ action: 'setup' }));
     const v = B(r);
     assert.deepEqual({ ok: v.ok, bot: v.bot, webhook: v.webhook.ok, menu: v.menu, description: v.description },
-      { ok: true, bot: { ok: true, username: 'powerful_bot', name: 'Powerful' }, webhook: true, menu: { uz: true, ru: true, ok: true }, description: { ok: true } });
+      { ok: true, bot: { ok: true, username: 'Powerful_hisobot', name: 'Powerful', expected: 'Powerful_hisobot', nameOk: true }, webhook: true, menu: { uz: true, ru: true, ok: true }, description: { ok: true } });
     assert.equal(tg.webhook, URL0 + '/.netlify/functions/telegram-bot');
     assert.deepEqual(tg.allowed, ['message', 'my_chat_member', 'channel_post']);
     assert.match(tg.secret, /^[0-9a-f]{64}$/);
@@ -82,6 +83,17 @@ async function testSetup() {
     // webhook boshqa joyga o'zgartirilgan bo'lsa — tekshiruv aytadi
     tg.webhook = 'https://boshqa.example/hook';
     assert.match(B(await h(post({ action: 'status' }))).webhook.error, /boshqa manzilga/);
+  } finally { unloadFunctions(); }
+  // boshqa bot tokeni saqlangan — ishlaydi, lekin nom bo'yicha OGOHLANTIRISH
+  fakeTelegram({ name: 'powerful_onlaynbot' }); const c3 = world();
+  try {
+    const h = loadFunction('telegram-bot', c3);
+    const v = B(await h(post({ action: 'setup' })));
+    assert.equal(v.bot.ok, true); assert.equal(v.bot.username, 'powerful_onlaynbot'); assert.equal(v.bot.nameOk, false);
+    assert.equal(v.bot.warning, 'Ulangan bot @powerful_onlaynbot — kutilgan @Powerful_hisobot. Sozlamalar → Asosiy bot: @Powerful_hisobot tokenini saqlang.');
+    // katta-kichik harf farqi — ogohlantirish yo'q
+    fakeTelegram({ name: 'powerful_HISOBOT' }); unloadFunctions();
+    assert.equal(B(await loadFunction('telegram-bot', world())(post({ action: 'status' }))).bot.nameOk, true);
   } finally { unloadFunctions(); }
 }
 

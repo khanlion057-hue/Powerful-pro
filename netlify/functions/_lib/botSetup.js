@@ -10,6 +10,12 @@ const IN = require('./tgInbox');
 const BT = require('./botTexts');
 
 const NOT_FOUND = 'Bot topilmadi — BotFather’da tekshiring';
+// v25.9 (egasi qarori): yagona bot — @Powerful_hisobot. Boshqa bot tokeni saqlangan bo'lsa — tekshiruv ogohlantiradi (ishni to'xtatmaydi).
+const EXPECTED_BOT = String(process.env.FW_MAIN_BOT_USERNAME || 'Powerful_hisobot').replace(/^@/, '');
+const nameCheck = (username) => {
+  const ok = String(username || '').toLowerCase() === EXPECTED_BOT.toLowerCase();
+  return { expected: EXPECTED_BOT, nameOk: ok, warning: ok ? undefined : `Ulangan bot @${username || '?'} — kutilgan @${EXPECTED_BOT}. Sozlamalar → Asosiy bot: @${EXPECTED_BOT} tokenini saqlang.` };
+};
 const ALLOWED = ['message', 'my_chat_member', 'channel_post'];
 const hookUrl = (env) => { const b = String((env || process.env).URL || (env || process.env).DEPLOY_PRIME_URL || '').replace(/\/$/, ''); return /^https:\/\//.test(b) ? b + '/.netlify/functions/telegram-bot' : null; };
 const clean = (s, n = 160) => String(s || '').replace(/bot\d+:[A-Za-z0-9_-]+/g, 'bot***').slice(0, n);
@@ -41,7 +47,7 @@ async function verify(admin, token, f, env) {
   const has = (r) => !!(r && r.ok && Array.isArray(r.result) && r.result.some((c) => c.command === 'start'));
   const menu = { uz: has(cu), ru: has(cr) }; menu.ok = menu.uz && menu.ru;
   const description = { ok: !!(du && du.ok && du.result && String(du.result.description || '').length > 0) };
-  return { ok: webhook.ok && menu.ok && description.ok, bot: { ok: true, username: bot.username, name: bot.name }, webhook, menu, description };
+  return { ok: webhook.ok && menu.ok && description.ok, bot: { ok: true, username: bot.username, name: bot.name, ...nameCheck(bot.username) }, webhook, menu, description };
 }
 
 // Ulangan xodimlar chatiga xodim menyusi (eng ko'pi 30 ta — Netlify 10 s chegarasi)
@@ -90,4 +96,4 @@ async function setup(admin, token, brand, opts = {}) {
   return v;
 }
 
-module.exports = { NOT_FOUND, hookUrl, botInfo, verify, setup };
+module.exports = { NOT_FOUND, EXPECTED_BOT, nameCheck, hookUrl, botInfo, verify, setup };

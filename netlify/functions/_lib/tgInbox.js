@@ -32,7 +32,7 @@ async function loadHook(admin) {
   try { const { data } = await admin.from('app_data').select('data').eq('id', ROW).maybeSingle(); return (data && data.data) || {}; }
   catch (_) { return {}; }
 }
-const saveHook = (admin, d) => admin.from('app_data').upsert({ id: ROW, data: d, updated_at: new Date().toISOString() });
+const saveHook = (admin, d) => admin.from('app_data').upsert({ id: ROW, data: d, updated_at: new Date().toISOString() }, { onConflict: 'id' });
 
 // Telegram update → jadval qatori (yoki null — bu turdagi yangilanish saqlanmaydi)
 function rowOf(botId, upd) {

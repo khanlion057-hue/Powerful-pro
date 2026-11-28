@@ -100,37 +100,36 @@ function STAFF_WORLD() {
 }
 const USERS = { 't-admin': { id: 'u-admin' }, 't-cash': { id: 'u-cash' }, 't-set': { id: 'u-set' } };
 
-// ── 5. shop-bot: ruxsat, format, token javobga qo'shilmaydi, setup serverdagi tokenni ishlatadi ──
+// ── 5. shop-bot: ruxsat; v25.9 — YAGONA BOT: do'kon vazifasi asosiy botda, eski do'kon tokeni ishlatilmaydi; token javobga qo'shilmaydi ──
 async function testShopBotFunction() {
-  const TOKEN = '123456:SHOP_SECRET_TOKEN_VALUE_ABCDEF';
+  const TOKEN = '123456:SHOP_SECRET_TOKEN_VALUE_ABCDEF', MAIN = '777001:MAIN_SECRET_TOKEN_VALUE_ABCDEF';
   const calls = [];
   const realFetch = global.fetch;
   global.fetch = async (url, opts) => {
     calls.push({ url: String(url), body: opts && opts.body });
     const method = String(url).split('/').pop();
-    const result = method === 'getMe' ? { ok: true, result: { username: 'dokon_bot', first_name: 'Dokon' } } : { ok: true, result: true };
+    const result = method === 'getMe' ? { ok: true, result: { id: 777001, username: 'powerful_bot', first_name: 'Powerful' } } : { ok: true, result: true };
     return { json: async () => result };
   };
-  const c = makeMemSupabase({ tables: { app_data: [{ id: 'main', data: { settings: { company: 'F', shopBotToken: TOKEN } } }], ...STAFF_WORLD() }, users: USERS });
+  const c = makeMemSupabase({ tables: { app_data: [{ id: 'main', data: { settings: { company: 'F', shopBotToken: TOKEN, tgBotToken: MAIN } } }], ...STAFF_WORLD() }, users: USERS });
   try {
     const h = loadFunction('shop-bot', c);
     let r = await h(post({ action: 'check', token: TOKEN }, 't-cash'));
     assert.equal(r.statusCode, 403, 'sozlamalar.edit huquqisiz — rad');
     assert.equal(calls.length, 0, "rad etilganda Telegram'ga murojaat yo'q");
-    r = await h(post({ action: 'check', token: 'notatoken' }, 't-set'));
-    assert.equal(r.statusCode, 400);
-    assert.equal(calls.length, 0);
     r = await h(post({ action: 'check', token: TOKEN }, 't-set'));
-    assert.equal(r.statusCode, 200);
-    assert.equal(JSON.parse(r.body).bot.username, 'dokon_bot');
-    assert.ok(!r.body.includes('SHOP_SECRET'), 'javobda token yoʻq');
+    assert.equal(r.statusCode, 400); assert.match(JSON.parse(r.body).error, /birlashtirildi/);
+    assert.equal(calls.length, 0, 'alohida token endi tekshirilmaydi');
+    r = await h(post({ action: 'status' }, 't-set'));
+    assert.deepEqual(JSON.parse(r.body), { ok: true, merged: true, legacy: true, bot: { username: 'powerful_bot', name: 'Powerful' } });
+    r = await h(post({ action: 'setup' }, 't-set'));
+    assert.equal(r.statusCode, 403, "«Botni sozlash» — faqat administrator (webhook o'zgaradi)");
     calls.length = 0;
     r = await h(post({ action: 'setup', shopName: 'Powerfull' }, 't-admin'));
-    const b = JSON.parse(r.body);
-    assert.equal(b.ok, true);
-    assert.ok(!r.body.includes('SHOP_SECRET'));
-    assert.deepEqual(calls.map(x => x.url.split('/').pop()), ['getMe', 'setMyCommands', 'setMyDescription', 'setMyShortDescription']);
-    assert.ok(calls.every(x => x.url.includes(encodeURIComponent(TOKEN))), 'serverdagi saqlangan token ishlatiladi');
+    assert.equal(r.statusCode, 200, r.body);
+    assert.ok(!r.body.includes('SHOP_SECRET') && !r.body.includes('MAIN_SECRET'), 'javobda token yoʻq');
+    assert.ok(calls.length > 0 && calls.every(x => x.url.includes(encodeURIComponent(MAIN))), 'faqat ASOSIY bot ishlatiladi (eski doʻkon tokeni emas)');
+    assert.ok(calls.some(x => x.url.endsWith('/setMyCommands')) && calls.some(x => x.url.endsWith('/setMyDescription')));
     r = await h(post({ action: 'drop_db' }, 't-admin'));
     assert.equal(r.statusCode, 400, "noma'lum amal rad etiladi");
   } finally { global.fetch = realFetch; unloadFunctions(); }
@@ -201,7 +200,7 @@ module.exports = {
     { name: "Buyurtma/sharh o'chirilmaydi: eskirgan nusxa (admin ham) yangi buyurtmani yo'qotmaydi", run: testOrdersNeverDropped },
     { name: "Banner faqat https (≤5), chegirma ≤20 va narx > 0", run: testShopConfigSanitized },
     { name: "Do'kon boti tokeni brauzerga qaytmaydi, tokensiz saqlash uni o'chirmaydi", run: testShopBotTokenSecret },
-    { name: "shop-bot: ruxsat, format, javobda token yo'q, setup serverdagi tokenni ishlatadi", run: testShopBotFunction },
+    { name: "shop-bot (yagona bot): ruxsat, eski token ishlatilmaydi, setup — admin, asosiy bot, javobda token yo'q", run: testShopBotFunction },
     { name: "Brauzer: buyurtma → holatlar → savat (buyurtma narxi) → savdo bilan bog'lanish; XSS; birlashtirish", run: testShopClientFlow },
   ],
 };

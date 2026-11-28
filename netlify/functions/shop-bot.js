@@ -1,32 +1,20 @@
 // Netlify Function — ONLAYN-DO'KON Telegram boti (ulash / holat).
+// v25.9: YAGONA BOT — xaridorlar ham ASOSIY botda (settings.tgBotToken). Quyidagi eski izoh — tarix uchun:
 //
 // Token — do'kon botining kaliti. U brauzerga HECH QACHON qaytarilmaydi:
 //  • saqlash: brauzer tokenni bir marta app_data.settings.shopBotToken sifatida yuboradi,
 //    server uni saqlaydi va yuklashda olib tashlaydi (faqat `shopBotTokenSet` belgisi);
 //  • bu funksiya Telegram API'ga SERVERDAN murojaat qiladi va javobga tokenni qo'shmaydi.
 //
-// POST { action:'check', token }   — tokenni tekshiradi (getMe), hech narsa saqlamaydi
-// POST { action:'setup' }          — saqlangan token bilan bot buyruqlari va tavsifini o'rnatadi
-// POST { action:'status' }         — saqlangan token bo'yicha bot ma'lumoti (getMe)
+// v25.9: POST { action:'status' } — asosiy bot (nomi; eski do'kon tokeni saqlanganmi — legacy)
+//        POST { action:'setup' }  — «Botni sozlash» (_lib/botSetup: webhook, menyu/tavsif uz+ru, tekshiruv) — faqat administrator
+//        POST { action:'check' }  — eski: rad (alohida token kerak emas)
 // Ruxsat: administrator yoki `sozlamalar.edit`.
 const { getAdminClient, json, methodGuard, parseBody, requireStaffAuth, serverError } = require('./_lib/supabaseAdmin');
+const SETUP = require('./_lib/botSetup');
+const { brandOf } = require('./_lib/tgEvents');
 
-const TOKEN_RE = /^\d{5,}:[A-Za-z0-9_-]{20,}$/;
 const ACTIONS = ['check', 'setup', 'status'];
-
-async function tg(token, method, payload) {
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 8000);
-  try {
-    const r = await fetch(`https://api.telegram.org/bot${encodeURIComponent(token)}/${method}`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: ctrl.signal,
-      body: JSON.stringify(payload || {}),
-    });
-    return await r.json().catch(() => ({ ok: false }));
-  } finally { clearTimeout(t); }
-}
-const botInfo = (r) => (r && r.ok && r.result) ? { username: String(r.result.username || '').slice(0, 64), name: String(r.result.first_name || '').slice(0, 64) } : null;
-const tgErr = (r) => String((r && r.description) || "Telegram javob bermadi").slice(0, 200);
 
 exports.handler = async (event) => {
   const methodErr = methodGuard(event, ['POST']);
@@ -42,38 +30,20 @@ exports.handler = async (event) => {
   if (!auth.ok) return auth.response;
 
   try {
-    if (body.action === 'check') {
-      const token = String(body.token || '').trim();
-      if (!TOKEN_RE.test(token)) return json({ ok: false, error: "Token formati noto'g'ri — BotFather yuborgan satrni to'liq nusxalang" }, 400);
-      const me = await tg(token, 'getMe');
-      const info = botInfo(me);
-      return info ? json({ ok: true, bot: info }, 200) : json({ ok: false, error: tgErr(me) }, 200);
-    }
-
+    // v25.9: YAGONA BOT — do'kon (xaridorlar) vazifasi asosiy botda. Alohida do'kon boti tokeni endi kerak emas.
+    if (body.action === 'check') return json({ ok: false, merged: true, error: "Doʻkon boti asosiy botga birlashtirildi — alohida token kerak emas" }, 400);
     const { data: row, error } = await admin.from('app_data').select('data').eq('id', 'main').maybeSingle();
     if (error) throw error;
     const st = (row && row.data && row.data.settings) || {};
-    const token = st.shopBotToken || '';
-    if (!token) return json({ ok: false, error: 'Bot tokeni saqlanmagan' }, 400);
-    const me = await tg(token, 'getMe');
-    const info = botInfo(me);
-    if (!info) return json({ ok: false, error: tgErr(me) }, 200);
-    if (body.action === 'status') return json({ ok: true, bot: info }, 200);
-
-    // setup — faqat Telegram tomonidagi ochiq ma'lumot (buyruqlar ro'yxati va tavsif)
-    const shopName = String(body.shopName || st.company || "Do'kon").replace(/[\u0000-\u001f]/g, ' ').slice(0, 60);
-    const steps = [];
-    const c = await tg(token, 'setMyCommands', { commands: [
-      { command: 'start', description: 'Boshlash' },
-      { command: 'shop', description: "Do'konni ochish" },
-      { command: 'help', description: 'Yordam' },
-    ] });
-    steps.push({ step: 'commands', ok: !!(c && c.ok) });
-    const d = await tg(token, 'setMyDescription', { description: `${shopName} — onlayn-do'kon. Mahsulotlarni ko'ring va buyurtma bering.`.slice(0, 512) });
-    steps.push({ step: 'description', ok: !!(d && d.ok) });
-    const s = await tg(token, 'setMyShortDescription', { short_description: `${shopName} — onlayn-do'kon`.slice(0, 120) });
-    steps.push({ step: 'short_description', ok: !!(s && s.ok) });
-    return json({ ok: steps.every(x => x.ok), bot: info, steps }, 200);
+    const legacy = !!st.shopBotToken;   // eski do'kon boti tokeni hali saqlangan (ishlatilmaydi)
+    if (body.action === 'status') {
+      const b = await SETUP.botInfo(st.tgBotToken);
+      return b.ok ? json({ ok: true, merged: true, legacy, bot: { username: b.username, name: b.name } }, 200) : json({ ok: false, merged: true, legacy, error: b.error }, 200);
+    }
+    // setup — webhook'ni ham o'zgartiradi: faqat administrator
+    if (!auth.isAdmin) return json({ error: "«Botni sozlash» — faqat administrator" }, 403);
+    const r = await SETUP.setup(admin, st.tgBotToken, brandOf(st));
+    return json({ ...r, merged: true, legacy }, 200);
   } catch (e) {
     return serverError(e, 'shop-bot', "Telegramga ulanib bo'lmadi");
   }

@@ -14,7 +14,7 @@ const IN = require('./tgInbox');
 const ROW = 'tg_query_bot', CODE_TTL = 15 * 60e3;
 
 async function loadRow(admin) { const { data } = await admin.from('app_data').select('data').eq('id', ROW).maybeSingle(); return (data && data.data) || {}; }
-const saveRow = (admin, d) => admin.from('app_data').upsert({ id: ROW, data: d, updated_at: new Date().toISOString() });
+const saveRow = (admin, d) => admin.from('app_data').upsert({ id: ROW, data: d, updated_at: new Date().toISOString() }, { onConflict: 'id' });
 
 // Xodimning ruxsatlari (supabaseAdmin.requireStaffAuth bilan bir xil manba: staff_roles → role_permissions)
 async function permsOf(admin, staff) {

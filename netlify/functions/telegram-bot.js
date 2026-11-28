@@ -10,14 +10,16 @@
 //     boshqa buyruq — faqat «Bu buyruq mavjud emas» (xaridorga ichki ma'lumot aytilmaydi)
 //   Guruh/kanal yangilanishlari — faqat qutiga (guruhlarni topish uchun), javob yo'q.
 // Doim 200 (Telegram qayta yubormasin); takroriy yetkazish — (bot_id, update_id) noyob, ikkinchi marta ishlanmaydi.
+//   Ilovadan (administrator): { action:'setup' } — webhook + menyu/tavsif (uz, ru) + tekshiruv; { action:'status' } — faqat tekshiruv (_lib/botSetup).
 // Token hech qachon javobga, logga yoki bazaga (tokenning o'zi) yozilmaydi; webhook kaliti — app_data 'tg_main_bot' (faqat server).
 'use strict';
 const crypto = require('crypto');
-const { getAdminClient, json, methodGuard, parseBody, serverError } = require('./_lib/supabaseAdmin');
+const { getAdminClient, json, methodGuard, parseBody, requireStaffAuth, serverError } = require('./_lib/supabaseAdmin');
 const { TOKEN_RE } = require('./_lib/dailyReportRun');
 const { brandOf } = require('./_lib/tgEvents');
 const IN = require('./_lib/tgInbox');
 const BT = require('./_lib/botTexts');
+const SETUP = require('./_lib/botSetup');
 const tc = require('./_lib/tgCustomers');
 const TQ = require('./_lib/tgQuery');   // 4-bosqich: xodim so'rov buyruqlari (avvalgi «So'rov boti»)
 
@@ -83,7 +85,16 @@ exports.handler = async (event) => {
   const methodErr = methodGuard(event, ['POST']); if (methodErr) return methodErr;
   let admin; try { admin = getAdminClient(); } catch (e) { return serverError(e, 'telegram-bot', 'Server sozlanmagan'); }
   if ((event.headers || {})['x-telegram-bot-api-secret-token'] !== undefined) return onWebhook(event, admin);
-  return json({ error: 'Not found' }, 404);
+  // ── Ilovadan (administrator): «Botni sozlash» / tekshiruv ──
+  const body = parseBody(event);
+  if (!body || !['setup', 'status'].includes(body.action)) return json({ error: "Noma'lum amal" }, 400);
+  const auth = await requireStaffAuth(event, admin, { requireAdmin: true, fn: 'telegram-bot' });
+  if (!auth.ok) return auth.response;
+  try {
+    const main = await loadMain(admin), st = main.settings || {};
+    const r = body.action === 'setup' ? await SETUP.setup(admin, st.tgBotToken, brandOf(st)) : await SETUP.verify(admin, st.tgBotToken);
+    return json(r, 200);
+  } catch (e) { return serverError(e, 'telegram-bot', 'Botni tekshirib boʻlmadi'); }
 };
 exports.handler = require('./_lib/monitor').wrap('telegram-bot', exports.handler);
 exports._route = route;

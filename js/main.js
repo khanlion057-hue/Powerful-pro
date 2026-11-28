@@ -4216,6 +4216,7 @@ function pmScanQr() {
 
 // ── QR KOD — har mahsulotning SKU kodini QR shaklida saqlaydi (p.qrCode) ──
 async function genProductQR(pid) {
+  try { await fwLib('qrcode'); } catch (_) { return null; }   // v25.9: faqat kerak bo'lganda yuklanadi
   const p = S.products.find(x=>x.id===pid); if (!p || !p.sku) return null;
   try {
     const dataUrl = await QRCode.toDataURL(p.sku, { width:220, margin:1 });
@@ -14568,6 +14569,7 @@ async function restoreBackupRun() {
 // EXCEL EXPORT (ExcelJS — haqiqiy .xlsx, bitta katakka yopishib qolish muammosi yo'q)
 // ════════════════════════════════════════════
 async function xlsxDownload(filename, sheetName, headers, rows) {
+  if (!(await fwLibOk('exceljs', 'Excel kutubxonasi'))) return;   // v25.9: faqat kerak bo'lganda yuklanadi
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet(sheetName||'Sheet1');
   ws.addRow(headers);
@@ -14656,6 +14658,7 @@ function exportStock() { exportStockXls(); }
 
 // Mahsulotlar — rasm bilan Excel (chop etish o'rniga)
 async function exportProductsWithImages() {
+  if (!(await fwLibOk('exceljs', 'Excel kutubxonasi'))) return;   // v25.9: faqat kerak bo'lganda yuklanadi
   toast('⏳ Excel (rasm+QR bilan) tayyorlanmoqda...','warning');
   // QR kodi yo'q mahsulotlarga avval yaratib qo'yamiz
   const missingQr = S.products.filter(p=>!p.qrCode && p.sku);
@@ -14878,6 +14881,7 @@ async function fwXlSave(wb, filename) {
 }
 
 async function fwBuildXlTemplate(cur = 'USD') {
+  await fwLib('exceljs');   // v25.9: faqat kerak bo'lganda yuklanadi (xato — chaqiruvchida)
   if (!XL_COST_HEAD[cur]) cur = 'USD';
   const wb = new ExcelJS.Workbook();
   wb.creator = fwBrand().name || 'ERP';
@@ -14916,6 +14920,7 @@ async function fwBuildXlTemplate(cur = 'USD') {
   return wb;
 }
 async function exportProductShablon(cur) {
+  if (!(await fwLibOk('exceljs', 'Excel kutubxonasi'))) return;   // v25.9
   cur = XL_COST_HEAD[cur] ? cur : 'USD';
   await fwXlSave(await fwBuildXlTemplate(cur), cur === 'USD' ? 'shablon.xlsx' : `shablon_${cur === 'CNY' ? 'yuan' : 'som'}.xlsx`);
   toast(`✅ Shablon (${XL_CUR_NAME[cur]}) yuklab olindi. «Yo'riqnoma» varag'ini o'qing; namuna qatori (NAMUNA-…) import qilinmaydi.`);
@@ -14932,6 +14937,7 @@ function downloadExcelTemplate() { return exportProductShablon(document.getEleme
 // Mavjud mahsulotlarni (rasmlari bilan) TO'G'RIDAN-TO'G'RI kirim shablon formatida eksport qilish —
 // faqat "Miqdor" va "Tannarx" ustunlarini to'ldirib, qayta yuklash orqali kirim qilish uchun
 async function exportExistingAsKirimTemplate() {
+  if (!(await fwLibOk('exceljs', 'Excel kutubxonasi'))) return;   // v25.9: faqat kerak bo'lganda yuklanadi
   if (!S.products.length) { toast('Mahsulot yo\'q!','error'); return; }
   toast('⏳ Mavjud mahsulotlar shabloni (rasm bilan) tayyorlanmoqda...','warning');
   const wb = new ExcelJS.Workbook();
@@ -15002,6 +15008,7 @@ function detectColOffset(ws) {
 }
 
 async function importProducts(input) {
+  if (!(await fwLibOk('exceljs', 'Excel kutubxonasi'))) return;   // v25.9: faqat kerak bo'lganda yuklanadi
   const f=input.files[0];if(!f)return;
   const fErr = xlFileGuard(f); if (fErr) { toast('⛔ ' + fErr, 'error'); return; }
   try {
@@ -15135,6 +15142,7 @@ function xlImportProgGet(sig, n) {
 }
 function xlImportProgSet(p) { try { if (p) localStorage.setItem(XL_PROG_KEY, JSON.stringify({ ...p, at: Date.now() })); else localStorage.removeItem(XL_PROG_KEY); } catch (_) {} }
 async function importBatchXlsx() {
+  if (!(await fwLibOk('exceljs', 'Excel kutubxonasi'))) return;   // v25.9: faqat kerak bo'lganda yuklanadi
   const fileInput = document.getElementById('ei-file');
   const f = fileInput?.files?.[0];
   if (!f) { toast('Fayl tanlang!','error'); return; }

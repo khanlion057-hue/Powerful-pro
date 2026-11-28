@@ -23,7 +23,10 @@ module.exports = {
         assert.ok(/<rect /.test(fab) && /aria-label="QR — (Savdo|Sotuv) oynasini ochish"/.test(fab), `${f}: QR belgisi va nomi`);
         assert.ok(!fab.includes(CART_PATH) && !fab.includes('data-icf="cart"'), `${f}: savat belgisi yo'q`);
       }
-      assert.ok(/html5-qrcode@2\.3\.8[^"]*" integrity="sha384-/.test(read('diller.html')), 'diller: iPhone uchun zaxira skaner kutubxonasi (SRI bilan)');
+      // v25.9 (PageSpeed 2-band): zaxira skaner kutubxonasi — skaner ochilganda fwLib orqali (SRI bilan; P42 xeshni tekshiradi)
+      assert.ok(/<script src="js\/shared\.js">/.test(read('diller.html')), 'diller: shared.js (fwLib) ulangan');
+      assert.ok(/'html5-qrcode': \{ url: 'https:\/\/cdn\.jsdelivr\.net\/npm\/html5-qrcode@2\.3\.8\/[^']+', sri: 'sha384-/.test(read('js/shared.js')), 'diller: iPhone uchun zaxira skaner kutubxonasi (SRI bilan)');
+      assert.ok(/await fwLib\('html5-qrcode'\)[\s\S]{0,120}typeof Html5Qrcode === 'undefined'/.test(read('js/shared.js')), 'skaner kutubxonani kutib, keyin ishlatadi');
     } },
     { name: 'admin: faqat Savdo oynasi (kamera yo\'q); ruxsatsiz — ochilmaydi', run() {
       const mk = (mode, perm) => { const log = []; const c = { S: { page: 'dashboard' }, PAGE_VIEW_PERMISSION: { savdo: 'savdo.view' }, hasPerm: () => perm,

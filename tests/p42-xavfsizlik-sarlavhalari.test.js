@@ -72,7 +72,10 @@ async function testCspPages() {
       await page.goto(`http://127.0.0.1:${port}/${pg}`, { waitUntil: 'load' });
       await page.waitForTimeout(800);
       const r = await page.evaluate(async (isIndex) => {
-        const out = { libs: { supabase: !!window.supabase, QRCode: typeof QRCode !== 'undefined', Html5Qrcode: typeof Html5Qrcode !== 'undefined', ExcelJS: typeof ExcelJS !== 'undefined' } };
+        // v25.9 (PageSpeed 2-band): qrcode, html5-qrcode, exceljs — ochilishda YUKLANMAYDI; fwLib() orqali SRI bilan, CSP ostida yuklanadi
+        const atStart = { QRCode: typeof QRCode !== 'undefined', Html5Qrcode: typeof Html5Qrcode !== 'undefined', ExcelJS: typeof ExcelJS !== 'undefined' };
+        const lazy = {}; for (const n of ['qrcode', 'html5-qrcode', 'exceljs']) { try { await fwLib(n); lazy[n] = [...document.scripts].some((s) => s.src === FW_LIBS[n].url && s.integrity === FW_LIBS[n].sri && s.crossOrigin === 'anonymous'); } catch (e) { lazy[n] = String(e); } }
+        const out = { atStart, lazy, libs: { supabase: !!window.supabase, QRCode: typeof QRCode !== 'undefined', Html5Qrcode: typeof Html5Qrcode !== 'undefined', ExcelJS: typeof ExcelJS !== 'undefined' } };
         // Supabase'ga haqiqiy so'rov (supabase-js orqali, connect-src tekshiruvi) — javob 401 (soxta), muhimi: CSP rad etmasin
         const cl = window.supabase.createClient(window.FW_CONFIG.SUPABASE_URL, window.FW_CONFIG.SUPABASE_ANON_KEY);
         out.sbReq = await cl.from('catalog_products').select('id').limit(1).then(r => (r.error ? 'javob:' + (r.status || 'xato') : 'ok'), e => 'tashlandi:' + String(e).slice(0, 80));
@@ -98,6 +101,8 @@ async function testCspPages() {
     assert.deepEqual(r.cspConsole, [], `${pg}: konsolda CSP rad etishi yo'q`);
     assert.equal(r.libs.supabase, true, `${pg}: supabase-js SRI bilan yuklandi`);
     assert.equal(r.libs.QRCode, true, `${pg}: qrcode SRI bilan yuklandi`);
+    assert.deepEqual(r.atStart, { QRCode: false, Html5Qrcode: false, ExcelJS: false }, `${pg}: katta kutubxonalar ochilishda yuklanmaydi`);
+    assert.deepEqual(r.lazy, { qrcode: true, 'html5-qrcode': true, exceljs: true }, `${pg}: fwLib — integrity + crossorigin bilan, CSP ostida`);
     assert.equal(r.sbReq, 'javob:401', `${pg}: Supabase'ga so'rov CSP'dan o'tdi (connect-src) — ${r.sbReq}`);
   }
   const ix = report['index.html'];
@@ -121,6 +126,11 @@ function testSri() {
       items.push([url, sri]);
     }
   }
+  // v25.9: shared.js FW_LIBS (kerak bo'lganda yuklanadigan kutubxonalar) — xuddi shu tekshiruv
+  const sh = fs.readFileSync(path.join(ROOT, 'js', 'shared.js'), 'utf8');
+  const libs = [...sh.matchAll(/url: '(https:\/\/cdn\.jsdelivr\.net[^']+)', sri: '([^']+)'/g)];
+  assert.equal(libs.length, 3, 'FW_LIBS: qrcode, html5-qrcode, exceljs');
+  for (const m of libs) items.push([m[1], m[2]]);
   const dk = fs.readFileSync(path.join(ROOT, 'js', 'dokon.js'), 'utf8');
   const L = dk.match(/DK_LEAFLET = \{[^}]+\}/)[0];
   const get = (k) => (L.match(new RegExp(k + ":\\s*'([^']+)'")) || [])[1];
@@ -140,6 +150,6 @@ function testSri() {
 
 module.exports = {
   name: "P42 — v24.5 (v23.10.2 P33 dan) — v23.10.1: Netlify xavfsizlik sarlavhalari (CSP) — haqiqiy Chromium, aynan CDN versiyalari va SRI",
-  cases: [{ name: "SRI: har CDN resursida integrity + crossorigin; sha384 npm paketidagi aynan fayl bilan teng (supabase-js, qrcode, html5-qrcode, exceljs, leaflet js/css)", run: testSri },
-    { name: "3 sahifa: CSP buzilishi 0; supabase/qrcode/html5-qrcode/exceljs SRI bilan; Excel, QR, skaner, Leaflet CSP ostida ishlaydi", run: testCspPages }],
+  cases: [{ name: "SRI: har CDN resursida integrity + crossorigin; sha384 npm paketidagi aynan fayl bilan teng (supabase-js, qrcode, html5-qrcode, exceljs — FW_LIBS, leaflet js/css)", run: testSri },
+    { name: "3 sahifa: CSP buzilishi 0; katta kutubxonalar ochilishda yo'q, fwLib bilan SRI ostida; Excel, QR, skaner, Leaflet CSP ostida ishlaydi", run: testCspPages }],
 };

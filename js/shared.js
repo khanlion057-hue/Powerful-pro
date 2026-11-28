@@ -1571,6 +1571,7 @@ async function fwScan(onCode, opts) {
   }
   // 2) Kutubxona (iPhone Safari va eski brauzerlar)
   video.hidden = true;
+  try { await fwLib('html5-qrcode'); } catch (_) { /* pastda xabar */ }   // v25.9: faqat skaner ochilganda yuklanadi
   if (typeof Html5Qrcode === 'undefined') { st('Skaner kutubxonasi yuklanmadi — internetni tekshiring yoki kodni qoʻlda kiriting.'); return; }
   try {
     const h = new Html5Qrcode('fw-scan-h5', { verbose: false, experimentalFeatures: { useBarCodeDetectorIfSupported: true } });
@@ -2602,6 +2603,33 @@ function fwqDrop(id) {
   if (!confirm('Bu savdo serverga yozilmaydi va roʻyxatdan oʻchiriladi. Tasdiqlaysizmi?')) return;
   _fwqUpdate(id, null); if (typeof closeModal === 'function') closeModal(); fwqBadge();
 }
+// v25.9 (PageSpeed 2-band): KATTA KUTUBXONALAR — FAQAT KERAK BO'LGANDA (avval har ochilishda ~280 KB: exceljs 197, html5-qrcode 84, qrcode).
+// Manzil va SRI — avvalgi <script> teglari bilan aynan bir xil (P42 xeshni npm paketidagi fayl bilan solishtiradi); CSP o'zgarmaydi
+// (cdn.jsdelivr.net allaqachon ruxsat etilgan). Bir marta yuklanadi; xato bo'lsa keyingi chaqiruv qayta urinadi.
+const FW_LIBS = {
+  qrcode: { url: 'https://cdn.jsdelivr.net/npm/qrcode@1.4.4/build/qrcode.min.js', sri: 'sha384-0RsG1yo/crf/1Qc14sho26SXXOTngNCjgJw7fuvXBt9W/OChF/Ijx+aUuBDqQwEk', g: 'QRCode' },
+  'html5-qrcode': { url: 'https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js', sri: 'sha384-c9d8RFSL+u3exBOJ4Yp3HUJXS4znl9f+z66d1y54ig+ea249SpqR+w1wyvXz/lk+', g: 'Html5Qrcode' },
+  exceljs: { url: 'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js', sri: 'sha384-Pqp51FUN2/qzfxZxBCtF0stpc9ONI6MYZpVqmo8m20SoaQCzf+arZvACkLkirlPz', g: 'ExcelJS' },
+};
+const _fwLibP = {};
+function fwLib(name) {
+  const L = FW_LIBS[name]; if (!L) return Promise.reject(new Error('kutubxona: ' + name));
+  if (typeof window[L.g] !== 'undefined') return Promise.resolve(window[L.g]);
+  if (_fwLibP[name]) return _fwLibP[name];
+  _fwLibP[name] = new Promise((ok, bad) => {
+    const s = document.createElement('script'); s.src = L.url; s.integrity = L.sri; s.crossOrigin = 'anonymous'; s.async = true;
+    s.onload = () => (typeof window[L.g] !== 'undefined' ? ok(window[L.g]) : bad(new Error(L.g + ' yoʻq')));
+    s.onerror = () => { delete _fwLibP[name]; bad(new Error('yuklanmadi')); };
+    document.head.appendChild(s);
+  });
+  return _fwLibP[name];
+}
+// Foydalanuvchi amali uchun: yuklanmasa — tushunarli xabar, false
+async function fwLibOk(name, what) {
+  try { await fwLib(name); return true; }
+  catch (e) { if (typeof toast === 'function') toast((what || 'Kutubxona') + ' yuklanmadi — internetni tekshirib, qayta urinib koʻring', 'error'); return false; }
+}
+
 // v25.9: yangi versiya tayyor — ilova endi ochilgan bo'lsa o'zi yangilanadi, aks holda «Yangilash» tugmasi (ma'lumot yo'qolmasin)
 const FW_T0 = Date.now();
 function fwNewVersion() {

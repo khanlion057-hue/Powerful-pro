@@ -182,12 +182,25 @@ async function testAdminPhoneShell() {
   try {
     const vis = (sel) => page.evaluate((q) => { const e = document.querySelector(q); if (!e) return false; const r = e.getBoundingClientRect(), st = getComputedStyle(e); return st.display !== 'none' && st.visibility !== 'hidden' && r.width > 0 && r.height > 0; }, sel);
     const home = await page.evaluate(() => ({ page: S.page, labels: [...document.querySelectorAll('#mobileBottomNav .m-bn-l')].map(e => e.textContent),
-      acts: [...document.querySelectorAll('#pg-dashboard .ox-acts-all .ox-act-l')].map(e => e.textContent), theme: document.querySelector('.topbar [onclick="toggleTheme()"]') }));
+      acts: [...document.querySelectorAll('#pg-dashboard .ox-acts-all .ox-act-l')].map(e => e.textContent),
+      kpis: [...document.querySelectorAll('#pg-dashboard .ox-kpi .ox-kpi-l')].map(e => e.textContent), theme: document.querySelector('.topbar [onclick="toggleTheme()"]') }));
     assert.equal(home.page, 'dashboard');
     assert.deepEqual(home.labels, ['Kirim', 'Mahsulotlar', 'Savdo', 'Stat', 'Audit'], "pastki menyu: Ko'proq o'rnida Audit");
     // Tezkor amallar — faqat boshqa joyda yo'q bo'limlar (takror yo'q): pastki menyu, profil, Dillerlar bloki, ko'rsatkichlar bilan kesishmaydi
-    // v24.6 (egasi talabi): Hamkorlar (investorlar) va Xarajatlar — v23 dagidek Tezkor amallarda ham
-    for (const l of ['Qaytarishlar', 'Kassalar', 'Mijozlar', 'Taʼminotchi', 'Dillerlar', 'Filiallar', 'Ombor', 'Xodimlar', 'Hamkorlar', 'Xarajatlar']) assert.ok(home.acts.includes(l), `Tezkor amallarda «${l}»`);   // v24.7: kengaytirilgan
+    // v24.6 (egasi talabi): Hamkorlar (investorlar) — v23 dagidek Tezkor amallarda ham
+    // v25.8 (egasi qarori 2026-11-28): «Xarajatlar» Tezkor amallardan olindi (asosiy kartochkalarda bor) — o'rnida «AI-reklama»
+    for (const l of ['Qaytarishlar', 'Kassalar', 'Mijozlar', 'Taʼminotchi', 'Dillerlar', 'Filiallar', 'Ombor', 'Xodimlar', 'Hamkorlar', 'AI-reklama']) assert.ok(home.acts.includes(l), `Tezkor amallarda «${l}»`);   // v24.7: kengaytirilgan
+    assert.ok(!home.acts.includes('Xarajatlar'), '«Xarajatlar» Tezkor amallarda takrorlanmaydi');
+    assert.ok(home.kpis.includes('Xarajatlar'), '«Xarajatlar» bosh sahifaning asosiy kartochkalarida bor');
+    // egasi talabi (2026-11-28, «bu holatni buzma»): kartochka bosilsa — Xarajatlar oynasi (qo'shish, kategoriyalar, davr)
+    const exp = await page.evaluate(async () => {
+      const k = [...document.querySelectorAll('#pg-dashboard .ox-kpi')].find((b) => /Xarajatlar/.test(b.textContent)); k.click();
+      await new Promise((r) => setTimeout(r, 150));
+      const ov = document.getElementById('bs-ov'); const t = ov && !ov.hidden ? ov.innerText : '';
+      if (typeof closeSheet === 'function') closeSheet();
+      return t;
+    });
+    for (const re of [/Xarajatlar/, /Xarajat qoʻshish/, /Kategoriyalar/, /Bugun/, /Kecha/, /Oy/]) assert.match(exp, re, 'Xarajatlar oynasi: ' + re);
     assert.ok(!home.acts.includes('Taʼminot ⇄'), 'v25: B2B (Taʼminot ⇄) olib tashlandi');
     for (const l of ['Savdo', 'Mahsulotlar', 'Kirim', 'Statistika', 'Sozlamalar', 'Rollar']) assert.ok(!home.acts.includes(l), `«${l}» takrorlanmaydi (boshqa joyda bor)`);
     assert.equal(new Set(home.acts).size, home.acts.length, 'bir xil tugma ikki marta yoʻq');

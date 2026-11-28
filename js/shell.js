@@ -16,7 +16,9 @@ const SHELL = { chk: { per: 'today', day: '', tab: 'cheks', q: '' }, jr: { per: 
 // Qolganlari bitta joydan ochiladi:
 //   Savdo, Kirim, Mahsulotlar, Statistika — pastki menyu;  Sozlamalar, Rollar, Jurnal — profil;
 //   Barcha cheklar — «Barcha sotilgan mahsulotlar»;  Dillerlar — bosh sahifadagi Dillerlar bloki;
-//   v24.6 (egasi talabi): Hamkorlar (investorlar, taqsimot) va Xarajatlar — v23 dagidek Tezkor amallarda HAM bor.
+//   v24.6 (egasi talabi): Hamkorlar (investorlar, taqsimot) — v23 dagidek Tezkor amallarda HAM bor.
+//   v25.8 (egasi qarori 2026-11-28): «Xarajatlar» Tezkor amallardan olindi — bosh sahifaning asosiy kartochkalarida bor (takror edi);
+//   bo'shagan joyda «AI-reklama» (faqat ruxsati borlarga; ≤12 ta qoidasi o'zgarmaydi).
 //   v25 (egasi talabi 2026-11-10): «Dillerlar» va «Filiallar» — alohida bo'limlar, Tezkor amallarda ham alohida.
 const SHELL_MENU = [
   ['qaytarish', 'ret', 'pink', 'Qaytarishlar'], ['kassalar', 'wallet', 'sky', 'Kassalar'], ['mijozlar', 'person', 'blue', 'Mijozlar'],
@@ -24,10 +26,11 @@ const SHELL_MENU = [
   ['ombor', 'ombor', 'purple', 'Ombor'], ['firmakassa', 'building', 'gold', 'Bosh kassa'],
   ['dokon', 'store', 'emerald', 'Doʻkon'], ['sotuvchilar', 'people', 'indigo', 'Xodimlar'],
   ['!fr_req', 'inbox', 'sky', 'Bazadan buyurtma'],
-  ['hamkorlar', 'money', 'amber', 'Hamkorlar'], ['xarajatlar', 'expense', 'red', 'Xarajatlar'],
+  ['hamkorlar', 'money', 'amber', 'Hamkorlar'], ['!ai', 'sparkle', 'pink', 'AI-reklama'],
 ];
 // v25: filialda — «Bazadan buyurtma» (Bazaga tovar so'rovi) har doim ko'rinsin
-const SHELL_ACT = { '!fr_req': { page: 'ombor', run: "openTransfers().then(()=>{ if (typeof frRequestForm==='function') frRequestForm(); })", only: () => typeof S !== 'undefined' && S.branch && S.branch !== 'baza' } };
+const SHELL_ACT = { '!ai': { page: 'dokon', run: 'goAiReklama()', only: () => typeof airNavAllowed === 'function' && airNavAllowed() },   // v25.8: AI-reklama — ruxsat bo'lsa
+  '!fr_req': { page: 'ombor', run: "openTransfers().then(()=>{ if (typeof frRequestForm==='function') frRequestForm(); })", only: () => typeof S !== 'undefined' && S.branch && S.branch !== 'baza' } };
 function shellMenuItems() {
   return SHELL_MENU.filter(([pg]) => {
     const act = SHELL_ACT[pg];

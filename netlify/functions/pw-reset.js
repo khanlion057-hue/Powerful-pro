@@ -10,7 +10,7 @@
 // Kirgan xodim:
 //   POST { action:'status' }                           — Telegram ulanganmi, majburiy almashtirish kerakmi
 //   POST { action:'tg_link' }                          — ulash havolasi (t.me/<bot>?start=<kod>, 15 daqiqa)
-//   POST { action:'tg_link_check' }                    — xodim «Start» bosganmi (getUpdates) → ulanadi
+//   POST { action:'tg_link_check' }                    — xodim «Start» bosganmi (v25.9: xabarlar qutisi yoki getUpdates) → ulanadi
 //   POST { action:'tg_unlink' }
 //   POST { action:'change', password }                 — o'z parolini almashtirish (majburiy almashtirishda ham)
 // Admin yoki «sotuvchilar.manage» (o'z filiali, admin hisobini faqat admin):
@@ -163,8 +163,9 @@ exports.handler = async (event) => {
       if (!row || !row.link_code || !row.link_code_exp || Date.parse(row.link_code_exp) < Date.now()) return json({ error: 'Havola muddati oʻtgan — qaytadan «Ulash»ni bosing' }, 400);
       const token = await botToken(admin);
       if (!token) return json({ error: 'Telegram bot sozlanmagan' }, 400);
-      const up = await tgApi(token, 'getUpdates', { limit: 100, allowed_updates: ['message'] });
-      if (!up.ok) return json({ error: /webhook/i.test(String(up.description || '')) ? "Botda webhook yoqilgan — ulash ishlamaydi" : 'Telegram javob bermadi' }, 400);
+      // v25.9: yagona bot — webhook bo'lsa xabarlar qutisidan (59), yo'q bo'lsa getUpdates
+      const up = await require('./_lib/tgInbox').updates(admin, token, ['message']);
+      if (!up.ok) return json({ error: 'Telegram javob bermadi' }, 400);
       const msg = (up.result || []).map(u => u && u.message).filter(m => m && m.chat && m.chat.type === 'private' && String(m.text || '').trim() === '/start ' + row.link_code).pop();
       if (!msg) return json({ ok: true, linked: false }, 200);
       const name = ([msg.from && msg.from.first_name, msg.from && msg.from.last_name].filter(Boolean).join(' ') + (msg.from && msg.from.username ? ' @' + msg.from.username : '')).trim().slice(0, 120);

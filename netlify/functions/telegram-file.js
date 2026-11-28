@@ -4,7 +4,7 @@
 //   POST { action:'backup_download' }               — o'sha zaxira faylni brauzerga (gzip, base64)
 //   v24.6 (egasi talabi) — INVESTOR (hamkor) HISOBOTI Telegramga:
 //   POST { action:'tg_link' }                        — bot nomi (havola uchun: t.me/<bot>?start=<kod>)
-//   POST { action:'tg_link_check', code }            — investor havolani ochib «Start» bosganmi (getUpdates) → {chatId, name}
+//   POST { action:'tg_link_check', code }            — investor havolani ochib «Start» bosganmi (v25.9: xabarlar qutisi yoki getUpdates) → {chatId, name}
 //   POST { action:'partner_doc', partnerId, filename, b64, caption } — PDF → shu hamkorning ULANGAN chatiga
 //        (chat ID bazadagi hamkor yozuvidan olinadi — brauzer ixtiyoriy chatga yubora olmaydi).
 // Telegram bot foydalanuvchiga @username yoki telefon raqami bo'yicha yoza olmaydi — investor botga bir marta «Start» bosadi.
@@ -51,8 +51,9 @@ exports.handler = async (event) => {
     if (body.action === 'tg_link_check') {
       const code = String(body.code || '');
       if (!CODE_RE.test(code)) return json({ error: "Ulash kodi noto'g'ri" }, 400);
-      const up = await tgApi(st.tgBotToken, 'getUpdates', { limit: 100, allowed_updates: ['message'] });
-      if (!up.ok) return json({ error: /webhook/i.test(String(up.description || '')) ? "Botda webhook yoqilgan — ulash uchun avval uni o'chiring" : 'Telegram javobi: ' + (up.description || 'xato') }, 400);
+      // v25.9: yagona bot — webhook bo'lsa xabarlar qutisidan (59), yo'q bo'lsa getUpdates
+      const up = await require('./_lib/tgInbox').updates(admin, st.tgBotToken, ['message']);
+      if (!up.ok) return json({ error: 'Telegram javobi: ' + (up.description || 'xato') }, 400);
       const msg = (up.result || []).map(u => u && u.message).filter(m => m && m.chat && m.chat.type === 'private' && String(m.text || '').trim() === '/start ' + code).pop();
       if (!msg) return json({ ok: true, found: false }, 200);
       const name = [msg.from && msg.from.first_name, msg.from && msg.from.last_name].filter(Boolean).join(' ').slice(0, 120);

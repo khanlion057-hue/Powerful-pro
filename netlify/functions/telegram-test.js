@@ -48,7 +48,8 @@ exports.handler = async (event) => {
       if (!me || !me.ok) return json({ ok: false, error: me && me.error_code === 401 ? "Token yaroqsiz — @BotFather'dan qayta nusxalang" : String((me && me.description) || 'Telegram javob bermadi').slice(0, 200) }, 200);
       const bot = { username: String(me.result.username || '').replace(/[^A-Za-z0-9_]/g, '').slice(0, 64), name: String(me.result.first_name || '').slice(0, 64) };
       if (body.action === 'me') return json({ ok: true, bot }, 200);
-      const up = await call('getUpdates', { limit: 100, allowed_updates: ['my_chat_member', 'message', 'channel_post'] });
+      // v25.9: yagona bot — webhook bo'lsa xabarlar qutisidan (59), yo'q bo'lsa getUpdates (boshqa tokenni sinash ham — getUpdates)
+      const up = await require('./_lib/tgInbox').updates(admin, token, ['my_chat_member', 'message', 'channel_post']);
       if (!up || !up.ok) return json({ ok: false, bot, error: String((up && up.description) || 'Yangilanishlar olinmadi').slice(0, 200) }, 200);
       const chats = new Map();
       for (const u of up.result || []) {

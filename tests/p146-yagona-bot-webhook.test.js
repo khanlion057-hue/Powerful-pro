@@ -28,6 +28,7 @@ async function world({ hook = true, polling = null } = {}) {
   await pg.query(`update app_data set data = data || $1::jsonb where id = 'main'`, [JSON.stringify(main)]);
   await pg.query(`insert into app_data_branches (branch_key, data) values ('baza', $1::jsonb)`, [JSON.stringify({ customers: [{ id: 5, name: 'Aziz aka' }] })]);
   await pg.query(`insert into app_data (id, data) values ('tg_customer_links', $1::jsonb)`, [JSON.stringify({ links: {}, codes: { cusAbCdEfGh2345: { filial: 'baza', custId: 5 } } })]);
+  await pg.query(`insert into staff (id, login, name, role) overriding system value values (1, 'admin', 'Admin', 'admin')`);   // staff_pw_reset FK
   if (hook) await pg.query(`insert into app_data (id, data) values ('tg_main_bot', $1::jsonb)`, [JSON.stringify({ bot_id: String(BOT_ID), secret: SECRET, hook: true })]);
   const sent = [];
   global.fetch = async (url, o) => {
@@ -37,7 +38,9 @@ async function world({ hook = true, polling = null } = {}) {
     if (method === 'getMe') return { json: async () => ({ ok: true, result: { id: BOT_ID, username: 'powerful_bot', first_name: 'Powerful' } }) };
     return { json: async () => ({ ok: true, result: true }) };
   };
-  const client = makePgSupabase(pg, { pgTables: ['app_data', 'app_data_branches', 'tg_inbox', 'staff_pw_reset'], memTables: { staff: [], staff_roles: [], role_permissions: [], staff_audit_log: [], security_events: [] } });
+  const client = makePgSupabase(pg, { pgTables: ['app_data', 'app_data_branches', 'tg_inbox', 'staff_pw_reset'], memTables: {
+    staff: [{ id: 1, auth_user_id: 'u-admin', role: 'admin', active: true, filial: 'baza', name: 'Admin', login: 'admin' }],
+    staff_roles: [], role_permissions: [], staff_audit_log: [], security_events: [] }, users: { 't-admin': { id: 'u-admin' } } });
   return { pg, client, sent };
 }
 let UPD = 1000;
@@ -134,10 +137,48 @@ async function testReaders() {
   } finally { await w3.pg.close(); }
 }
 
+// 3-bosqich: xodim paroli (pw-reset), investor (telegram-file), guruhlarni topish (telegram-test) — webhook yoqilganda ham ishlaydi
+async function testLinkFlows() {
+  const { pg, client, sent } = await world();
+  const { post } = require('./helpers/mem-supabase');
+  const B = (r) => JSON.parse(r.body);
+  try {
+    const bot = loadFunction('telegram-bot', client);
+    // xodim paroli: havola → botda Start (webhook) → «Tekshirish» qutidan topadi
+    let pw = loadFunction('pw-reset', client);
+    const l = B(await pw(post({ action: 'tg_link' })));
+    assert.equal(l.ok, true, JSON.stringify(l)); const code = /start=(pw[0-9a-f]{24})$/.exec(l.url)[1];
+    assert.equal(B(await pw(post({ action: 'tg_link_check' }))).linked, false, 'hali Start bosilmagan');
+    await loadFunction('telegram-bot', client)(hookEv(pm(201, '/start ' + code)));
+    pw = loadFunction('pw-reset', client);
+    const c = B(await pw(post({ action: 'tg_link_check' })));
+    assert.equal(c.linked, true, JSON.stringify(c));
+    assert.equal((await rows(pg, `select tg_chat_id from staff_pw_reset where staff_id = 1`))[0].tg_chat_id, '201');
+    // investor
+    await loadFunction('telegram-bot', client)(hookEv(pm(202, '/start invAbcd1234')));
+    const tf = loadFunction('telegram-file', client);
+    const iv = B(await tf(post({ action: 'tg_link_check', code: 'invAbcd1234' })));
+    assert.deepEqual([iv.found, iv.chatId], [true, '202'], JSON.stringify(iv));
+    // guruh/kanallarni topish
+    await loadFunction('telegram-bot', client)(hookEv({ update_id: UPD++, my_chat_member: { chat: { id: -100900, type: 'supergroup', title: 'Egasi guruhi' }, from: { id: 1 }, new_chat_member: { status: 'administrator' } } }));
+    await loadFunction('telegram-bot', client)(hookEv({ update_id: UPD++, my_chat_member: { chat: { id: -100901, type: 'group', title: 'Chiqarilgan' }, from: { id: 1 }, new_chat_member: { status: 'member' } } }));
+    await loadFunction('telegram-bot', client)(hookEv({ update_id: UPD++, my_chat_member: { chat: { id: -100901, type: 'group', title: 'Chiqarilgan' }, from: { id: 1 }, new_chat_member: { status: 'kicked' } } }));
+    const tt = loadFunction('telegram-test', client);
+    const fc = await tt(post({ action: 'find_chats' }));
+    const f = B(fc);
+    assert.equal(f.ok, true, fc.body);
+    assert.deepEqual(f.chats.map((x) => [x.id, x.title, x.admin]), [['-100900', 'Egasi guruhi', true]], 'chiqarilgan guruh ro\'yxatda yo\'q');
+    assert.ok(!sent.some((x) => x.method === 'getUpdates'), 'webhook bor — getUpdates hech qayerda chaqirilmadi');
+    for (const r of [l, c, iv, f]) assert.ok(!JSON.stringify(r).includes(TOKEN.split(':')[1]), 'javobda token yo\'q');
+    void bot;
+  } finally { unloadFunctions(); await pg.close(); }
+}
+
 module.exports = {
   name: 'P146 — Yagona bot: webhook (telegram-bot) va xabarlar qutisi',
   cases: [
     { name: 'webhook: maxfiy kalit, mijoz darhol ulanadi, takror yo\'q, xaridorga «Bu buyruq mavjud emas», maxfiylik, token yo\'q', run: testWebhook },
     { name: 'o\'quvchilar: webhook — qutidan; webhook yo\'q — getUpdates; 409 — qutidan; mijoz sweep', run: testReaders },
+    { name: 'webhook yoqilganda: xodim paroli, investor ulash, guruhlarni topish — qutidan ishlaydi', run: testLinkFlows },
   ],
 };

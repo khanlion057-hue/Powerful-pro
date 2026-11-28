@@ -38,6 +38,14 @@ async function testLoggedOut() {
   const b = await chromium.launch();
   try {
     const page = await b.newPage({ viewport: { width: 390, height: 844 } });
+    // CI'dagi holat: Inter shrifti forma chiqishidan oldin keladi, skelet esa zaxira shrift bilan chiziladi —
+    // balandliklar shriftga bog'liq bo'lmasligi kerak (aks holda shrift almashganda karta siljiydi)
+    const INTER = fs.readFileSync(path.join(ROOT, 'assets', 'ai-reklama', 'fonts', 'inter-latin.woff2'));
+    await page.route('https://fonts.googleapis.com/**', (r) => setTimeout(() => r.fulfill({ status: 200, contentType: 'text/css',
+      body: "@font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url(https://fonts.gstatic.com/inter.woff2) format('woff2')}" }), 300));
+    await page.route('https://fonts.gstatic.com/**', (r) => setTimeout(() => r.fulfill({ status: 200, contentType: 'font/woff2', body: INTER, headers: { 'access-control-allow-origin': '*' } }), 1200));
+    // CI (Ubuntu) holati: skelet paytida zaxira shrift (Liberation Sans), forma paytida Inter — balandliklar shriftga bog'liq bo'lmasin.
+    await page.route(url, async (r) => { const res = await r.fetch(); const html = (await res.text()).replace('</head>', '<style id="p150-font">html,body,input,button,div,span,b{font-family:"Liberation Sans",sans-serif !important}</style></head>'); r.fulfill({ response: res, body: html }); });
     const errors = []; page.on('pageerror', (e) => errors.push(e.message));
     page.goto(url).catch(() => {});
     await page.waitForSelector('#fw-boot-login .fw-login-card img', { state: 'visible', timeout: 15000 });
@@ -48,7 +56,11 @@ async function testLoggedOut() {
     assert.equal(early.appJs, 'undefined', 'skelet JS yuklanmasdan oldin ko\'rinadi');
     assert.equal(early.shown, 'flex'); assert.equal(early.dis, true, 'maydonlar o\'chiq'); assert.equal(early.btn, 'Yuklanmoqda…');
     assert.equal(early.zoom, '0.9', 'sukut masshtabi 90% — forma bilan bir xil'); assert.equal(early.fwz, '0.9');
+    await page.evaluate(() => document.getElementById('p150-font').remove());
     await page.waitForSelector('#ul-login');
+    await page.evaluate(() => document.fonts.ready);   // forma — Inter bilan (skelet — zaxira shrift bilan edi)
+    const fontOk = await page.evaluate(() => document.fonts.check('14px Inter'));
+    assert.equal(fontOk, true, 'sinov: forma vaqtida Inter yuklangan (shrift almashishi tekshiriladi)');
     const real = await page.evaluate((g) => ({ geo: (0, eval)('(' + g + ')')(), skel: !!document.getElementById('fw-boot-login') }), geo.toString());
     assert.equal(real.skel, false, 'forma chiqqach skelet yo\'q');
     assert.deepEqual(real.geo, early.geo, 'karta, logotip, maydonlar va tugma — aynan bir joyda (siljish yo\'q)');

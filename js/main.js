@@ -15763,18 +15763,19 @@ function fwEnterWithInfo(info, inPlace) {
 function showUnifiedLogin() {
   return new Promise(resolve => {
     const body = document.body;
+    // v25.9: line-height qat'iy (18px) — balandlik shriftga bog'liq emas: index.html skeleti (zaxira shrift) bilan forma (Inter) bir xil
     body.innerHTML = `
       <div class="fw-brand-bg" style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px">
         <div class="fw-login-card" style="background:#fff;border-radius:18px;padding:36px 30px;width:100%;max-width:340px;box-shadow:0 14px 36px rgba(15,23,42,0.14);text-align:center">
           <div style="margin-bottom:22px">${brandLoginLogo()}</div>
           <input id="ul-login" placeholder="Login" autocomplete="username"
-            style="width:100%;padding:13px 14px;font-size:14px;border:1.5px solid #e1e6ed;border-radius:10px;margin-bottom:10px;outline:none;box-sizing:border-box">
+            style="width:100%;padding:13px 14px;font-size:14px;line-height:18px;border:1.5px solid #e1e6ed;border-radius:10px;margin-bottom:10px;outline:none;box-sizing:border-box">
           <div class="fw-pw-f" style="margin-bottom:14px"><input id="ul-pass" type="password" placeholder="Parol" autocomplete="current-password"
-            style="width:100%;padding:13px 48px 13px 14px;font-size:14px;border:1.5px solid #e1e6ed;border-radius:10px;outline:none;box-sizing:border-box"
+            style="width:100%;padding:13px 48px 13px 14px;font-size:14px;line-height:18px;border:1.5px solid #e1e6ed;border-radius:10px;outline:none;box-sizing:border-box"
             onkeydown="if(event.key==='Enter')_ulSubmit()">${_fwPwEye('ul-pass')}</div>
-          <button id="ul-go" style="width:100%;padding:13px;background:linear-gradient(135deg,#B8700C,#8A5208);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">Kirish →</button>
+          <button id="ul-go" style="width:100%;padding:13px;line-height:18px;background:linear-gradient(135deg,#B8700C,#8A5208);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">Kirish →</button>
           <div id="ul-err" style="color:#e23d3d;font-size:12px;margin-top:8px;min-height:16px"></div>
-          <button type="button" class="fw-forgot" onclick="fwPwForgot(document.getElementById('ul-login')?.value||'')">Parolni unutdingizmi?</button>
+          <button type="button" class="fw-forgot" style="line-height:18px" onclick="fwPwForgot(document.getElementById('ul-login')?.value||'')">Parolni unutdingizmi?</button>
           ${_ulContactHtml()}
         </div>
       </div>`;

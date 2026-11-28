@@ -12,6 +12,11 @@
 - **Avtopilot** (`ai-ads-cron`, har soat :20; sukut o'chiq): tanlangan soatlarda mahsulotning o'z rasmi bilan post; «tasdiqlash bilan» — qoralama + egasi guruhiga xabar,
   «Navbat»da tasdiqlash / «Shablon bilan» / o'tkazish, 24 soatda muddati o'tadi; «to'liq avtomat» — darhol (xato — keyingi soatda 1 marta qayta, keyin egasiga xabar).
 - Funksiyalar: 69 → 71 (`ai-ads`, `ai-ads-cron`). Testlar: p138–p143; evidence: `tests/evidence/ai-reklama-*.png`, `p140-*`, `p142-*`.
+- **Menyu:** yon menyuda «Onlayn-do'kon» ostida «✦ AI-reklama» (kompyuter); telefondagi «Tezkor amallar»da «Xarajatlar» o'rnida «AI-reklama»
+  (egasi qarori 2026-11-28: «Xarajatlar» bosh sahifaning asosiy kartochkalarida qoladi; tezkor amallar ≤12). Test: p144, p4.
+- **APK (xodimlar ilovasi, `uz.powerfulgroup.app`): 1.0.9 → 1.0.10 (versionCode 10 → 11)**, o'sha kalit bilan imzolangan (SHA-256 17:5F:54:F6…84:DE,
+  saytdagi `assetlinks.json` bilan bir xil) — telefonda eski ilova ustidan yangilanadi. Ilova saytni ochadi (TWA): AI-reklama saytga deploy qilinganda
+  ko'rinadi. Do'kon ilovasi (`uz.powerfulgroup.shop`, 1.0.4) o'zgarmadi.
 
 # POWERFUL GROUP — v25.7: ziyon paroli serverda (57-migratsiya) (2026-11-23)
 - **57-migratsiya (yangi, QO'LLANMAGAN — Supabase SQL Editor'da ishga tushiriladi):** `fw_settings.loss_pin_hash` — ziyon paroli faqat SHA-256 xesh ko'rinishida (standart — egasi bergan parolning xeshi); `fw_loss_pin_fails` — 15 daqiqada 5 noto'g'ri urinish → 15 daqiqa qulf; `fw_loss_pin_check` / `fw_loss_pin_set` (faqat server). Brauzer rollari sozlama jadvalini o'qiy olmaydi. Takror ishga tushirish xavfsiz.

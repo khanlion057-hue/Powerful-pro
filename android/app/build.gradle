@@ -7,8 +7,8 @@ android {
         applicationId 'uz.powerfulgroup.app'
         minSdk 21
         targetSdk 35
-        versionCode 10
-        versionName '1.0.9'
+        versionCode 11            // v25.8: xodimlar ilovasi (staff) — AI-reklama; do'kon ilovasi (shop) o'z versiyasida
+        versionName '1.0.10'
     }
     // v25.3: ikki ilova bitta loyihadan — xodimlar (ERP) va xaridorlar (onlayn do'kon). Kalit bir xil.
     flavorDimensions 'app'

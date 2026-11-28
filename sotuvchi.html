@@ -51,13 +51,13 @@
 </head>
 <body>
 <!-- v24.6 (tez kirish): sessiya bo'lsa login oynasi ko'rinmaydi (brauzer avtomatik to'ldirib «qayta kiryapti» deb ko'rinardi) -->
-<div id="fw-splash" class="fw-splash fw-load" aria-live="polite"><div class="fw-load-in"><span class="fw-lock xl on-light" role="img" aria-label="POWERFUL"><img src="assets/brand-logo.png" alt="POWERFUL" data-brand-logo onerror="this.parentNode.classList.add('noimg')"><b class="fw-lock-fb" data-brand-name>POWERFUL</b></span><div class="fw-load-bar" aria-hidden="true"><i></i></div><b class="fw-load-t">Kirilmoqda…</b><small class="fw-load-s">Sotuvchi oynasi</small></div></div>
+<div id="fw-splash" class="fw-splash fw-load" aria-live="polite"><div class="fw-load-in"><span class="fw-lock xl on-light" role="img" aria-label="POWERFUL"><img src="assets/brand-logo.png" srcset="assets/brand-logo.webp" alt="POWERFUL" data-brand-logo onerror="if(this.getAttribute('srcset')){this.removeAttribute('srcset')}else{this.parentNode.classList.add('noimg')}"><b class="fw-lock-fb" data-brand-name>POWERFUL</b></span><div class="fw-load-bar" aria-hidden="true"><i></i></div><b class="fw-load-t">Kirilmoqda…</b><small class="fw-load-s">Sotuvchi oynasi</small></div></div>
 <script>(function(){try{var ok=sessionStorage.getItem('fw_fast_staff');if(!ok){for(var i=0;i<localStorage.length;i++){if(/^sb-.*-auth-token$/.test(localStorage.key(i))){ok=1;break;}}}if(ok){document.documentElement.classList.add('fw-booting');setTimeout(function(){document.documentElement.classList.remove('fw-booting');},15000);}}catch(e){}})();</script>
 
 <div id="sv-login" class="dl-login-screen">
   <div class="dl-login-box">
     <div style="margin-bottom:24px">
-      <span class="fw-lock lg on-light" role="img" aria-label="POWERFUL"><img src="assets/brand-logo.png" alt="POWERFUL" data-brand-logo onerror="this.parentNode.classList.add('noimg')"><b class="fw-lock-fb" data-brand-name>POWERFUL</b></span>
+      <span class="fw-lock lg on-light" role="img" aria-label="POWERFUL"><img src="assets/brand-logo.png" srcset="assets/brand-logo.webp" alt="POWERFUL" data-brand-logo onerror="if(this.getAttribute('srcset')){this.removeAttribute('srcset')}else{this.parentNode.classList.add('noimg')}"><b class="fw-lock-fb" data-brand-name>POWERFUL</b></span>
     </div>
     <input class="dl-input" id="sv-login-id" placeholder="Login" autocomplete="username">
     <div style="position:relative">

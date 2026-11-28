@@ -1180,6 +1180,13 @@ function fwBrand() {
   const slogan = String(st.brandSlogan != null ? st.brandSlogan : (c && c.slogan != null ? c.slogan : FW_BRAND_DEF.slogan) || '').slice(0, 80);
   return { name, logo, slogan, custom: !!fwBrandLogoOk(st.brandLogo || (c && c.logo)) };
 }
+// v25.9 (PageSpeed 3-band): standart logotipning WebP nusxasi (226 KB PNG o'rniga 44 KB). src — PNG qoladi (zaxira; CSS dagi
+// [src$="assets/brand-logo.png"] qoidalari va boshqa mantiq o'zgarmaydi), brauzer srcset'dagi WebP'ni yuklaydi. WebP ochilmasa —
+// onerror srcset'ni olib tashlaydi va PNG yuklanadi. Boshqa (yuklangan) logotipda srcset yo'q.
+const FW_LOGO_WEBP = { 'assets/brand-logo.png': 'assets/brand-logo.webp' };
+const FW_LOGO_ONERR = "if(this.getAttribute('srcset')){this.removeAttribute('srcset')}else{this.parentNode.classList.add('noimg')}";
+function fwLogoSrcset(u) { const w = FW_LOGO_WEBP[u]; return w ? ` srcset="${w}"` : ''; }
+function fwLogoSyncSrcset(img) { const w = FW_LOGO_WEBP[img.getAttribute('src')]; if (w) { if (img.getAttribute('srcset') !== w) img.setAttribute('srcset', w); } else if (img.hasAttribute('srcset')) img.removeAttribute('srcset'); }
 // Logotip <img> (kirish oynasi, chek va h.k.) — atributlar ekranlangan
 const FW_DEF_LOGOS = ['assets/brand-logo.png', 'assets/brand-logo.jpg'];
 function fwBrandMarkSrc() { return fwBrand().logo; }   // v24.7.3: kichik belgi ham — logotipning o'zi (kesilgan nusxa emas)
@@ -1188,7 +1195,7 @@ function fwBrandMarkSrc() { return fwBrand().logo; }   // v24.7.3: kichik belgi 
 // Rasm ochilmasa — faqat shunda nom matni ko'rinadi.
 function fwBrandLockup(cls) {
   const b = fwBrand(); const lt = /\bon-light\b/.test(cls || '');
-  return `<span class="fw-lock ${cls || ''}" role="img" aria-label="${esc(b.name)}"><img src="${esc(fwLogoShownSrc(b.logo, lt))}" alt="${esc(b.name)}" data-brand-logo${fwLogoCleanAttr(b.logo)} onerror="this.parentNode.classList.add('noimg')"><b class="fw-lock-fb" data-brand-name>${esc(b.name)}</b></span>`;
+  return `<span class="fw-lock ${cls || ''}" role="img" aria-label="${esc(b.name)}"><img src="${esc(fwLogoShownSrc(b.logo, lt))}"${fwLogoSrcset(fwLogoShownSrc(b.logo, lt))} alt="${esc(b.name)}" data-brand-logo${fwLogoCleanAttr(b.logo)} onerror="${FW_LOGO_ONERR}"><b class="fw-lock-fb" data-brand-name>${esc(b.name)}</b></span>`;
 }
 function fwBrandImg(style) { const b = fwBrand(); return `<img src="${esc(b.logo)}" alt="${esc(b.name)}" data-brand-logo style="${style || 'width:150px;display:block;margin:0 auto'}">`; }
 // Dumaloq belgi: logotip, bo'lmasa nomning bosh harfi
@@ -1302,6 +1309,7 @@ function fwLogoApplyClean() {
     const lt = !!i.closest('.on-light, .fw-login-card, .dl-login-box, .fw-splash');
     const want = (dark && !lt) ? c.dark : c.light;
     if (i.getAttribute('src') !== want) i.setAttribute('src', want);
+    fwLogoSyncSrcset(i);   // v25.9: tozalangan (yuklangan) logotip — srcset yo'q
     i.setAttribute('data-fw-clean', '');
   });
 }
@@ -1313,7 +1321,7 @@ function fwApplyBrand() {
   try {
     _fwSet('fw_brand', JSON.stringify({ name: b.name, logo: fwBrandLogoOk(b.logo), slogan: b.slogan }));
     const t = document.querySelector('title[data-brand-title]'); if (t) document.title = t.dataset.brandTitle.replace('{b}', b.name);
-    document.querySelectorAll('img[data-brand-logo]').forEach(i => { i.removeAttribute('data-fw-clean'); if (i.getAttribute('src') !== b.logo) i.setAttribute('src', b.logo); i.alt = b.name; });
+    document.querySelectorAll('img[data-brand-logo]').forEach(i => { i.removeAttribute('data-fw-clean'); if (i.getAttribute('src') !== b.logo) i.setAttribute('src', b.logo); fwLogoSyncSrcset(i); i.alt = b.name; });
     const mk = fwBrandMarkSrc(); document.querySelectorAll('img[data-brand-mark]').forEach(i => { i.removeAttribute('data-fw-clean'); if (i.getAttribute('src') !== mk) i.setAttribute('src', mk); });
     fwLogoApplyClean(); fwLogoClean(b.logo).then(c => { if (c) fwLogoApplyClean(); });
     document.querySelectorAll('[data-brand-name]').forEach(e => { e.textContent = b.name; });

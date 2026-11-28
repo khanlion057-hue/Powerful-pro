@@ -70,4 +70,23 @@ async function run() {
     await ctx.close();
   } finally { await b.close(); srv.close(); }
 }
-module.exports = { name: 'P152 — Vitrina: maʼlumot kelganda siljish yoʻq (CLS)', cases: [{ name: 'birinchi ochilish CLS < 0,01; skelet = karta balandligi; bannerli do\'kon eslab qolinadi; xato — skelet yo\'q', run }] };
+// v25.9 (PageSpeed 9-band): rasmlar — birinchi qatordagi 2 ta karta darhol, qolganlari va «Yaqinda ko'rilganlar» lazy; 1-banner ustuvor
+async function images() {
+  const PX = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+  const st = { banners: [{ url: PX + '#1', title: 'A' }, { url: PX + '#2', title: 'B' }], fail: false };
+  PRODUCTS.forEach((p, i) => { p.img = [PX + '#p' + i]; });   // haqiqiy rasm (404 bo'lsa vitrina uni almashtiradi)
+  const srv = await serve(st); const url = `http://127.0.0.1:${srv.address().port}/dokon`;
+  const b = await chromium.launch();
+  try {
+    const page = await b.newPage({ viewport: { width: 390, height: 844 } });
+    await page.goto(url); await page.waitForSelector('.vt-pc', { timeout: 15000 });
+    const r = await page.evaluate(() => ({
+      grid: [...document.querySelectorAll('#vt-grid .vt-pc img')].slice(0, 5).map((i) => i.getAttribute('loading')),
+      banner: [...document.querySelectorAll('#vt-hero img')].map((i) => [i.getAttribute('fetchpriority'), i.getAttribute('loading')]) }));
+    assert.deepEqual(r.grid, ['eager', 'eager', 'lazy', 'lazy', 'lazy'], 'birinchi 2 tasi darhol, qolganlari lazy');
+    assert.deepEqual(r.banner, [['high', null], [null, 'lazy']], '1-banner ustuvor, keyingilari lazy');
+  } finally { await b.close(); srv.close(); PRODUCTS.forEach((p) => { p.img = []; }); }
+}
+module.exports = { name: 'P152 — Vitrina: maʼlumot kelganda siljish yoʻq (CLS) va rasmlar tartibi', cases: [
+  { name: 'birinchi ochilish CLS < 0,01; skelet = karta balandligi; bannerli do\'kon eslab qolinadi; xato — skelet yo\'q', run },
+  { name: 'rasmlar: birinchi qatordagi 2 ta karta darhol, qolganlari lazy; 1-banner ustuvor', run: images }] };

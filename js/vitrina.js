@@ -48,7 +48,10 @@
   }
   // v25.6.10: rasmsiz mahsulot — HAMMA JOYDA BIR XIL o'rinbosar (kulrang quti belgisi); rasm — oq fonda, markazda, kvadrat
   var NOIMG = '<svg class="vt-noimg" viewBox="0 0 64 64" aria-hidden="true"><rect x="10" y="16" width="44" height="34" rx="6" fill="none" stroke="#cbd5e1" stroke-width="3"/><circle cx="24" cy="29" r="5" fill="#cbd5e1"/><path d="M14 46l12-11 9 8 7-6 10 9" fill="none" stroke="#cbd5e1" stroke-width="3" stroke-linejoin="round"/></svg>';
-  function pic(p, cls) { return p.img && p.img.length ? '<img src="' + esc(p.img[0]) + '" alt="' + esc(p.name) + '" loading="lazy" decoding="async"' + (cls ? ' class="' + cls + '"' : '') + '>' : NOIMG; }
+  // v25.9 (PageSpeed 9-band): telefonda birinchi qatordagi 2 ta karta (top) — darhol (lazy ularni kechiktirardi; o'lchov: LCP 6,0 → 5,5 s;
+  // 4 ta / fetchpriority=high — tarmoq uchun raqobat, foydasi kam),
+  // qolganlari — lazy. Karta qutisi CSS'da 1:1 (siljish yo'q); width/height qo'yilmadi — o'lchovda foyda bermadi.
+  function pic(p, cls, top) { return p.img && p.img.length ? '<img src="' + esc(p.img[0]) + '" alt="' + esc(p.name) + '" ' + (top ? 'loading="eager"' : 'loading="lazy"') + ' decoding="async"' + (cls ? ' class="' + cls + '"' : '') + '>' : NOIMG; }
   // rasm yuklanguncha — skelet (miltillovchi fon); yuklanmasa — o'sha bir xil o'rinbosar
   document.addEventListener('load', function (e) { var t = e.target; if (t && t.tagName === 'IMG') t.classList.add('ld'); }, true);
   document.addEventListener('error', function (e) { var t = e.target; if (t && t.tagName === 'IMG' && t.closest && t.closest('.vt-pic,.vt-big,.vt-ci .t,.vt-cat i')) { var w = t.parentNode; if (w) { w.classList.remove('has'); t.outerHTML = NOIMG; } } }, true);
@@ -93,7 +96,7 @@
   function slideHtml(i, h, p, btn) { return '<div class="vt-slide vt-s' + (i % 3) + '">' + SAW_BIG + '<div style="position:relative;z-index:1"><h2>' + esc(h) + '</h2><p>' + esc(p) + '</p>' + (btn ? '<button class="vt-cta" data-go="' + esc(btn[1]) + '">' + esc(btn[0]) + '</button>' : '') + '</div></div>'; }
   function hero() {
     var s = [], cats = catList();
-    (D.banners || []).forEach(function (b) { s.push('<div class="vt-slide img"><img src="' + esc(b.url) + '" alt="' + esc(b.title || D.shop.name) + '"></div>'); });
+    (D.banners || []).forEach(function (b, k) { s.push('<div class="vt-slide img"><img src="' + esc(b.url) + '" alt="' + esc(b.title || D.shop.name) + '" ' + (k ? 'loading="lazy"' : 'fetchpriority="high"') + ' decoding="async"></div>'); });   // v25.9: 1-banner — ustuvor, qolganlari lazy
     if (!s.length) { $('vt-hero').innerHTML = ''; $('vt-hero').hidden = true; $('vt-hero').classList.remove('vt-wait'); clearInterval(SLT); return; }
     $('vt-hero').hidden = false; $('vt-hero').classList.remove('vt-wait');
     if (0) s.push(slideHtml(0, 'Professional arra tigʻlari', 'Rover va formatli stanoklar uchun — original, kafolatli', ['Katalogni koʻrish', 'grid']));
@@ -210,10 +213,10 @@
     if (ST.sort === 'disc') out = out.filter(function (p) { return p.old; });
     return by ? out.slice().sort(by) : out;
   }
-  function card(p) {
+  function card(p, i) {   // i — tartib raqami (grid: birinchi 4 tasi ekranda)
     var inCart = CART[p.id] || 0, fav = FAV.indexOf(String(p.id)) >= 0;
     var pct = p.old ? Math.round((1 - p.price / p.old) * 100) : 0;
-    return '<article class="vt-pc"><button class="vt-pic' + (p.img && p.img.length ? ' has' : '') + (p.img && p.img.length > 1 ? ' multi' : '') + '" data-open="' + esc(p.id) + '" aria-label="' + esc(p.name) + '">' + pic(p)
+    return '<article class="vt-pc"><button class="vt-pic' + (p.img && p.img.length ? ' has' : '') + (p.img && p.img.length > 1 ? ' multi' : '') + '" data-open="' + esc(p.id) + '" aria-label="' + esc(p.name) + '">' + pic(p, '', typeof i === 'number' && i < 2)
       + (p.img && p.img.length > 1 ? '<span class="vt-dots">' + p.img.slice(0, 6).map(function (_, i) { return '<i data-dot="' + i + '"' + (i ? '' : ' class="on"') + '></i>'; }).join('') + '</span>' : '')
       + (pct > 0 ? '<span class="vt-tag">−' + pct + '%</span>' : '') + (p.stock <= 3 ? '<span class="vt-low">' + p.stock + ' ta qoldi</span>' : '') + '</button>'
       + '<button class="vt-fav' + (fav ? ' on' : '') + '" data-fav="' + esc(p.id) + '" aria-label="Sevimlilarga" aria-pressed="' + fav + '"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 6C19 16.5 12 21 12 21z"/></svg></button>'
@@ -422,7 +425,7 @@
   function recent() {
     var r = RECENT.map(function (id) { return BYID[id]; }).filter(Boolean).slice(0, 8);
     $('vt-recentw').hidden = r.length < 2;
-    $('vt-recent').innerHTML = r.map(card).join('');
+    $('vt-recent').innerHTML = r.map(function (p) { return card(p); }).join('');   // pastda — lazy
   }
   function footer() {
     var sh = D.shop, map = sh.lat != null && sh.lng != null ? 'https://maps.google.com/?q=' + sh.lat + ',' + sh.lng : (sh.address ? 'https://maps.google.com/?q=' + encodeURIComponent(sh.address) : '');

@@ -89,6 +89,8 @@ async function testCode() {
   assert.match(sw, /const NAV_TIMEOUT_MS = 1500;/, 'tez ochilish qoidasi o\'zgarmagan (P90)');
   assert.match(sw, /self\.skipWaiting\(\)/); assert.match(sw, /self\.clients\.claim\(\)/);
   assert.match(sw, /type: 'FW_NEW_VERSION'/);
+  // v25.9 (PageSpeed 12-band): navigation preload yoqiladi va sahifa so'rovida ishlatiladi
+  assert.match(sw, /navigationPreload\.enable\(\)/); assert.match(sw, /Promise\.resolve\(e\.preloadResponse\)\.then\(r => r \|\| fetch\(req\)\)/);
   assert.match(shared, /register\('sw\.js', \{ updateViaCache: 'none' \}\)/);
   assert.match(shared, /addEventListener\('controllerchange'/);
   assert.match(shared, /visibilitychange[\s\S]{0,80}chk\(\)/, 'ilovaga qaytilganda yangilanish tekshiriladi');

@@ -34,6 +34,9 @@ self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys()
       .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+      // v25.9 (PageSpeed 12-band): navigation preload — telefon SW'ni uyg'otayotganda sahifa so'rovi PARALLEL ketadi
+      // (avval: SW ishga tushguncha kutib, keyin fetch). 1,5 s qoidasi (P90) o'zgarmaydi.
+      .then(() => (self.registration.navigationPreload ? self.registration.navigationPreload.enable().catch(() => {}) : null))
       .then(() => self.clients.claim())
   );
 });
@@ -67,7 +70,8 @@ function pageFirst(e, req, fallbackHtml) {
   const wait = caches.open(CACHE).then(cache => new Promise((resolve) => {
     let done = false, fromCacheText = null;
     const fromCache = () => cache.match(req, { ignoreSearch: true }).then(r => r || cache.match(fallbackHtml));
-    const net = fetch(req);
+    // v25.9: SW uyg'onayotganda boshlangan so'rov (navigation preload) bo'lsa — o'sha; bo'lmasa — oddiy fetch
+    const net = Promise.resolve(e.preloadResponse).then(r => r || fetch(req));
     const timer = setTimeout(() => {
       fromCache().then(r => { if (r && !done) { done = true; resolve(r); r.clone().text().then(t => { fromCacheText = t; }).catch(() => {}); } });
     }, NAV_TIMEOUT_MS);

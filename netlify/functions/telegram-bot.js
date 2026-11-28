@@ -3,6 +3,8 @@
 //     /start cus…   — mijozni bog'lash (darhol; tasdiq xabari)          [_lib/tgCustomers]
 //     /start pw…    — xodim parolini tiklash uchun ulash (ilovadagi «Tekshirish» qutidan o'qiydi)
 //     /start inv…   — investorni ulash (ilovadagi «Tekshirish» qutidan o'qiydi)
+//     /start 12345678 — xodimni so'rov buyruqlariga ulash (ilovadagi «Telegramda ulash»)      [_lib/tgQuery]
+//     /foyda … /yordam — FAQAT ulangan xodim chatida (ruxsat va filial cheklovi bilan)
 //     /start        — salom (xaridor) yoki «xodim sifatida ulangansiz»
 //     /help         — xaridor yordami
 //     boshqa buyruq — faqat «Bu buyruq mavjud emas» (xaridorga ichki ma'lumot aytilmaydi)
@@ -17,6 +19,7 @@ const { brandOf } = require('./_lib/tgEvents');
 const IN = require('./_lib/tgInbox');
 const BT = require('./_lib/botTexts');
 const tc = require('./_lib/tgCustomers');
+const TQ = require('./_lib/tgQuery');   // 4-bosqich: xodim so'rov buyruqlari (avvalgi «So'rov boti»)
 
 const sameSecret = (a, b) => { a = Buffer.from(String(a || '')); b = Buffer.from(String(b || '')); return a.length === b.length && a.length > 0 && crypto.timingSafeEqual(a, b); };
 
@@ -49,8 +52,10 @@ async function route(admin, ctx, msg) {
       return r.added ? 'linked' : send(t.welcome(brand));
     }
     if (/^(pw[0-9a-f]{24}|inv[A-Za-z0-9]{8,24})$/.test(arg)) return send(t.accepted);
+    if (/^\d{8}$/.test(arg)) return TQ.start(admin, ctx, msg, arg, send);   // xodim: «Telegramda ulash» kodi
     return send(t.linkBad);
   }
+  { const r = await TQ.command(admin, ctx, msg, cmd, arg, send); if (r !== null) return r; }   // ulangan xodim chati
   if (cmd === 'start') return send(t.welcome(brand));
   if (cmd === 'help' || cmd === 'yordam') return send(t.help(brand));
   return send(t.noCmd);

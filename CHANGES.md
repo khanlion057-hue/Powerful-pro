@@ -1,3 +1,7 @@
+# POWERFUL GROUP — v25.9: barcha Telegram ishlari bitta botda (59-migratsiya) (2026-11-28)
+- **59-migratsiya (yangi, QO'LLANMAGAN):** `tg_inbox` — asosiy bot webhook orqali qabul qilgan «/start kod» va guruh/kanal holati (48 soat; oddiy shaxsiy
+  matn saqlanmaydi; brauzer ko'rmaydi). Tekshiruv — `supabase-migration-59-verify.sql`. P145.
+
 # POWERFUL GROUP — v25.8: AI-reklama — onlayn-do'kon mahsulotidan Telegram post va Reels (58-migratsiya) (2026-11-27)
 - **58-migratsiya (yangi, QO'LLANMAGAN — deploy bilan birga, 48 dan keyin):** `ai_ad_posts` (postlar, holat, xato, takrorsiz kalit), `ai_usage` (AI oylik limiti, atomik),
   `ai_ad_settings` (filial sozlamasi), `reklama.view/create/publish/settings` ruxsatlari (rolga berilmaydi), yopiq bucket `ai-ads-tmp`. `DEPLOY.md`.

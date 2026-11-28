@@ -13,7 +13,7 @@ const http = require('http');
 const { execFileSync, spawnSync } = require('child_process');
 const { ROOT } = require('./helpers/load-app');
 
-const N_FUNCS = 71;   // v25.8: + ai-ads, ai-ads-cron; v25.7: + loss-pin; v25.6.9: + trial-reset, telegram-query; v25.3: + shop-public; v25.2: + client-error; v24.6: + branch-transfer; v24.9: + pw-reset, staff-login; v25: − b2b, b2b-inbound; v25.1: + tg-customer
+const N_FUNCS = 72;   // v25.9: + telegram-bot (yagona bot webhook'i); v25.8: + ai-ads, ai-ads-cron; v25.7: + loss-pin; v25.6.9: + trial-reset, telegram-query; v25.3: + shop-public; v25.2: + client-error; v24.6: + branch-transfer; v24.9: + pw-reset, staff-login; v25: − b2b, b2b-inbound; v25.1: + tg-customer
 const RDIR = 'powerful-pro-v24.5';
 function cloneHead() {
   const d = fs.mkdtempSync(path.join(os.tmpdir(), 'fw-rel-'));

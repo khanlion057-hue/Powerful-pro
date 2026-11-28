@@ -12,7 +12,7 @@ Ishlab turgan `powerful-pro.netlify.app` ni shu versiyaga o'tkazish. Noldan yang
 > Uchta jadval (`ai_ad_posts`, `ai_usage`, `ai_ad_settings`), ikki funksiya (`ai_usage_take`, `ai_usage_release`), 4 ta `reklama.*` ruxsati
 > (hech bir rolga berilmaydi — administrator Rollar bo'limida beradi), yopiq Storage bucket `ai-ads-tmp` (20 MB, faqat mp4), `ops_cleanup` — 90 kundan eski
 > postlarni o'chiradi. Qayta ishga tushirsa zarar qilmaydi. **Saytdan OLDIN** qo'llang (aks holda AI-reklama bo'limi «hali yoqilmagan» deydi, boshqa hech narsa buzilmaydi).
-> Yangi funksiyalar: `ai-ads`, **`ai-ads-cron` — jadval** (`netlify.toml`: har soatda `:20`) → jami **71**.
+> Yangi funksiyalar: `ai-ads`, **`ai-ads-cron` — jadval** (`netlify.toml`: har soatda `:20`) → jami **71** (v25.9: + `telegram-bot` → **72**).
 > Netlify muhit o'zgaruvchilari (ixtiyoriy — bo'lmasa «Shablon rejimi», hammasi ishlaydi): `AI_API_KEY` (Google AI Studio kaliti), `AI_MODEL`
 > (masalan eng arzon Flash modeli nomi), `AI_PROVIDER` (sukut `gemini`), `AI_MONTHLY_LIMIT` (sukut 300). Kalit faqat serverda; provayder kabinetida ham sarf chegarasi qo'ying.
 > Deploydan keyin: Onlayn-do'kon → AI-reklama → Sozlamalar → «Reklama kanali» (`-1002193336308`) → Saqlash → «Kanalni tekshirish»

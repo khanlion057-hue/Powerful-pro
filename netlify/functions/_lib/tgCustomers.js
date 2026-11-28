@@ -5,8 +5,8 @@
 //      Telegram orqali yuboradi;
 //   2) mijoz havolani ochib «Start» bosadi → bot uni shu mijozga bog'laydi (har soatda va «Tekshirish»da);
 //   3) keyin mijozga FAQAT o'zining nasiya, to'lov va qaytarish kuni xabarlari keladi.
-// Bot webhook ishlatmaydi (boshqa funksiyalar getUpdates'ga tayanadi) — getUpdates OFFSETSIZ o'qiladi (boshqalarning
-// yangilanishlari o'chmaydi). Bog'lanishlar app_data 'tg_customer_links' qatorida (faqat server; ilova yozuvlari bilan
+// v25.9: bot webhook orqali ishlaydi (telegram-bot) — «Start» darhol bog'laydi; soatlik/«Tekshirish» — xabarlar qutisidan (tgInbox,
+// webhook yo'q bo'lsa eskicha getUpdates OFFSETSIZ — boshqalarning yangilanishlari o'chmaydi). Bog'lanishlar app_data 'tg_customer_links' qatorida (faqat server; ilova yozuvlari bilan
 // to'qnashmaydi). Kod — 12 belgili tasodifiy, taxmin qilib bo'lmaydi; bitta kod faqat bitta mijozga.
 'use strict';
 const crypto = require('crypto');
@@ -62,19 +62,28 @@ async function unlink(admin, filial, custId) {
 }
 
 // Botdagi «Start cus…» bosganlarni topib bog'laydi. Yangi bog'langanlarga tasdiq xabari. Natija — yangi bog'lanishlar soni.
+// v25.9: getUpdates o'rniga tgInbox.updates — webhook yoqilgan bo'lsa xabarlar qutisidan (59), aks holda eskicha.
 async function sweep(admin, token, brand, customerName) {
   if (!TOKEN_RE.test(String(token || ''))) return 0;
   const st = await loadLinks(admin);
   // Kutilayotgan (hali bog'lanmagan) havola bo'lmasa — Telegram'ga umuman murojaat yo'q
   const linkedKeys = new Set(Object.keys(st.links));
   if (!Object.values(st.codes).some((c) => c && !linkedKeys.has(key(c.filial, c.custId)))) return 0;
-  const up = await tgApi(token, 'getUpdates', { limit: 100, allowed_updates: ['message'] });
+  const up = await require('./tgInbox').updates(admin, token, ['message']);
   if (!up || !up.ok || !Array.isArray(up.result)) return 0;
-  let added = 0;
-  for (const u of up.result) {
-    const m = u && u.message; if (!m || !m.chat || m.chat.type !== 'private') continue;
+  return (await linkMessages(admin, token, brand, customerName, up.result.map((u) => u && u.message), st)).added;
+}
+
+// v25.9: xabarlar ro'yxatidan bog'lash (sweep va webhook — bitta qoida). { added, matched, unknown }
+//   matched — kod topildi (yangi yoki allaqachon shu chatga ulangan); unknown — cus… kodi, lekin bazada yo'q/bekor qilingan.
+async function linkMessages(admin, token, brand, customerName, msgs, st) {
+  st = st || await loadLinks(admin);
+  let added = 0, matched = 0, unknown = 0;
+  for (const m of msgs || []) {
+    if (!m || !m.chat || m.chat.type !== 'private') continue;
     const mt = /^\/start\s+(cus[A-Za-z0-9]{12})$/.exec(String(m.text || '').trim()); if (!mt) continue;
-    const c = st.codes[mt[1]]; if (!c) continue;
+    const c = st.codes[mt[1]]; if (!c) { unknown++; continue; }
+    matched++;
     const k = key(c.filial, c.custId);
     if (st.links[k] && String(st.links[k].chatId) === String(m.chat.id)) continue;   // allaqachon
     st.links[k] = { chatId: m.chat.id, name: [m.from && m.from.first_name, m.from && m.from.last_name].filter(Boolean).join(' ').slice(0, 80),
@@ -85,7 +94,7 @@ async function sweep(admin, token, brand, customerName) {
       text: `✅ <b>${esc(brand || 'Doʻkon')}</b>\n${nm ? esc(nm) + ', s' : 'S'}iz mijozlar roʻyxatiga ulandingiz.\nNasiya xaridlaringiz, toʻlovlaringiz va qarzni qaytarish kuni haqidagi eslatmalar shu yerga keladi.` });
   }
   if (added) await saveLinks(admin, st);
-  return added;
+  return { added, matched, unknown };
 }
 
 // Mijozning o'ziga xabar (bog'langan bo'lsa). Xato — faqat logga.
@@ -123,4 +132,4 @@ function custRemindText({ brand, custName, debtUzs, due, today }) {
     F.pre([F.row("Qarzingiz (so'm)", F.sp(debtUzs)), F.row('Qaytarish sanasi', fmtDate(due)), ...(late ? [F.row('Kechikdi (kun)', String(days))] : [])])].filter(Boolean).join('\n');
 }
 
-module.exports = { ROW_ID, CODE_RE, loadLinks, saveLinks, codeFor, unlink, sweep, sendToCustomer, custCreditText, custPayText, custRemindText, key, tgApi };
+module.exports = { ROW_ID, CODE_RE, loadLinks, saveLinks, codeFor, unlink, sweep, linkMessages, sendToCustomer, custCreditText, custPayText, custRemindText, key, tgApi };
